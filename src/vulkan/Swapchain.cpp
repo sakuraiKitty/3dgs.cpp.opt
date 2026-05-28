@@ -4,6 +4,8 @@
 #include "spdlog/spdlog.h"
 #include <vk_enum_string_helper.h>
 
+#include "VulkanContext.h"
+
 Swapchain::Swapchain(const std::shared_ptr<VulkanContext>& context, const std::shared_ptr<Window>& window,
                      bool immediate) : context(context), window(window), immediate(immediate) {
     createSwapchain();
@@ -52,12 +54,16 @@ void Swapchain::createSwapchain() {
     spdlog::debug("Swapchain extent range: {}x{} - {}x{}", capabilities.minImageExtent.width, capabilities.minImageExtent.height,
                   capabilities.maxImageExtent.width, capabilities.maxImageExtent.height);
 
-    imageCount = capabilities.minImageCount + 1;
-    if (capabilities.maxImageCount > 0 && imageCount > capabilities.maxImageCount) {
-        imageCount = capabilities.maxImageCount;
-    } else if (capabilities.maxImageCount == 0) {
-        imageCount = capabilities.minImageCount;
-    }
+    // 三缓冲：期望 3 个图像
+    uint32_t desiredImageCount = 3;
+
+    // 确保 imageCount 在 [minImageCount, maxImageCount] 范围内
+    imageCount = std::clamp(desiredImageCount, capabilities.minImageCount,
+                           capabilities.maxImageCount > 0 ? capabilities.maxImageCount : desiredImageCount);
+
+    spdlog::debug("Swapchain image count: {} (desired: {}, min: {}, max: {})",
+                  imageCount, desiredImageCount, capabilities.minImageCount,
+                  capabilities.maxImageCount > 0 ? capabilities.maxImageCount : 0);
 
     vk::SwapchainCreateInfoKHR createInfo = {};
     createInfo.surface = *context->surface.value();
@@ -116,9 +122,11 @@ void Swapchain::createSwapchainImages() {
         );
     }
 
-    for (int i = 0; i < swapchainImages.size(); i++) {
+    // 为三缓冲创建信号量（每个帧一个）
+    for (int i = 0; i < FRAMES_IN_FLIGHT; i++) {
         imageAvailableSemaphores.emplace_back(context->device->createSemaphoreUnique({}));
     }
+    spdlog::debug("Created {} image-available semaphores for triple buffering", FRAMES_IN_FLIGHT);
 }
 
 void Swapchain::recreate() {

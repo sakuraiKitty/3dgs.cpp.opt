@@ -386,8 +386,9 @@ void Renderer::draw() {
     context->device->resetFences(inflightFences[frameIdx].get());
 
     // 2. 获取下一个交换链图像
+    // 注意：使用 frameIdx 而非 currentImageIndex，因为 currentImageIndex 是输出参数
     auto res = context->device->acquireNextImageKHR(swapchain->swapchain.get(), UINT64_MAX,
-                                                    swapchain->imageAvailableSemaphores[currentImageIndex].get(),
+                                                    swapchain->imageAvailableSemaphores[frameIdx].get(),
                                                     nullptr, &currentImageIndex);
     if (res == vk::Result::eErrorOutOfDateKHR) {
         recreateSwapchain();
@@ -422,7 +423,7 @@ startOfRenderLoop:
 
     // 使用传统信号量等待图像可用
     vk::PipelineStageFlags waitStages[] = {vk::PipelineStageFlagBits::eComputeShader};
-    vk::Semaphore imageSemaphore = swapchain->imageAvailableSemaphores[currentImageIndex].get();
+    vk::Semaphore imageSemaphore = swapchain->imageAvailableSemaphores[frameIdx].get();
     vk::Semaphore renderSemaphore = frameTimelineSemaphores[frameIdx]->getHandle();
 
     vk::SubmitInfo renderSubmit{};
