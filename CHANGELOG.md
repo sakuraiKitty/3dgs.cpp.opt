@@ -1,5 +1,83 @@
 # 更新日志 (CHANGELOG)
 
+## 2026年5月28日 - 截图功能与GUI优化
+
+### ✨ 新增功能
+
+#### F12 截图功能
+- **快捷键**: 按 `F12` 键截取当前帧画面
+- **文件格式**: PNG 格式
+- **文件命名**: `screenshot_1.png`, `screenshot_2.png`, ... (自动递增)
+- **截图内容**: 纯 3DGS 渲染结果，不包含 GUI 窗口
+- **实现位置**: `src/Renderer.h`, `src/Renderer.cpp`, `src/vulkan/Window.h`, `src/vulkan/windowing/GLFWWindow.h/cpp`
+
+### 🔧 GUI 优化
+
+#### Performance 窗口简化
+- **删除内容**: 移除 FPS 实时曲线图
+- **保留内容**: Metrics 窗口中的 FPS 文本计数显示
+- **优化原因**: 简化界面，FPS 数值在 Metrics 窗口显示更直观
+
+### 🔧 技术实现
+
+#### 截图实现细节
+- **截取时机**: 在 3D 渲染完成后、GUI 渲染**之前**截取
+- **颜色转换**: BGRA → RGB (修复 Vulkan 颜色格式问题)
+- **图像翻转**: 垂直翻转以匹配屏幕坐标系
+- **GPU 到 CPU 复制**: 使用 Vulkan staging buffer 传输图像数据
+
+#### 渲染管线顺序
+```
+3D 渲染
+  ↓
+截取纯 3D 渲染结果 (F12 触发)
+  ↓
+GUI 渲染 (Performance/Metrics/Camera Info)
+  ↓
+Present
+```
+
+### 📝 使用方法
+
+#### 截图
+```bash
+./3dgs_viewer.exe <scene.ply>
+# 程序运行中按 F12 键截图
+# 截图保存到: screenshot_N.png
+```
+
+### 🐛 修复问题
+
+#### 截图功能修复
+- **问题 1**: 截图包含 GUI 窗口
+  - **修复**: 在 GUI 渲染之前截取图像
+- **问题 2**: 颜色显示错误
+  - **修复**: 正确转换 BGRA 到 RGB
+- **问题 3**: 图像方向颠倒
+  - **修复**: 垂直翻转图像数据
+
+### 📁 修改文件
+
+**新增文件**:
+- `src/third_party/stb_image_write.h` - PNG 编码库
+
+**修改文件**:
+- `src/Renderer.h` - 添加截图相关成员变量和方法
+- `src/Renderer.cpp` - 实现截图功能，FPS 显示优化
+- `src/vulkan/Window.h` - 扩展键盘接口 (7→8 键)
+- `src/vulkan/windowing/GLFWWindow.h/cpp` - 添加 F12 键支持
+- `src/vulkan/windowing/MetalWindow.h/cpp` - 接口兼容性更新
+- `CHANGELOG.md` - 更新日志
+
+### ✅ 测试验证
+- ✅ F12 截图功能正常
+- ✅ 截图不包含 GUI 窗口
+- ✅ 颜色显示正确
+- ✅ 图像方向正确
+- ✅ Performance 窗口简洁，FPS 仅在 Metrics 显示
+
+---
+
 ## 2026年5月28日 - 相机信息管理与保存功能
 
 ### ✨ 新增功能

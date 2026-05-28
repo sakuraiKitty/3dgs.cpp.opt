@@ -78,6 +78,8 @@ public:
 
     void saveCamera(const std::string& cameraPath);
 
+    void saveScreenshot(const std::string& filePath);
+
     ~Renderer();
 
     Camera camera {
@@ -145,6 +147,13 @@ private:
     std::chrono::high_resolution_clock::time_point lastFpsTime = std::chrono::high_resolution_clock::now();
 
     unsigned int sortBufferSizeMultiplier = 1;
+
+    bool screenshotRequested = false;
+    int screenshotCounter = 0;
+
+    VkBuffer screenshotStagingBuffer = VK_NULL_HANDLE;
+    VmaAllocation screenshotStagingAllocation = VK_NULL_HANDLE;
+    VmaAllocationInfo screenshotStagingAllocInfo{};
 
     void initializeVulkan();
 

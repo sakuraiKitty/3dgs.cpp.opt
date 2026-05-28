@@ -16,6 +16,9 @@
 
 #include <spdlog/spdlog.h>
 
+#define STB_IMAGE_WRITE_IMPLEMENTATION
+#include "third_party/stb_image_write.h"
+
 void Renderer::initialize() {
     initializeVulkan();
     createGui();
@@ -74,6 +77,9 @@ void Renderer::handleInput() {
         if (keys[6]) {
             window->mouseCapture(false);
             guiManager.mouseCapture = false;
+        }
+        if (keys[7]) { // F12 key - screenshot
+            screenshotRequested = true;
         }
         if (direction != glm::vec3(0.0f, 0.0f, 0.0f)) {
             direction = glm::normalize(direction);
@@ -404,6 +410,15 @@ startOfRenderLoop:
             .setWaitDstStageMask(waitStage);
     context->queues[VulkanContext::Queue::COMPUTE].queue.submit(submitInfo, inflightFences[0].get());
 
+    // Handle screenshot request
+    if (screenshotRequested) {
+        screenshotRequested = false;
+        context->device->waitForFences(inflightFences[0].get(), VK_TRUE, UINT64_MAX);
+        screenshotCounter++;
+        std::string screenshotPath = "screenshot_" + std::to_string(screenshotCounter) + ".png";
+        saveScreenshot(screenshotPath);
+    }
+
     vk::PresentInfoKHR presentInfo{};
     presentInfo.waitSemaphoreCount = 1;
     presentInfo.pWaitSemaphores = &renderFinishedSemaphores[0].get();
@@ -437,7 +452,7 @@ void Renderer::run() {
         auto diff = std::chrono::duration_cast<std::chrono::milliseconds>(now - lastFpsTime).count();
         if (diff > 1000) {
             spdlog::debug("FPS: {}", fpsCounter);
-            GUIManager::pushMetric("FPS", static_cast<float>(fpsCounter));
+            GUIManager::pushTextMetric("FPS", static_cast<float>(fpsCounter));
             fpsCounter = 0;
             lastFpsTime = now;
         } else {
@@ -704,17 +719,80 @@ bool Renderer::recordRenderCommandBuffer(uint32_t currentFrame) {
         renderCommandBuffer->pipelineBarrier(vk::PipelineStageFlagBits::eComputeShader,
                                              vk::PipelineStageFlagBits::eColorAttachmentOutput,
                                              vk::DependencyFlagBits::eByRegion, nullptr, nullptr, imageMemoryBarrier);
-    } else {
-        imageMemoryBarrier.newLayout = vk::ImageLayout::ePresentSrcKHR;
-        imageMemoryBarrier.dstAccessMask = vk::AccessFlagBits::eMemoryRead;
-        renderCommandBuffer->pipelineBarrier(vk::PipelineStageFlagBits::eComputeShader,
-                                             vk::PipelineStageFlagBits::eBottomOfPipe,
-                                             vk::DependencyFlagBits::eByRegion, nullptr, nullptr, imageMemoryBarrier);
-    }
-    renderCommandBuffer->writeTimestamp(vk::PipelineStageFlagBits::eComputeShader, context->queryPool.get(),
-                                        queryManager->registerQuery("render_end"));
 
-    if (configuration.enableGui) {
+        // Take screenshot BEFORE GUI rendering (pure 3D render)
+        if (screenshotRequested) {
+            auto [width, height] = swapchain->swapchainExtent;
+
+            // Create staging buffer for screenshot
+            vk::DeviceSize imageSize = width * height * 4;
+            vk::BufferCreateInfo bufferInfo{};
+            bufferInfo.size = imageSize;
+            bufferInfo.usage = vk::BufferUsageFlagBits::eTransferDst;
+            bufferInfo.sharingMode = vk::SharingMode::eExclusive;
+
+            VmaAllocationCreateInfo allocInfo{};
+            allocInfo.usage = VMA_MEMORY_USAGE_GPU_TO_CPU;
+            allocInfo.flags = VMA_ALLOCATION_CREATE_MAPPED_BIT;
+
+            VkBuffer stagingBuffer;
+            VmaAllocation stagingAllocation;
+            VmaAllocationInfo stagingAllocInfo;
+
+            VkBufferCreateInfo bufferCreateInfo = static_cast<VkBufferCreateInfo>(bufferInfo);
+            vmaCreateBuffer(context->allocator, &bufferCreateInfo, &allocInfo,
+                           &stagingBuffer, &stagingAllocation, &stagingAllocInfo);
+
+            screenshotStagingBuffer = stagingBuffer;
+            screenshotStagingAllocation = stagingAllocation;
+            screenshotStagingAllocInfo = stagingAllocInfo;
+
+            // Transition image to transfer source
+            vk::ImageMemoryBarrier copyBarrier{};
+            copyBarrier.oldLayout = vk::ImageLayout::eColorAttachmentOptimal;
+            copyBarrier.newLayout = vk::ImageLayout::eTransferSrcOptimal;
+            copyBarrier.srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
+            copyBarrier.dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
+            copyBarrier.srcAccessMask = vk::AccessFlagBits::eColorAttachmentWrite;
+            copyBarrier.dstAccessMask = vk::AccessFlagBits::eTransferRead;
+            copyBarrier.image = swapchain->swapchainImages[currentImageIndex]->image;
+            copyBarrier.subresourceRange.aspectMask = vk::ImageAspectFlagBits::eColor;
+            copyBarrier.subresourceRange.baseMipLevel = 0;
+            copyBarrier.subresourceRange.levelCount = 1;
+            copyBarrier.subresourceRange.baseArrayLayer = 0;
+            copyBarrier.subresourceRange.layerCount = 1;
+
+            renderCommandBuffer->pipelineBarrier(vk::PipelineStageFlagBits::eColorAttachmentOutput,
+                                                 vk::PipelineStageFlagBits::eTransfer,
+                                                 vk::DependencyFlagBits{}, nullptr, nullptr, copyBarrier);
+
+            // Copy image to buffer
+            vk::BufferImageCopy copyRegion{};
+            copyRegion.bufferOffset = 0;
+            copyRegion.bufferRowLength = 0;
+            copyRegion.bufferImageHeight = 0;
+            copyRegion.imageSubresource.aspectMask = vk::ImageAspectFlagBits::eColor;
+            copyRegion.imageSubresource.mipLevel = 0;
+            copyRegion.imageSubresource.baseArrayLayer = 0;
+            copyRegion.imageSubresource.layerCount = 1;
+            copyRegion.imageOffset = vk::Offset3D{0, 0, 0};
+            copyRegion.imageExtent = vk::Extent3D{width, height, 1};
+
+            renderCommandBuffer->copyImageToBuffer(swapchain->swapchainImages[currentImageIndex]->image,
+                                                   vk::ImageLayout::eTransferSrcOptimal,
+                                                   screenshotStagingBuffer, copyRegion);
+
+            // Transition image back to color attachment
+            copyBarrier.oldLayout = vk::ImageLayout::eTransferSrcOptimal;
+            copyBarrier.newLayout = vk::ImageLayout::eColorAttachmentOptimal;
+            copyBarrier.srcAccessMask = vk::AccessFlagBits::eTransferRead;
+            copyBarrier.dstAccessMask = vk::AccessFlagBits::eColorAttachmentWrite;
+
+            renderCommandBuffer->pipelineBarrier(vk::PipelineStageFlagBits::eTransfer,
+                                                 vk::PipelineStageFlagBits::eColorAttachmentOutput,
+                                                 vk::DependencyFlagBits{}, nullptr, nullptr, copyBarrier);
+        }
+
         imguiManager->draw(renderCommandBuffer.get(), currentImageIndex, std::bind(&GUIManager::buildGui, &guiManager));
 
         imageMemoryBarrier.oldLayout = vk::ImageLayout::eColorAttachmentOptimal;
@@ -726,7 +804,17 @@ bool Renderer::recordRenderCommandBuffer(uint32_t currentFrame) {
         renderCommandBuffer->pipelineBarrier(vk::PipelineStageFlagBits::eColorAttachmentOutput,
                                              vk::PipelineStageFlagBits::eComputeShader,
                                              vk::DependencyFlagBits::eByRegion, nullptr, nullptr, imageMemoryBarrier);
+    } else {
+        imageMemoryBarrier.newLayout = vk::ImageLayout::ePresentSrcKHR;
+        imageMemoryBarrier.dstAccessMask = vk::AccessFlagBits::eMemoryRead;
+        renderCommandBuffer->pipelineBarrier(vk::PipelineStageFlagBits::eComputeShader,
+                                             vk::PipelineStageFlagBits::eBottomOfPipe,
+                                             vk::DependencyFlagBits::eByRegion, nullptr, nullptr, imageMemoryBarrier);
     }
+
+    renderCommandBuffer->writeTimestamp(vk::PipelineStageFlagBits::eComputeShader, context->queryPool.get(),
+                                        queryManager->registerQuery("render_end"));
+
     renderCommandBuffer->end();
 
     return true;
@@ -814,6 +902,44 @@ void Renderer::saveCamera(const std::string& cameraPath) {
     file << "farPlane: " << camera.farPlane << "\n";
 
     spdlog::info("Saved camera to: {}", cameraPath);
+}
+
+void Renderer::saveScreenshot(const std::string& filePath) {
+    auto [width, height] = swapchain->swapchainExtent;
+
+    if (screenshotStagingBuffer == VK_NULL_HANDLE) {
+        spdlog::error("Screenshot staging buffer is null!");
+        return;
+    }
+
+    // Get image data from staging buffer (already copied by GPU)
+    auto* data = static_cast<unsigned char*>(screenshotStagingAllocInfo.pMappedData);
+
+    // Convert BGRA to RGB and flip vertically to match screen coordinates
+    std::vector<unsigned char> rgbData(width * height * 3);
+    for (uint32_t y = 0; y < height; y++) {
+        for (uint32_t x = 0; x < width; x++) {
+            // Vulkan images are typically stored bottom-to-top, so flip vertically
+            uint32_t srcY = (height - 1 - y);
+            uint32_t srcIdx = (srcY * width + x) * 4;
+            uint32_t dstIdx = (y * width + x) * 3;
+
+            // Swap BGR to RGB (common Vulkan format is BGRA)
+            rgbData[dstIdx + 0] = data[srcIdx + 2]; // R
+            rgbData[dstIdx + 1] = data[srcIdx + 1]; // G
+            rgbData[dstIdx + 2] = data[srcIdx + 0]; // B
+        }
+    }
+
+    // Write to PNG
+    stbi_write_png(filePath.c_str(), width, height, 3, rgbData.data(), width * 3);
+
+    // Cleanup staging buffer
+    vmaDestroyBuffer(context->allocator, screenshotStagingBuffer, screenshotStagingAllocation);
+    screenshotStagingBuffer = VK_NULL_HANDLE;
+    screenshotStagingAllocation = VK_NULL_HANDLE;
+
+    spdlog::info("Screenshot saved to: {}", filePath);
 }
 
 Renderer::~Renderer() {
