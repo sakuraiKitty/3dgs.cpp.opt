@@ -419,32 +419,22 @@ startOfRenderLoop:
     }
 
     auto renderCmd = renderCommandBuffers[frameIdx].get();
-    vk::PipelineStageFlags waitStage = vk::PipelineStageFlagBits::eComputeShader;
 
-    // 使用时间线信号量等待
-    uint64_t timelineValue = expectedValue;
-    vk::SemaphoreSubmitInfo timelineWaitInfo{};
-    timelineWaitInfo.semaphore = frameTimelineSemaphores[frameIdx]->getHandle();
-    timelineWaitInfo.value = timelineValue;
-    timelineWaitInfo.stageMask = vk::PipelineStageFlagBits2::eComputeShader;
+    // 使用传统信号量等待图像可用
+    vk::PipelineStageFlags waitStages[] = {vk::PipelineStageFlagBits::eComputeShader};
+    vk::Semaphore imageSemaphore = swapchain->imageAvailableSemaphores[currentImageIndex].get();
+    vk::Semaphore renderSemaphore = frameTimelineSemaphores[frameIdx]->getHandle();
 
-    vk::SemaphoreSubmitInfo timelineSignalInfo{};
-    timelineSignalInfo.semaphore = frameTimelineSemaphores[frameIdx]->getHandle();
-    timelineSignalInfo.value = timelineValue + 1;
-    timelineSignalInfo.stageMask = vk::PipelineStageFlagBits2::eComputeShader;
+    vk::SubmitInfo renderSubmit{};
+    renderSubmit.waitSemaphoreCount = 1;
+    renderSubmit.pWaitSemaphores = &imageSemaphore;
+    renderSubmit.pWaitDstStageMask = waitStages;
+    renderSubmit.commandBufferCount = 1;
+    renderSubmit.pCommandBuffers = &renderCmd;
+    renderSubmit.signalSemaphoreCount = 1;
+    renderSubmit.pSignalSemaphores = &renderSemaphore;
 
-    vk::SubmitInfo2 renderSubmit{};
-    renderSubmit.waitSemaphoreInfoCount = 1;
-    renderSubmit.pWaitSemaphoreInfos = &timelineWaitInfo;
-    renderSubmit.signalSemaphoreInfoCount = 1;
-    renderSubmit.pSignalSemaphoreInfos = &timelineSignalInfo;
-
-    vk::CommandBufferSubmitInfo cmdInfo{};
-    cmdInfo.commandBuffer = renderCmd;
-    renderSubmit.commandBufferInfoCount = 1;
-    renderSubmit.pCommandBufferInfos = &cmdInfo;
-
-    context->queues[VulkanContext::Queue::COMPUTE].queue.submit2(renderSubmit, inflightFences[frameIdx].get());
+    context->queues[VulkanContext::Queue::COMPUTE].queue.submit(renderSubmit, inflightFences[frameIdx].get());
 
     // 处理截图请求
     if (screenshotRequested) {

@@ -224,19 +224,7 @@ void VulkanContext::createLogicalDevice(vk::PhysicalDeviceFeatures deviceFeature
 
     float queuePriority = 1.0f;
     for (auto queueFamily: uniqueQueueFamilies) {
-        // 为compute族请求2个队列以支持并行执行（当与graphics族不同时）
-        uint32_t queueCount = 1;
-        std::vector<float> queuePriorities;
-
-        if (queueFamily == indices.computeFamily.value() &&
-            queueFamily != indices.graphicsFamily.value()) {
-            queueCount = 2;
-            queuePriorities = {1.0f, 1.0f};
-        } else {
-            queuePriorities = {1.0f};
-        }
-
-        queueCreateInfos.push_back({{}, queueFamily, queueCount, queuePriorities.data()});
+        queueCreateInfos.push_back({{}, queueFamily, 1, &queuePriority});
     }
 
     deviceFeatures.samplerAnisotropy = VK_TRUE;
@@ -256,39 +244,20 @@ void VulkanContext::createLogicalDevice(vk::PhysicalDeviceFeatures deviceFeature
     device = physicalDevice.createDeviceUnique(createInfo);
 
     for (auto unique_queue_family: uniqueQueueFamilies) {
-        // 确定该族的队列数量
-        uint32_t queueCount = 0;
-        for (const auto& queueCreateInfo: queueCreateInfos) {
-            if (queueCreateInfo.queueFamilyIndex == unique_queue_family) {
-                queueCount = queueCreateInfo.queueCount;
-                break;
-            }
+        auto queue = device->getQueue(unique_queue_family, 0);
+        std::set<Queue::Type> types;
+        if (unique_queue_family == indices.graphicsFamily.value()) {
+            types.insert(Queue::Type::GRAPHICS);
+        }
+        if (unique_queue_family == indices.computeFamily.value()) {
+            types.insert(Queue::Type::COMPUTE);
+        }
+        if (unique_queue_family == indices.presentFamily.value()) {
+            types.insert(Queue::Type::PRESENT);
         }
 
-        // 获取主队列（索引0）和辅助队列（如果存在）
-        for (uint32_t queueIdx = 0; queueIdx < queueCount; queueIdx++) {
-            auto queue = device->getQueue(unique_queue_family, queueIdx);
-            std::set<Queue::Type> types;
-            if (unique_queue_family == indices.graphicsFamily.value()) {
-                types.insert(Queue::Type::GRAPHICS);
-            }
-            if (unique_queue_family == indices.computeFamily.value()) {
-                if (queueIdx == 0) {
-                    types.insert(Queue::Type::COMPUTE);
-                } else {
-                    // 存储为辅助compute队列
-                    queues[Queue::COMPUTE].secondaryQueue = queue;
-                    queues[Queue::COMPUTE].secondaryQueueIndex = queueIdx;
-                    continue; // 不为辅助队列创建单独的Queue条目
-                }
-            }
-            if (unique_queue_family == indices.presentFamily.value()) {
-                types.insert(Queue::Type::PRESENT);
-            }
-
-            if (!types.empty()) {
-                queues[*types.begin()] = Queue{types, unique_queue_family, queueIdx, queue};
-            }
+        for (auto type: types) {
+            queues[type] = Queue{types, unique_queue_family, 0, queue};
         }
     }
 
