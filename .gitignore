@@ -41,3 +41,16 @@ apps/apple/VulkanSplatting/ThirdParty
 xcuserdata/
 
 project.xcconfig
+
+# Build directories
+build/
+.claude/
+
+# IDE specific files
+imgui.ini
+.vscode/
+.vs/
+
+# Temporary files
+*.tmp
+*.log

@@ -1,13 +1,13 @@
 #ifndef VULKANCONTEXT_H
 #define VULKANCONTEXT_H
-#define VULKAN_HPP_DISPATCH_LOADER_DYNAMIC 1
-#define VULKAN_HPP_TYPESAFE_CONVERSION
 
 #define FRAMES_IN_FLIGHT 1
 
 #include <optional>
 #include <set>
 #include <unordered_map>
+#define VULKAN_HPP_DISPATCH_LOADER_DYNAMIC 1
+#define VULKAN_HPP_TYPESAFE_CONVERSION 1
 #include <vulkan/vulkan.hpp>
 #include "vk_mem_alloc.h"
 
