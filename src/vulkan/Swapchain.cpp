@@ -122,11 +122,12 @@ void Swapchain::createSwapchainImages() {
         );
     }
 
-    // 为三缓冲创建信号量（每个帧一个）
-    for (int i = 0; i < FRAMES_IN_FLIGHT; i++) {
+    // 为每个交换链图像创建独立的信号量
+    // 这样可以使用 currentImageIndex 索引，符合 Vulkan 规范
+    for (int i = 0; i < swapchainImages.size(); i++) {
         imageAvailableSemaphores.emplace_back(context->device->createSemaphoreUnique({}));
     }
-    spdlog::debug("Created {} image-available semaphores for triple buffering", FRAMES_IN_FLIGHT);
+    spdlog::debug("Created {} image-available semaphores (one per swapchain image)", imageAvailableSemaphores.size());
 }
 
 void Swapchain::recreate() {

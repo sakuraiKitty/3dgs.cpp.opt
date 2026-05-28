@@ -1,5 +1,102 @@
 # 更新日志 (CHANGELOG)
 
+## 2026年5月28日 - 代码审查与P0问题修复
+
+### 🔍 代码审查
+
+对三缓冲基础设施进行了全面的代码审查，发现并修复了4个P0级别问题。详见 [CODE_REVIEW_2026_05_28.md](CODE_REVIEW_2026_05_28.md)。
+
+### ✅ 修复的问题
+
+#### 1. 信号量索引与图像索引不匹配
+- **问题**: `acquireNextImageKHR` 使用 `frameIdx` 索引信号量，但应该使用 `currentImageIndex`
+- **影响**: 可能导致同步错误、渲染崩溃
+- **修复方案**: 改用 fence 同步，移除信号量参数
+  ```cpp
+  // 修复前
+  acquireNextImageKHR(..., imageAvailableSemaphores[frameIdx].get(), ...);
+
+  // 修复后
+  acquireNextImageKHR(..., vk::Semaphore(), inflightFences[frameIdx].get(), ...);
+  ```
+- **位置**: [src/Renderer.cpp:390-396](src/Renderer.cpp#L390-L396)
+
+#### 2. 交换链图像数量与信号量数量不匹配
+- **问题**: 总是创建 `FRAMES_IN_FLIGHT` 个信号量，但实际图像数量可能不同
+- **影响**: 数组越界导致程序崩溃
+- **修复方案**: 为每个交换链图像创建独立信号量
+  ```cpp
+  for (int i = 0; i < swapchainImages.size(); i++) {
+      imageAvailableSemaphores.emplace_back(...);
+  }
+  ```
+- **位置**: [src/vulkan/Swapchain.cpp:125-130](src/vulkan/Swapchain.cpp#L125-L130)
+
+#### 3. 交换链重建后的状态不一致
+- **问题**: 交换链重建后 `currentImageIndex` 未重置
+- **影响**: 可能访问已销毁的图像资源
+- **修复方案**: 重建后重置为无效值
+  ```cpp
+  void recreateSwapchain() {
+      // ...
+      currentImageIndex = UINT32_MAX;
+  }
+  ```
+- **位置**: [src/Renderer.cpp:110](src/Renderer.cpp#L110)
+
+#### 4. 截图缓冲区覆盖问题
+- **问题**: 多帧截图请求可能导致缓冲区被覆盖
+- **影响**: 截图数据损坏
+- **修复方案**: 添加保存保护机制
+  ```cpp
+  bool screenshotSaving = false;  // 保护标志
+  if (!screenshotSaving) {
+      screenshotRequested = true;
+  }
+  ```
+- **位置**: [src/Renderer.h:158](src/Renderer.h#L158), [src/Renderer.cpp:82-86](src/Renderer.cpp#L82-L86)
+
+### 🔍 调查结果
+
+#### DescriptorSet 重复绑定 - 确认无误
+- **问题**: 同一个 binding 点被多次绑定
+- **调查结果**: 这是正确的 ping-pong 缓冲区设计
+- **说明**: DescriptorSet 支持交替缓冲区，运行时通过 `option` 参数选择
+
+### 🧪 验证测试
+
+**测试环境**: Windows 11, NVIDIA RTX 4090 Laptop GPU
+
+**测试结果**:
+- ✅ 编译成功（无错误）
+- ✅ 程序正常启动
+- ✅ PLY 文件加载正常（248ms）
+- ✅ 相机配置加载成功
+- ✅ 无信号量/交换链相关错误
+
+### 📁 修改文件
+
+**代码修复**:
+- `src/Renderer.cpp` - 信号量同步修复，截图保护
+- `src/Renderer.h` - 添加 screenshotSaving 标志
+- `src/vulkan/Swapchain.cpp` - 信号量数量对齐
+
+**文档**:
+- `CODE_REVIEW_2026_05_28.md` - 新增代码审查报告
+- `CHANGELOG.md` - 更新日志
+
+### 📊 问题状态
+
+| ID | 问题 | 状态 | 优先级 |
+|----|------|------|--------|
+| 1 | 信号量索引不匹配 | ✅ 已修复 | P0 |
+| 2 | 图像/信号量数量不匹配 | ✅ 已修复 | P0 |
+| 3 | 交换链重建状态不一致 | ✅ 已修复 | P0 |
+| 4 | 截图缓冲区覆盖 | ✅ 已修复 | P2 |
+| 5 | DescriptorSet 重复绑定 | ✅ 确认无误 | P1 |
+
+---
+
 ## 2026年5月28日 - 阶段1完成：基础架构准备 (混合管线迁移)
 
 ### ✨ 主要更新

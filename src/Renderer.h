@@ -155,6 +155,7 @@ private:
     unsigned int sortBufferSizeMultiplier = 1;
 
     bool screenshotRequested = false;
+    bool screenshotSaving = false;  // 正在保存截图，阻塞新的请求
     int screenshotCounter = 0;
 
     VkBuffer screenshotStagingBuffer = VK_NULL_HANDLE;

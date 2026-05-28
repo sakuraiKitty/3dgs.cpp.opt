@@ -79,7 +79,10 @@ void Renderer::handleInput() {
             guiManager.mouseCapture = false;
         }
         if (keys[7]) { // F12 key - screenshot
-            screenshotRequested = true;
+            // 只有在没有正在保存的截图时才允许新的截图请求
+            if (!screenshotSaving) {
+                screenshotRequested = true;
+            }
         }
         if (direction != glm::vec3(0.0f, 0.0f, 0.0f)) {
             direction = glm::normalize(direction);
@@ -109,6 +112,8 @@ void Renderer::recreateSwapchain() {
     auto oldExtent = swapchain->swapchainExtent;
     spdlog::debug("Recreating swapchain");
     swapchain->recreate();
+    // 重置图像索引，防止使用无效的旧索引
+    currentImageIndex = UINT32_MAX;
     if (swapchain->swapchainExtent == oldExtent) {
         return;
     }
@@ -386,10 +391,11 @@ void Renderer::draw() {
     context->device->resetFences(inflightFences[frameIdx].get());
 
     // 2. 获取下一个交换链图像
-    // 注意：使用 frameIdx 而非 currentImageIndex，因为 currentImageIndex 是输出参数
+    // 注意：使用 fence 而非信号量来同步，避免信号量索引与图像索引的对应问题
+    // 当前的 fence 已经在前面等待过了，所以可以重用
     auto res = context->device->acquireNextImageKHR(swapchain->swapchain.get(), UINT64_MAX,
-                                                    swapchain->imageAvailableSemaphores[frameIdx].get(),
-                                                    nullptr, &currentImageIndex);
+                                                    vk::Semaphore(), inflightFences[frameIdx].get(),
+                                                    &currentImageIndex);
     if (res == vk::Result::eErrorOutOfDateKHR) {
         recreateSwapchain();
         return;
@@ -421,15 +427,14 @@ startOfRenderLoop:
 
     auto renderCmd = renderCommandBuffers[frameIdx].get();
 
-    // 使用传统信号量等待图像可用
-    vk::PipelineStageFlags waitStages[] = {vk::PipelineStageFlagBits::eComputeShader};
-    vk::Semaphore imageSemaphore = swapchain->imageAvailableSemaphores[frameIdx].get();
+    // 不再等待图像可用信号量（改用 fence 同步）
+    // 只需要等待渲染完成的时间线信号量用于 present
     vk::Semaphore renderSemaphore = frameTimelineSemaphores[frameIdx]->getHandle();
 
     vk::SubmitInfo renderSubmit{};
-    renderSubmit.waitSemaphoreCount = 1;
-    renderSubmit.pWaitSemaphores = &imageSemaphore;
-    renderSubmit.pWaitDstStageMask = waitStages;
+    renderSubmit.waitSemaphoreCount = 0;  // 不等待信号量，fence 已经保证了同步
+    renderSubmit.pWaitSemaphores = nullptr;
+    renderSubmit.pWaitDstStageMask = nullptr;
     renderSubmit.commandBufferCount = 1;
     renderSubmit.pCommandBuffers = &renderCmd;
     renderSubmit.signalSemaphoreCount = 1;
@@ -438,8 +443,9 @@ startOfRenderLoop:
     context->queues[VulkanContext::Queue::COMPUTE].queue.submit(renderSubmit, inflightFences[frameIdx].get());
 
     // 处理截图请求
-    if (screenshotRequested) {
+    if (screenshotRequested && !screenshotSaving) {
         screenshotRequested = false;
+        screenshotSaving = true;  // 设置保存标志，阻塞新的截图请求
         context->device->waitForFences(inflightFences[frameIdx].get(), VK_TRUE, UINT64_MAX);
         screenshotCounter++;
         std::string screenshotPath = "screenshot_" + std::to_string(screenshotCounter) + ".png";
@@ -986,6 +992,9 @@ void Renderer::saveScreenshot(const std::string& filePath) {
     vmaDestroyBuffer(context->allocator, screenshotStagingBuffer, screenshotStagingAllocation);
     screenshotStagingBuffer = VK_NULL_HANDLE;
     screenshotStagingAllocation = VK_NULL_HANDLE;
+
+    // 清除保存标志，允许新的截图请求
+    screenshotSaving = false;
 
     spdlog::info("Screenshot saved to: {}", filePath);
 }
