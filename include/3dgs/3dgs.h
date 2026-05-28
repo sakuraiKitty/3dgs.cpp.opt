@@ -44,6 +44,8 @@ public:
 
     void logMovement(float x, float y, float z);
 
+    void loadCamera(const std::string& cameraPath);
+
     void stop();
 private:
     RendererConfiguration configuration;

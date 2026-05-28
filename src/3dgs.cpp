@@ -16,9 +16,11 @@ std::shared_ptr<Window> VulkanSplatting::createMetalWindow(void *caMetalLayer, i
 #endif
 
 void VulkanSplatting::start() {
-    // Create the renderer
-    renderer = std::make_shared<Renderer>(configuration);
-    renderer->initialize();
+    // If renderer is not created yet, create it now
+    if (!renderer) {
+        renderer = std::make_shared<Renderer>(configuration);
+        renderer->initialize();
+    }
     renderer->run();
 }
 
@@ -37,6 +39,10 @@ void VulkanSplatting::logTranslation(float x, float y) {
 
 void VulkanSplatting::logMovement(float x, float y, float z) {
     renderer->camera.translate(glm::vec3(x, y, z));
+}
+
+void VulkanSplatting::loadCamera(const std::string& cameraPath) {
+    renderer->loadCamera(cameraPath);
 }
 
 void VulkanSplatting::stop() {

@@ -4,9 +4,19 @@
 #include <vector>
 #include <string>
 #include <memory>
+#include <glm/glm.hpp>
+#include <glm/gtc/quaternion.hpp>
 
 class GUIManager {
 public:
+    struct CameraInfo {
+        glm::vec3 position;
+        glm::quat rotation;
+        float fov;
+        float nearPlane;
+        float farPlane;
+    };
+
     GUIManager();
 
     static void init();
@@ -24,6 +34,10 @@ public:
     static bool wantCaptureKeyboard();
 
     bool mouseCapture = false;
+
+    CameraInfo cameraInfo {};
+
+    bool saveCameraRequested = false;
 
 };
 

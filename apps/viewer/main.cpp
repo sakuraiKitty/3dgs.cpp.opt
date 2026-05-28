@@ -25,6 +25,7 @@ int main(int argc, char** argv) {
     args::ValueFlag<uint32_t> widthFlag{parser, "width", "Set window width", {'w', "width"}};
     args::ValueFlag<uint32_t> heightFlag{parser, "height", "Set window height", {'h', "height"}};
     args::Flag noGuiFlag{parser, "no-gui", "Disable GUI", { "no-gui"}};
+    args::ValueFlag<std::string> cameraFlag{parser, "camera", "Path to camera file for initial view", {"camera"}};
     args::Positional<std::string> scenePath{parser, "scene", "Path to scene file", "scene.ply"};
 
     try {
@@ -95,6 +96,19 @@ int main(int argc, char** argv) {
     try {
 #endif
     auto renderer = VulkanSplatting(config);
+    renderer.initialize();
+
+    // Load camera if specified
+    if (cameraFlag) {
+        auto cameraPath = args::get(cameraFlag);
+        if (std::filesystem::exists(cameraPath)) {
+            spdlog::info("Loading camera from: {}", cameraPath);
+            renderer.loadCamera(cameraPath);
+        } else {
+            spdlog::warn("Camera file not found: {}", cameraPath);
+        }
+    }
+
     renderer.start();
 #ifndef DEBUG
     } catch (const std::exception& e) {

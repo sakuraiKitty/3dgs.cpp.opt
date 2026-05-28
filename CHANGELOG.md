@@ -1,5 +1,105 @@
 # 更新日志 (CHANGELOG)
 
+## 2026年5月28日 - 相机信息管理与保存功能
+
+### ✨ 新增功能
+
+#### Camera Info 窗口
+- **功能**: 在GUI界面中添加实时相机信息显示窗口
+- **实现位置**: `src/GUIManager.h`, `src/GUIManager.cpp`, `src/Renderer.cpp`
+- **显示内容**:
+  - **位置坐标**: X, Y, Z 精确到小数点后3位
+  - **旋转信息**:
+    - 欧拉角形式 (Pitch, Yaw, Roll)
+    - 四元数形式 (W, X, Y, Z)
+  - **视野参数**:
+    - FOV (角度)
+    - 近裁剪面距离
+    - 远裁剪面距离
+  - **保存按钮**: 一键保存当前相机配置
+
+#### 相机保存与加载
+- **保存功能**: 点击 "Save Camera" 按钮保存当前视角到 `camera.txt`
+- **加载功能**: 使用 `--camera <文件路径>` 命令行参数加载保存的相机配置
+- **文件格式**: 简单文本格式，便于编辑和分享
+
+#### 命令行参数
+```bash
+# 加载保存的相机配置
+./3dgs_viewer.exe --camera camera.txt <场景文件.ply>
+```
+
+### 🔧 技术实现
+
+#### 数据结构
+```cpp
+struct CameraInfo {
+    glm::vec3 position;      // 相机位置
+    glm::quat rotation;      // 相机旋转 (四元数)
+    float fov;               // 视野角度 (度)
+    float nearPlane;         // 近裁剪面距离
+    float farPlane;          // 远裁剪面距离
+};
+```
+
+#### 相机文件格式
+```
+position: <x> <y> <z>
+rotation: <w> <x> <y> <z>
+fov: <角度>
+nearPlane: <距离>
+farPlane: <距离>
+```
+
+#### 核心修改
+- **src/GUIManager.h**: 添加 CameraInfo 结构体和 saveCameraRequested 标志
+- **src/GUIManager.cpp**: 实现 Camera Info 窗口显示和保存按钮
+- **src/Renderer.h**: 添加 loadCamera() 和 saveCamera() 方法
+- **src/Renderer.cpp**: 实现相机文件读写逻辑
+- **include/3dgs/3dgs.h**: 添加 loadCamera() 接口
+- **src/3dgs.cpp**: 修复 start() 方法避免重复创建 renderer
+- **apps/viewer/main.cpp**: 添加 --camera 命令行参数支持
+
+### 🐛 重要修复
+
+#### Renderer 对象重复创建问题
+- **问题**: `VulkanSplatting::start()` 每次都创建新的 renderer 对象
+- **影响**: 导致 `initialize()` 后加载的相机信息在 `start()` 时丢失
+- **修复**: 修改 `start()` 方法检查 renderer 是否已存在，避免重复创建
+- **位置**: `src/3dgs.cpp`
+
+### ✅ 测试验证
+- ✅ 相机信息实时更新正确
+- ✅ 欧拉角和四元数转换准确
+- ✅ 保存功能正常工作
+- ✅ 加载功能正确恢复视角
+- ✅ 命令行参数解析正确
+- ✅ 相机文件格式读写一致
+
+### 📝 使用示例
+
+#### 保存相机配置
+1. 启动程序并调整到想要的视角
+2. 在 "Camera Info" 窗口中点击 "Save Camera" 按钮
+3. 相机信息保存到当前目录的 `camera.txt` 文件
+
+#### 加载相机配置
+```bash
+# 使用绝对路径
+./3dgs_viewer.exe --camera d:/path/to/camera.txt scene.ply
+
+# 使用相对路径 (camera.txt 在当前目录)
+./3dgs_viewer.exe --camera camera.txt scene.ply
+```
+
+### 🎯 应用场景
+- 快速恢复常用观察角度
+- 分享相机配置给其他用户
+- 批量渲染时保持一致视角
+- 调试和测试特定视角
+
+---
+
 ## 2026年5月28日 - 新增FPS显示功能
 
 ### ✨ 新增功能

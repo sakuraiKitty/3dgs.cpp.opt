@@ -539,6 +539,21 @@ bool Renderer::recordRenderCommandBuffer(uint32_t currentFrame) {
     uint32_t numInstances = totalSumBufferHost->readOne<uint32_t>();
     // spdlog::debug("Num instances: {}", numInstances);
     guiManager.pushTextMetric("instances", numInstances);
+
+    // Update camera info for GUI
+    guiManager.cameraInfo.position = camera.position;
+    guiManager.cameraInfo.rotation = camera.rotation;
+    guiManager.cameraInfo.fov = camera.fov;
+    guiManager.cameraInfo.nearPlane = camera.nearPlane;
+    guiManager.cameraInfo.farPlane = camera.farPlane;
+
+    // Handle save camera request
+    if (guiManager.saveCameraRequested) {
+        guiManager.saveCameraRequested = false;
+        std::string cameraPath = "camera.txt";
+        saveCamera(cameraPath);
+    }
+
     if (numInstances > scene->getNumVertices() * sortBufferSizeMultiplier) {
         auto old = sortBufferSizeMultiplier;
         while (numInstances > scene->getNumVertices() * sortBufferSizeMultiplier) {
@@ -752,6 +767,53 @@ void Renderer::updateUniforms() {
     data.tan_fovx = tan_fovx;
     data.tan_fovy = tan_fovy;
     uniformBuffer->upload(&data, sizeof(UniformBuffer), 0);
+}
+
+void Renderer::loadCamera(const std::string& cameraPath) {
+    std::ifstream file(cameraPath);
+    if (!file.is_open()) {
+        spdlog::warn("Failed to open camera file: {}", cameraPath);
+        return;
+    }
+
+    std::string line;
+    while (std::getline(file, line)) {
+        if (line.find("position") == 0) {
+            sscanf(line.c_str(), "position: %f %f %f",
+                   &camera.position.x, &camera.position.y, &camera.position.z);
+        } else if (line.find("rotation") == 0) {
+            sscanf(line.c_str(), "rotation: %f %f %f %f",
+                   &camera.rotation.w, &camera.rotation.x,
+                   &camera.rotation.y, &camera.rotation.z);
+        } else if (line.find("fov") == 0) {
+            sscanf(line.c_str(), "fov: %f", &camera.fov);
+        } else if (line.find("nearPlane") == 0) {
+            sscanf(line.c_str(), "nearPlane: %f", &camera.nearPlane);
+        } else if (line.find("farPlane") == 0) {
+            sscanf(line.c_str(), "farPlane: %f", &camera.farPlane);
+        }
+    }
+
+    spdlog::info("Loaded camera - position: ({}, {}, {})", camera.position.x, camera.position.y, camera.position.z);
+    spdlog::info("Loaded camera - rotation: ({}, {}, {}, {})", camera.rotation.w, camera.rotation.x, camera.rotation.y, camera.rotation.z);
+    spdlog::info("Loaded camera - fov: {}", camera.fov);
+    spdlog::info("Loaded camera from: {}", cameraPath);
+}
+
+void Renderer::saveCamera(const std::string& cameraPath) {
+    std::ofstream file(cameraPath);
+    if (!file.is_open()) {
+        spdlog::warn("Failed to create camera file: {}", cameraPath);
+        return;
+    }
+
+    file << "position: " << camera.position.x << " " << camera.position.y << " " << camera.position.z << "\n";
+    file << "rotation: " << camera.rotation.w << " " << camera.rotation.x << " " << camera.rotation.y << " " << camera.rotation.z << "\n";
+    file << "fov: " << camera.fov << "\n";
+    file << "nearPlane: " << camera.nearPlane << "\n";
+    file << "farPlane: " << camera.farPlane << "\n";
+
+    spdlog::info("Saved camera to: {}", cameraPath);
 }
 
 Renderer::~Renderer() {

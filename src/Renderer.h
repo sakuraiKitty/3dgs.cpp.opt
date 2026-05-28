@@ -74,6 +74,10 @@ public:
 
     void stop();
 
+    void loadCamera(const std::string& cameraPath);
+
+    void saveCamera(const std::string& cameraPath);
+
     ~Renderer();
 
     Camera camera {
