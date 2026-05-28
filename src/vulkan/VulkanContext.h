@@ -1,7 +1,7 @@
 #ifndef VULKANCONTEXT_H
 #define VULKANCONTEXT_H
 
-#define FRAMES_IN_FLIGHT 1
+#define FRAMES_IN_FLIGHT 3
 
 #include <optional>
 #include <set>
@@ -10,6 +10,50 @@
 #define VULKAN_HPP_TYPESAFE_CONVERSION 1
 #include <vulkan/vulkan.hpp>
 #include "vk_mem_alloc.h"
+
+// 时间线信号量封装类
+class TimelineSemaphore {
+public:
+    TimelineSemaphore(vk::Device device, uint64_t initialValue = 0)
+        : device(device), currentValue(initialValue) {
+        // 创建时间线信号量类型信息
+        vk::SemaphoreTypeCreateInfo timelineCreateInfo{};
+        timelineCreateInfo.semaphoreType = vk::SemaphoreType::eTimeline;
+        timelineCreateInfo.initialValue = initialValue;
+
+        // 创建信号量信息，链接时间线信息
+        vk::SemaphoreCreateInfo semaphoreCreateInfo{};
+        semaphoreCreateInfo.pNext = &timelineCreateInfo;
+
+        semaphore = device.createSemaphoreUnique(semaphoreCreateInfo);
+    }
+
+    ~TimelineSemaphore() {
+        // UniqueSemaphore会自动清理，无需手动destroy
+    }
+
+    vk::Semaphore getHandle() const { return semaphore.get(); }
+    uint64_t getCurrentValue() const { return currentValue; }
+
+    // 等待信号量达到指定值
+    void wait(uint64_t value, uint64_t timeout = UINT64_MAX) {
+        vk::SemaphoreWaitInfo waitInfo{};
+        waitInfo.semaphoreCount = 1;
+        waitInfo.pSemaphores = &semaphore.get();
+        waitInfo.pValues = &value;
+        device.waitSemaphores(waitInfo, timeout);
+    }
+
+    // 信号量值增加
+    void signal(uint64_t value) {
+        currentValue = value;
+    }
+
+private:
+    vk::UniqueSemaphore semaphore;
+    vk::Device device;
+    uint64_t currentValue;
+};
 
 struct Image {
     vk::Image image;
@@ -52,6 +96,10 @@ public:
         uint32_t queueFamily;
         uint32_t queueIndex;
         vk::Queue queue;
+
+        // 辅助compute队列（用于多队列并行）
+        std::optional<vk::Queue> secondaryQueue = std::nullopt;
+        uint32_t secondaryQueueIndex = UINT32_MAX;
     };
 
     VulkanContext(const std::vector<std::string> &instance_extensions,
@@ -79,6 +127,8 @@ public:
     void createLogicalDevice(vk::PhysicalDeviceFeatures deviceFeatures, vk::PhysicalDeviceVulkan11Features deviceFeatures11, vk::PhysicalDeviceVulkan12Features deviceFeatures12);
 
     void createDescriptorPool(uint8_t framesInFlight);
+
+    bool hasIndependentComputeQueue() const;
 
     vk::UniqueCommandBuffer beginOneTimeCommandBuffer();
 

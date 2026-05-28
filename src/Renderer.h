@@ -126,16 +126,22 @@ private:
 
     std::vector<vk::UniqueFence> inflightFences;
 
+    // 时间线信号量用于帧同步
+    std::vector<std::unique_ptr<TimelineSemaphore>> frameTimelineSemaphores;
+
+    // 帧管理：三缓冲环形缓冲区
+    uint32_t currentFrameIndex = 0;
+    uint64_t frameCounter = 0;
+
     std::shared_ptr<Swapchain> swapchain;
 
     vk::UniqueCommandPool commandPool;
 
-    vk::UniqueCommandBuffer preprocessCommandBuffer;
-    vk::UniqueCommandBuffer renderCommandBuffer;
+    // 三缓冲：每帧一个命令缓冲区
+    std::vector<vk::UniqueCommandBuffer> preprocessCommandBuffers;
+    std::vector<vk::UniqueCommandBuffer> renderCommandBuffers;
 
     uint32_t currentImageIndex;
-
-    std::vector<vk::UniqueSemaphore> renderFinishedSemaphores;
 
 #ifdef __APPLE__
     uint32_t numRadixSortBlocksPerWorkgroup = 256;
@@ -176,6 +182,10 @@ private:
     bool recordRenderCommandBuffer(uint32_t currentFrame);
 
     void createCommandPool();
+
+    // 帧管理方法
+    void advanceFrame();
+    uint64_t getExpectedFrameValue() const;
 
     void updateUniforms();
 };
