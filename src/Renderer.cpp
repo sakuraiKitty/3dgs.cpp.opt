@@ -437,6 +437,7 @@ void Renderer::run() {
         auto diff = std::chrono::duration_cast<std::chrono::milliseconds>(now - lastFpsTime).count();
         if (diff > 1000) {
             spdlog::debug("FPS: {}", fpsCounter);
+            GUIManager::pushMetric("FPS", static_cast<float>(fpsCounter));
             fpsCounter = 0;
             lastFpsTime = now;
         } else {
