@@ -1,6 +1,6 @@
 {
-  "timestamp": "2026-05-28T14:09:29.915186",
-  "stage": "baseline",
+  "timestamp": "2026-05-28T16:21:59.950614",
+  "stage": "stage_1",
   "scene": "carnations",
   "scene_path": "D:\\liuyue\\physDreamerVulkanDemo\\physics_dreamer\\physics_dreamer\\carnations\\point_cloud.ply",
   "camera_config": "d:\\liuyue\\physDreamerVulkanDemo\\3DGS.cpp\\camera.txt",
@@ -8,20 +8,20 @@
     1280,
     720
   ],
-  "screenshot": "baseline_frame.png",
+  "screenshot": "stage_1_frame.png",
   "status": "completed",
   "fps": {
-    "avg": 104.48,
-    "min": 89.0,
-    "max": 107.0,
+    "avg": 104.87,
+    "min": 86.0,
+    "max": 109.0,
     "median": 106.0,
     "samples": 23
   },
   "frame_time": {
-    "avg": 9.57
+    "avg": 9.54
   },
   "stability": {
-    "std_dev": 3.75,
-    "variance": 18.0
+    "std_dev": 5.01,
+    "variance": 23.0
   }
 }
