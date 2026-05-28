@@ -21,6 +21,12 @@ public:
         float far = 1000.0f;
         bool enableGui = false;
 
+        // Benchmark模式配置
+        bool benchmarkMode = false;           // 启用benchmark模式
+        int benchmarkFrames = 300;            // benchmark运行帧数
+        int benchmarkWarmup = 60;             // warmup帧数
+        std::string benchmarkOutput = "benchmark_results.json";  // 输出文件
+
         std::shared_ptr<Window> window;
     };
 
