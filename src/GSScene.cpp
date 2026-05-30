@@ -33,6 +33,8 @@ void GSScene::load(const std::shared_ptr<VulkanContext>&context) {
     auto vertexStagingBuffer = Buffer::staging(context, header.numVertices * sizeof(Vertex));
     auto* verteces = static_cast<Vertex *>(vertexStagingBuffer->allocation_info.pMappedData);
 
+    cpuPositions.reserve(header.numVertices);
+
     for (auto i = 0; i < header.numVertices; i++) {
         static_assert(sizeof(VertexStorage) == 62 * sizeof(float));
         assert(plyFile.is_open());
@@ -40,6 +42,7 @@ void GSScene::load(const std::shared_ptr<VulkanContext>&context) {
         VertexStorage vertexStorage;
         plyFile.read(reinterpret_cast<char *>(&vertexStorage), sizeof(VertexStorage));
         verteces[i].position = glm::vec4(vertexStorage.position, 1.0f);
+        cpuPositions.push_back(vertexStorage.position);
         // verteces[i].normal = glm::vec4(vertexStorage.normal, 0.0f);
         verteces[i].scale_opacity = glm::vec4(glm::exp(vertexStorage.scale), 1.0f / (1.0f + std::exp(-vertexStorage.opacity)));
         verteces[i].rotation = normalize(vertexStorage.rotation);

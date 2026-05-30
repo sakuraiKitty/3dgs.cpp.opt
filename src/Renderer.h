@@ -15,6 +15,7 @@
 #include "GUIManager.h"
 #include "vulkan/ImguiManager.h"
 #include "vulkan/QueryManager.h"
+#include "SceneLoader.h"
 
 class Renderer {
 public:
@@ -26,6 +27,8 @@ public:
         uint32_t height;
         float tan_fovx;
         float tan_fovy;
+        uint32_t foreground_only;  // 0 = render all, 1 = foreground only
+        uint32_t _pad[3];          // pad to 16-byte alignment
     };
 
     struct VertexAttributeBuffer {
@@ -80,6 +83,12 @@ public:
 
     void saveScreenshot(const std::string& filePath);
 
+    /**
+     * 设置可变形区域索引
+     * 用于在"仅渲染前景"模式下过滤高斯
+     */
+    void setDeformableIndices(const std::vector<uint32_t>& indices);
+
     ~Renderer();
 
     Camera camera {
@@ -119,6 +128,13 @@ private:
     std::shared_ptr<Buffer> tileBoundaryBuffer;
     std::shared_ptr<Buffer> sortVBufferEven;
     std::shared_ptr<Buffer> sortVBufferOdd;
+
+    // Physics rendering filter
+    std::shared_ptr<Buffer> deformableIndexBuffer_;  // Buffer containing indices of deformable Gaussians
+    std::shared_ptr<Buffer> visibilityMaskBuffer_;   // Dense mask: 1 uint per Gaussian (1=deformable, 0=background)
+    bool renderForegroundOnly_ = false;
+    SceneLoader sceneLoader_;
+    std::vector<uint32_t> pendingDeformableIndices_;  // Stored indices, uploaded after pipeline creation
 
     std::shared_ptr<DescriptorSet> inputSet;
 
@@ -189,6 +205,8 @@ private:
     uint64_t getExpectedFrameValue() const;
 
     void updateUniforms();
+
+    void uploadVisibilityMask();
 };
 
 

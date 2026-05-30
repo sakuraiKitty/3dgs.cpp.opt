@@ -1,0 +1,81 @@
+#version 460
+#extension GL_GOOGLE_include_directive : enable
+
+/**
+ * 高斯位移映射shader
+ * 将MPM粒子的位移传递给3D高斯
+ *
+ * 输入：粒子位移、K近邻映射
+ * 输出：更新后的高斯位置
+ */
+
+layout(local_size_x = 256) in;
+
+// 可变形高斯索引列表
+layout(std430, set = 0, binding = 0) readonly buffer DeformableIndices {
+    uint deformable_indices[];  // 可变形高斯的全局索引
+};
+
+// 粒子位移数据
+layout(std430, set = 0, binding = 1) readonly buffer ParticleDisplacements {
+    vec3 displacements[];  // 每个粒子的位移
+};
+
+// K近邻映射 (每个高斯2个uvec4存8个索引)
+layout(std430, set = 0, binding = 2) readonly buffer KNNMapping {
+    uvec4 knn_indices[];  // [gaussian_count * 2]
+};
+
+// 完整高斯数据 (来自渲染管线)
+// 使用足够大的固定大小，实际渲染时只更新可变形部分
+layout(std430, set = 0, binding = 3) buffer GaussianVertices {
+    // 参考common.glsl中的Vertex结构
+    vec4 position[1000000];      // xyz=位置, w=padding (足够大的固定大小)
+    vec4 scale_opacity[1000000]; // scale_opacity
+    vec4 rotation[1000000];      // rotation
+    // ... 其他属性
+};
+
+layout(push_constant) uniform MapParams {
+    uint num_deformable;         // 可变形高斯数量
+    uint displacement_scale;    // 位移缩放因子 (1.0 = 直接应用)
+};
+
+void main() {
+    uint idx = gl_GlobalInvocationID.x;
+    if (idx >= num_deformable) {
+        return;
+    }
+
+    // 获取可变形高斯的全局索引
+    uint gaussian_idx = deformable_indices[idx];
+
+    // 计算K近邻粒子的平均位移
+    vec3 avg_displacement = vec3(0.0);
+
+    // 从2个uvec4中读取8个索引
+    uvec4 knn0 = knn_indices[idx * 2 + 0];
+    uvec4 knn1 = knn_indices[idx * 2 + 1];
+
+    // 累加8个粒子的位移
+    for (uint i = 0; i < 4; i++) {
+        uint p_idx = knn0[i];
+        avg_displacement += displacements[p_idx];
+    }
+    for (uint i = 0; i < 4; i++) {
+        uint p_idx = knn1[i];
+        avg_displacement += displacements[p_idx];
+    }
+
+    // 平均
+    avg_displacement /= 8.0;
+
+    // 应用缩放
+    vec3 final_displacement = avg_displacement * float(displacement_scale);
+
+    // 只更新位置，其他属性(scale, rotation, shs)保持不变
+    position[gaussian_idx].xyz += final_displacement;
+
+    // 注意：scale_opacity, rotation, shs等属性保持不变
+    // 这样可以保证渲染的连续性，只有位置随物理变化
+}

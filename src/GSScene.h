@@ -38,6 +38,9 @@ public:
         return header.numVertices;
     }
 
+    // CPU-side position data (populated during load, used for deformable region matching)
+    std::vector<glm::vec3> cpuPositions;
+
     struct Vertex {
         glm::vec4 position;
         glm::vec4 scale_opacity;

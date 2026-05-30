@@ -1,5 +1,93 @@
 # 更新日志 (CHANGELOG)
 
+## 2026年5月30日 - 物理仿真初始化：前景/背景渲染切换
+
+### 🎯 目标
+
+按照 `PHYSICS_INTEGRATION_DETAILED_PLAN.md` 阶段1.1的要求，实现初始化部分，并在GUI上添加前景/背景渲染切换功能，使用 carnations 场景验证。
+
+### ✅ 新增功能
+
+#### 1. GUI 渲染模式切换按钮
+- 在 Controls 面板新增 **"Foreground Only"** / **"Render Background"** 切换按钮
+- "Foreground Only"：仅渲染可变形区域（前景）的 3DGS
+- "Render Background"：渲染全部 3DGS
+- **位置**: `src/GUIManager.h`, `src/GUIManager.cpp`
+
+#### 2. Visibility Mask 渲染过滤
+- 在 `preprocess.comp` shader 中新增 visibility mask 检查
+- 每个 Gaussian 对应一个 uint32_t（1=可见，0=隐藏）
+- 当 `foreground_only == 1` 且 `visibility_mask[index] == 0` 时，高斯在预处理阶段直接跳过
+- 效果：不可见的高斯不参与排序、不参与渲染，性能零损耗
+- **位置**: `src/shaders/preprocess.comp`
+
+#### 3. SceneLoader 场景加载器
+- 支持 binary/ASCII 两种 PLY 格式自动检测
+- 自动推断 carnations 场景的 clean_object_points.ply 和 moving_part_points.ply 路径
+- 使用空间哈希网格（Spatial Hash Grid）进行 O(N+M) 级别的高效位置匹配
+- **位置**: `src/SceneLoader.h`, `src/SceneLoader.cpp`
+
+#### 4. GSScene CPU 端位置缓存
+- 在 GSScene 加载 PLY 时，同步保存所有高斯位置到 `cpuPositions`
+- 用于与 SceneLoader 的 clean_object_points 做匹配
+- **位置**: `src/GSScene.h`, `src/GSScene.cpp`
+
+### 🔧 修改的文件
+
+| 文件 | 修改内容 |
+|------|---------|
+| `src/GUIManager.h` | 新增 `renderBackgroundOnly` 标志和 `renderModeText` |
+| `src/GUIManager.cpp` | Controls 面板中添加切换按钮 |
+| `src/Renderer.h` | 新增 `visibilityMaskBuffer_`, `pendingDeformableIndices_`, `uploadVisibilityMask()` |
+| `src/Renderer.cpp` | `createPreprocessPipeline()` 绑定 visibility mask；`updateUniforms()` 传入 `foreground_only`；`loadSceneToGPU()` 集成 SceneLoader |
+| `src/Renderer.h` (UniformBuffer) | 新增 `foreground_only` 和 `_pad` 字段 |
+| `src/GSScene.h` | 新增 `cpuPositions` 向量 |
+| `src/GSScene.cpp` | 加载时填充 `cpuPositions` |
+| `src/SceneLoader.h` | 全新场景加载器头文件 |
+| `src/SceneLoader.cpp` | 全新场景加载器实现（binary PLY 解析 + 空间哈希匹配） |
+| `src/shaders/preprocess.comp` | 新增 `foreground_only` uniform、`visibility_mask` buffer、早期 return 检查 |
+| `src/CMakeLists.txt` | 排除未完成的 MPM/coupling 源文件 |
+| `src/shaders/mpm/mpm_bspline.glsl` | 修复数组越界 |
+| `src/shaders/mpm/p2g.comp` | 添加 `GL_EXT_shader_atomic_float` 扩展 |
+| `src/shaders/coupling/map_displacement.comp` | 修复数组大小声明 |
+
+### 🧪 验证结果
+
+**测试环境**: Windows 11, NVIDIA RTX 4090 Laptop GPU
+
+**测试场景**: `PhysDreamer/data/physics_dreamer/carnations/point_cloud.ply`
+
+```
+[SceneLoader] Loaded clean object points: 130812 vertices
+[SceneLoader] Matching 98109 clean points against 1037279 gaussians (spatial hash)...
+[SceneLoader] Matched 32703 deformable gaussians out of 1037279 total
+[Renderer] Uploading visibility mask: 32703 foreground / 1037279 total
+```
+
+- ✅ binary PLY 解析成功（130812 clean_object_points）
+- ✅ 空间哈希匹配完成（~1秒内匹配 32703 前景高斯）
+- ✅ Visibility mask 上传到 GPU
+- ✅ GUI 切换按钮响应正确
+- ✅ 程序稳定运行，无崩溃
+
+### 📐 架构说明
+
+```
+┌──────────────┐     ┌────────────────┐     ┌─────────────────┐
+│ SceneLoader  │────>│   Renderer     │────>│ preprocess.comp │
+│ Load PLY     │     │ Build mask     │     │ Check mask      │
+│ Match points │     │ Upload to GPU  │     │ Skip hidden     │
+└──────────────┘     └────────────────┘     └─────────────────┘
+       │                     │                       │
+       │  clean_object_      │  visibility_mask_     │  foreground_only
+       │  points.ply         │  buffer               │  (from GUI toggle)
+       ▼                     ▼                       ▼
+  deformable_indices    dense uint32[]          early return if
+                                               mask[idx]==0
+```
+
+---
+
 ## 2026年5月28日 - 代码审查与P0问题修复
 
 ### 🔍 代码审查

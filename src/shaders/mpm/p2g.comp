@@ -1,0 +1,72 @@
+#version 460
+#extension GL_GOOGLE_include_directive : enable
+#extension GL_EXT_shader_atomic_float : enable
+#include "mpm_structs.glsl"
+#include "mpm_bspline.glsl"
+
+/**
+ * 粒子到网格传递 (P2G - Particle to Grid)
+ * 将粒子的质量和动量传递到网格节点
+ *
+ * 使用B样条插值权重，对2x2x2邻居节点进行传递
+ * 使用原子操作确保线程安全
+ */
+layout(local_size_x = 256) in;
+
+layout(std430, set = 0, binding = 0) readonly buffer ParticleBuffer {
+    ParticleData particles[];
+};
+
+layout(std430, set = 0, binding = 1) buffer GridBuffer {
+    GridNode nodes[];
+};
+
+layout(push_constant) uniform P2GParams {
+    float dt;             // 时间步长 [s]
+    uint grid_size;      // 网格分辨率
+    uint num_particles;   // 粒子数量
+    float grid_spacing;  // 网格间距 [m]
+};
+
+void main() {
+    uint p_id = gl_GlobalInvocationID.x;
+    if (p_id >= num_particles) {
+        return;
+    }
+
+    ParticleData p = particles[p_id];
+
+    // 计算网格位置
+    vec3 grid_pos = p.position / grid_spacing;
+    ivec3 base_node = ivec3(floor(grid_pos - 0.5));
+
+    // 2x2x2邻居节点插值 (简化版本，实际MPM使用3x3x3)
+    for (int i = 0; i < 2; i++) {
+        for (int j = 0; j < 2; j++) {
+            for (int k = 0; k < 2; k++) {
+                ivec3 node_idx = base_node + ivec3(i, j, k);
+                vec3 offset = grid_pos - vec3(node_idx);
+
+                // 简化的线性权重 (可以使用B样条获得更高精度)
+                vec3 diff = 1.0 - abs(offset);
+                float w = diff.x * diff.y * diff.z;
+
+                // 边界检查
+                if (any(lessThan(node_idx, ivec3(0))) ||
+                    any(greaterThanEqual(node_idx, ivec3(int(grid_size))))) {
+                    continue;
+                }
+
+                uint linear_idx = node_idx.x + node_idx.y * grid_size +
+                                 node_idx.z * grid_size * grid_size;
+
+                // 原子操作累加质量和动量
+                atomicAdd(nodes[linear_idx].mass, p.mass * w);
+                atomicAdd(nodes[linear_idx].velocity.x, p.velocity.x * p.mass * w);
+                atomicAdd(nodes[linear_idx].velocity.y, p.velocity.y * p.mass * w);
+                atomicAdd(nodes[linear_idx].velocity.z, p.velocity.z * p.mass * w);
+                atomicMax(nodes[linear_idx].active_count, 1u);
+            }
+        }
+    }
+}

@@ -1,0 +1,78 @@
+#version 460
+#extension GL_GOOGLE_include_directive : enable
+#include "mpm_structs.glsl"
+#include "mpm_bspline.glsl"
+
+/**
+ * 网格到粒子传递 (G2P - Grid to Particle)
+ * 从网格节点插值速度，更新粒子位置
+ *
+ * 使用与P2G相同的插值权重
+ * 冻结粒子的位置和速度保持不变
+ */
+layout(local_size_x = 256) in;
+
+layout(std430, set = 0, binding = 0) buffer ParticleBuffer {
+    ParticleData particles[];
+};
+
+layout(std430, set = 0, binding = 1) readonly buffer GridBuffer {
+    GridNode nodes[];
+};
+
+layout(push_constant) uniform G2PParams {
+    float dt;             // 时间步长 [s]
+    uint grid_size;      // 网格分辨率
+    uint num_particles;   // 粒子数量
+    float grid_spacing;  // 网格间距 [m]
+};
+
+void main() {
+    uint p_id = gl_GlobalInvocationID.x;
+    if (p_id >= num_particles) {
+        return;
+    }
+
+    // 从网格插值速度
+    vec3 grid_pos = particles[p_id].position / grid_spacing;
+    ivec3 base_node = ivec3(floor(grid_pos - 0.5));
+
+    vec3 new_velocity = vec3(0.0);
+
+    // 2x2x2邻居节点插值 (简化版本)
+    for (int i = 0; i < 2; i++) {
+        for (int j = 0; j < 2; j++) {
+            for (int k = 0; k < 2; k++) {
+                ivec3 node_idx = base_node + ivec3(i, j, k);
+
+                // 边界检查
+                if (any(lessThan(node_idx, ivec3(0))) ||
+                    any(greaterThanEqual(node_idx, ivec3(int(grid_size))))) {
+                    continue;
+                }
+
+                uint linear_idx = node_idx.x + node_idx.y * grid_size +
+                                 node_idx.z * grid_size * grid_size;
+
+                vec3 offset = grid_pos - vec3(node_idx);
+
+                // 简化的线性权重
+                vec3 diff = 1.0 - abs(offset);
+                float w = diff.x * diff.y * diff.z;
+
+                // 插值速度
+                new_velocity += nodes[linear_idx].velocity * w;
+            }
+        }
+    }
+
+    // 更新粒子（冻结粒子保持不变）
+    if (particles[p_id].freeze_flag == 0) {
+        particles[p_id].velocity = new_velocity;
+        particles[p_id].position += new_velocity * dt;
+
+        // 边界限制（可选，防止粒子飞出）
+        // particles[p_id].position = clamp(particles[p_id].position,
+        //     vec3(0.0), vec3(grid_spacing * grid_size));
+    }
+}

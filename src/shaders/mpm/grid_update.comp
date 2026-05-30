@@ -1,0 +1,47 @@
+#version 460
+#extension GL_GOOGLE_include_directive : enable
+#include "mpm_structs.glsl"
+
+/**
+ * 网格更新
+ * 归一化网格速度，应用重力和阻尼
+ */
+layout(local_size_x = 8, local_size_y = 8, local_size_z = 8) in;
+
+layout(std430, set = 0, binding = 0) buffer GridBuffer {
+    GridNode nodes[];
+};
+
+layout(push_constant) uniform GridUpdateParams {
+    uint grid_size;   // 网格分辨率
+    vec3 gravity;     // 重力加速度 [m/s^2]
+    float dt;         // 时间步长 [s]
+    float damping;    // 阻尼系数 (velocity *= damping)
+    uint padding[2];
+};
+
+void main() {
+    uint x = gl_GlobalInvocationID.x;
+    uint y = gl_GlobalInvocationID.y;
+    uint z = gl_GlobalInvocationID.z;
+
+    if (x >= grid_size || y >= grid_size || z >= grid_size) {
+        return;
+    }
+
+    uint linear_idx = x + y * grid_size + z * grid_size * grid_size;
+    float mass = nodes[linear_idx].mass;
+
+    if (mass > 0.0) {
+        // 归一化速度：v = momentum / mass
+        vec3 velocity = nodes[linear_idx].velocity / mass;
+
+        // 应用重力：v += g * dt
+        velocity += gravity * dt;
+
+        // 应用阻尼：v *= damping
+        velocity *= damping;
+
+        nodes[linear_idx].velocity = velocity;
+    }
+}

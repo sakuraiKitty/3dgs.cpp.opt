@@ -97,6 +97,13 @@ void GUIManager::buildGui() {
     ImGui::Text("Left click: capture mouse");
     ImGui::Text("ESC: release mouse");
     ImGui::Text("Mouse captured: %s", mouseCapture ? "true" : "false");
+    ImGui::Separator();
+    if (ImGui::Button(renderModeText)) {
+        renderBackgroundOnly = !renderBackgroundOnly;
+        renderModeText = renderBackgroundOnly ? "Render Background" : "Foreground Only";
+    }
+    ImGui::SameLine();
+    ImGui::Text("Mode: %s", renderBackgroundOnly ? "Foreground Only" : "Render Background");
     ImGui::End();
 
     // Camera info window

@@ -21,6 +21,12 @@ file(GLOB SOURCE
 # Remove DummyGUIManager.cpp from source list
 list(REMOVE_ITEM SOURCE ${CMAKE_CURRENT_SOURCE_DIR}/DummyGUIManager.cpp)
 
+# Keep MPM/coupling disabled (not needed for foreground-only toggle)
+list(REMOVE_ITEM SOURCE ${CMAKE_CURRENT_SOURCE_DIR}/mpm/MPMManager.cpp)
+list(REMOVE_ITEM SOURCE ${CMAKE_CURRENT_SOURCE_DIR}/mpm/ParticleGenerator.cpp)
+list(REMOVE_ITEM SOURCE ${CMAKE_CURRENT_SOURCE_DIR}/coupling/GaussianParticleMapper.cpp)
+list(REMOVE_ITEM SOURCE ${CMAKE_CURRENT_SOURCE_DIR}/coupling/DisplacementMapper.cpp)
+
 add_library(3dgs_cpp STATIC
         ${SOURCE}
         ${EXTERNAL_SOURCE}

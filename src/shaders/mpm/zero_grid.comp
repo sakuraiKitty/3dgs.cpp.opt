@@ -1,0 +1,36 @@
+#version 460
+#extension GL_GOOGLE_include_directive : enable
+#include "mpm_structs.glsl"
+
+/**
+ * 清空网格节点
+ * 在每个MPM子步开始时调用，将网格的质量和动量清零
+ */
+layout(local_size_x = 8, local_size_y = 8, local_size_z = 8) in;
+
+layout(std430, set = 0, binding = 0) buffer GridBuffer {
+    GridNode nodes[];
+};
+
+layout(push_constant) uniform ZeroGridParams {
+    uint grid_size;     // 每个维度的网格数 (如64)
+    uint padding[3];
+};
+
+void main() {
+    uint x = gl_GlobalInvocationID.x;
+    uint y = gl_GlobalInvocationID.y;
+    uint z = gl_GlobalInvocationID.z;
+
+    if (x >= grid_size || y >= grid_size || z >= grid_size) {
+        return;
+    }
+
+    uint linear_idx = x + y * grid_size + z * grid_size * grid_size;
+
+    // 清空网格节点
+    nodes[linear_idx].velocity = vec3(0.0);
+    nodes[linear_idx].mass = 0.0;
+    nodes[linear_idx].force = vec3(0.0);
+    nodes[linear_idx].active_count = 0;
+}

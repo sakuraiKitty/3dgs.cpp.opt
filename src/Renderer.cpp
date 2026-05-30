@@ -175,6 +175,23 @@ void Renderer::loadSceneToGPU() {
     scene = std::make_shared<GSScene>(configuration.scene);
     scene->load(context);
 
+    // Load deformable region from SceneLoader
+    auto descriptor = sceneLoader_.CreateDescriptor(configuration.scene);
+    if (sceneLoader_.ValidateRequiredFiles(descriptor)) {
+        if (sceneLoader_.LoadScene(descriptor)) {
+            auto region = sceneLoader_.MatchAgainstPointCloud(scene->cpuPositions);
+            if (region.IsValid()) {
+                spdlog::info("[Renderer] Deformable region: {} foreground, {} background",
+                            region.deformable_indices.size(), region.static_indices.size());
+                setDeformableIndices(region.deformable_indices);
+            } else {
+                spdlog::warn("[Renderer] No valid deformable region found");
+            }
+        }
+    } else {
+        spdlog::info("[Renderer] No deformable region files, rendering all Gaussians");
+    }
+
     // reset descriptor pool
     context->device->resetDescriptorPool(context->descriptorPool.get());
 }
@@ -184,6 +201,9 @@ void Renderer::createPreprocessPipeline() {
     uniformBuffer = Buffer::uniform(context, sizeof(UniformBuffer));
     vertexAttributeBuffer = Buffer::storage(context, scene->getNumVertices() * sizeof(VertexAttributeBuffer), false);
     tileOverlapBuffer = Buffer::storage(context, scene->getNumVertices() * sizeof(uint32_t), false);
+
+    // Visibility mask: 1 uint per Gaussian, 1=deformable, 0=background
+    visibilityMaskBuffer_ = Buffer::storage(context, scene->getNumVertices() * sizeof(uint32_t), false);
 
     preprocessPipeline = std::make_shared<ComputePipeline>(
         context, std::make_shared<Shader>(context, "preprocess", SPV_PREPROCESS, SPV_PREPROCESS_len));
@@ -205,10 +225,19 @@ void Renderer::createPreprocessPipeline() {
     uniformOutputSet->bindBufferToDescriptorSet(2, vk::DescriptorType::eStorageBuffer,
                                                 vk::ShaderStageFlagBits::eCompute,
                                                 tileOverlapBuffer);
+    // Visibility mask at binding 3
+    uniformOutputSet->bindBufferToDescriptorSet(3, vk::DescriptorType::eStorageBuffer,
+                                                vk::ShaderStageFlagBits::eCompute,
+                                                visibilityMaskBuffer_);
+    // Push constant for foreground_only flag at binding 4 (uniform)
+    // We use a small uniform buffer for the flag
     uniformOutputSet->build();
 
     preprocessPipeline->addDescriptorSet(1, uniformOutputSet);
     preprocessPipeline->build();
+
+    // Upload pending visibility mask now that buffer is created
+    uploadVisibilityMask();
 }
 
 Renderer::Renderer(VulkanSplatting::RendererConfiguration configuration) : configuration(std::move(configuration)) {
@@ -363,6 +392,11 @@ void Renderer::createRenderPipeline() {
                                         tileBoundaryBuffer);
     inputSet->bindBufferToDescriptorSet(2, vk::DescriptorType::eStorageBuffer, vk::ShaderStageFlagBits::eCompute,
                                         sortVBufferEven);
+    // Deformable index buffer for filtering (optional, can be empty for rendering all)
+    if (deformableIndexBuffer_) {
+        inputSet->bindBufferToDescriptorSet(3, vk::DescriptorType::eStorageBuffer, vk::ShaderStageFlagBits::eCompute,
+                                            deformableIndexBuffer_);
+    }
     // inputSet->bindBufferToDescriptorSet(2, vk::DescriptorType::eStorageBuffer, vk::ShaderStageFlagBits::eCompute,
     //                                     sortKBufferOdd);
     inputSet->build();
@@ -406,6 +440,9 @@ void Renderer::draw() {
 startOfRenderLoop:
     handleInput();
     updateUniforms();
+
+    // Sync render mode from GUI
+    renderForegroundOnly_ = guiManager.renderBackgroundOnly;
 
     // 3. 提交预处理工作（使用第一个命令缓冲区，所有帧共用）
     auto preprocessCmd = preprocessCommandBuffers[0].get();
@@ -908,6 +945,7 @@ void Renderer::updateUniforms() {
     data.proj_mat[3][1] *= -1.0f;
     data.tan_fovx = tan_fovx;
     data.tan_fovy = tan_fovy;
+    data.foreground_only = renderForegroundOnly_ ? 1u : 0u;
     uniformBuffer->upload(&data, sizeof(UniformBuffer), 0);
 }
 
@@ -956,6 +994,38 @@ void Renderer::saveCamera(const std::string& cameraPath) {
     file << "farPlane: " << camera.farPlane << "\n";
 
     spdlog::info("Saved camera to: {}", cameraPath);
+}
+
+void Renderer::setDeformableIndices(const std::vector<uint32_t>& indices) {
+    if (indices.empty()) {
+        spdlog::warn("[Renderer] No deformable indices provided");
+        return;
+    }
+    // Store indices - will be uploaded to GPU after pipeline creation
+    pendingDeformableIndices_ = indices;
+    spdlog::info("[Renderer] Stored {} deformable indices for later upload", indices.size());
+
+    // If pipeline already created, upload immediately
+    if (visibilityMaskBuffer_) {
+        uploadVisibilityMask();
+    }
+}
+
+void Renderer::uploadVisibilityMask() {
+    if (!visibilityMaskBuffer_ || pendingDeformableIndices_.empty()) return;
+
+    uint64_t num_vertices = scene->getNumVertices();
+    std::vector<uint32_t> mask(num_vertices, 0);
+    for (uint32_t idx : pendingDeformableIndices_) {
+        if (idx < num_vertices) {
+            mask[idx] = 1;
+        }
+    }
+
+    spdlog::info("[Renderer] Uploading visibility mask: {} foreground / {} total",
+                pendingDeformableIndices_.size(), num_vertices);
+
+    visibilityMaskBuffer_->upload(mask.data(), num_vertices * sizeof(uint32_t));
 }
 
 void Renderer::saveScreenshot(const std::string& filePath) {

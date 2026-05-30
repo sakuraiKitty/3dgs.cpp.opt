@@ -39,6 +39,10 @@ public:
 
     bool saveCameraRequested = false;
 
+    // Physics rendering mode
+    bool renderBackgroundOnly = false;
+    const char* renderModeText = "Foreground Only";
+
 };
 
 #endif //GUIMANAGER_H

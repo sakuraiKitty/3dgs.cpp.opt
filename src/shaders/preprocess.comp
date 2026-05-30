@@ -19,6 +19,7 @@ layout (std140, set = 1, binding = 0) uniform Params {
     uint height;
     float tan_fovx;
     float tan_fovy;
+    uint foreground_only;  // 0 = render all, 1 = foreground only
 };
 
 layout (std430, set = 1, binding = 1) writeonly buffer VertexAttributes {
@@ -27,6 +28,11 @@ layout (std430, set = 1, binding = 1) writeonly buffer VertexAttributes {
 
 layout (std430, set = 1, binding = 2) writeonly buffer NumTilesOverlap {
     uint tiles_overlap[];
+};
+
+// Visibility mask: 1 = deformable, 0 = background
+layout (std430, set = 1, binding = 3) readonly buffer VisibilityMask {
+    uint visibility_mask[];
 };
 
 layout (local_size_x = TILE_WIDTH * TILE_HEIGHT, local_size_y = 1, local_size_z = 1) in;
@@ -126,6 +132,11 @@ void main() {
 
     attr[index].color_radii.w = 0.0;
     tiles_overlap[index] = 0;
+
+    // Foreground-only mode: skip Gaussians not in the deformable set
+    if (foreground_only == 1u && visibility_mask[index] == 0u) {
+        return;
+    }
 
     vec4 p_hom = proj_mat * vertices[index].position;
     float p_w = 1.0f / p_hom.w;
