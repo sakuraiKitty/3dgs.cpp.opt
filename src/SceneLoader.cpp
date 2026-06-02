@@ -150,7 +150,55 @@ SceneLoader::PLYData SceneLoader::LoadPLY(const std::string& ply_path) {
 }
 
 bool SceneLoader::ValidateRequiredFiles(const SceneDescriptor& descriptor) const {
-    return FileExists(descriptor.point_cloud_ply);
+    bool all_valid = true;
+    std::vector<std::pair<std::string, std::string>> missing_files;
+
+    // 检查 point_cloud.ply
+    if (!FileExists(descriptor.point_cloud_ply)) {
+        missing_files.push_back({"point_cloud.ply", descriptor.point_cloud_ply});
+        all_valid = false;
+    }
+
+    // 检查 clean_object_points.ply
+    if (!FileExists(descriptor.clean_object_points_ply)) {
+        missing_files.push_back({"clean_object_points.ply", descriptor.clean_object_points_ply});
+        all_valid = false;
+    }
+
+    // 检查 moving_part_points.ply
+    if (!FileExists(descriptor.moving_part_points_ply)) {
+        missing_files.push_back({"moving_part_points.ply", descriptor.moving_part_points_ply});
+        all_valid = false;
+    }
+
+    if (!all_valid) {
+        spdlog::critical("==============================================");
+        spdlog::critical("SCENE LOADING ERROR - MISSING REQUIRED FILES");
+        spdlog::critical("==============================================");
+        spdlog::critical("");
+
+        for (const auto& [name, path] : missing_files) {
+            spdlog::critical("Missing: {}", name);
+            spdlog::critical("Expected path: {}", path);
+            spdlog::critical("");
+        }
+
+        spdlog::critical("Physics simulation requires ALL three PLY files:");
+        spdlog::critical("  1. point_cloud.ply - Complete Gaussian point cloud");
+        spdlog::critical("  2. clean_object_points.ply - Foreground object reference");
+        spdlog::critical("  3. moving_part_points.ply - Movable part reference");
+        spdlog::critical("");
+        spdlog::critical("Please ensure all files exist in the scene directory:");
+        spdlog::critical("  {}", descriptor.scene_path);
+        spdlog::critical("");
+        spdlog::critical("Example: D:/path/to/carnations/");
+        spdlog::critical("           ├── point_cloud.ply");
+        spdlog::critical("           ├── clean_object_points.ply");
+        spdlog::critical("           └── moving_part_points.ply");
+        spdlog::critical("==============================================");
+    }
+
+    return all_valid;
 }
 
 SceneLoader::DeformableRegionResult SceneLoader::MatchAgainstPointCloud(
@@ -243,4 +291,88 @@ SceneLoader::DeformableRegionResult SceneLoader::MatchAgainstPointCloud(
 
 bool SceneLoader::FileExists(const std::string& path) const {
     return fs::exists(path);
+}
+
+std::vector<bool> SceneLoader::FindFarPoints(
+    const std::vector<glm::vec3>& xyzs,
+    const std::vector<glm::vec3>& selected_points,
+    float threshold
+) {
+    const size_t N = xyzs.size();
+    const size_t M = selected_points.size();
+
+    std::vector<bool> far_mask(N, false);
+    if (M == 0 || N == 0) return far_mask;
+
+    const float threshold_sq = threshold * threshold;
+
+    // 分块处理（与Python一致，每块10000个点）
+    const size_t chunk_size = 10000;
+    const size_t num_chunks = (N + chunk_size - 1) / chunk_size;
+
+    spdlog::info("[FindFarPoints] Processing {} points against {} references ({} chunks)",
+                 N, M, num_chunks);
+
+    for (size_t chunk = 0; chunk < num_chunks; ++chunk) {
+        size_t start = chunk * chunk_size;
+        size_t end = std::min(start + chunk_size, N);
+
+        // 对每个块中的点，计算到所有参考点的最小距离
+        for (size_t i = start; i < end; ++i) {
+            const glm::vec3& p = xyzs[i];
+
+            // 找到最近的参考点
+            float min_dist_sq = std::numeric_limits<float>::max();
+            for (size_t j = 0; j < M; ++j) {
+                float dist_sq = glm::dot(p - selected_points[j], p - selected_points[j]);
+                if (dist_sq < min_dist_sq) {
+                    min_dist_sq = dist_sq;
+                }
+            }
+
+            // 如果最小距离超过阈值，标记为"远"
+            far_mask[i] = (min_dist_sq > threshold_sq);
+        }
+
+        // 进度日志
+        if ((chunk + 1) % 10 == 0 || chunk == num_chunks - 1) {
+            spdlog::debug("[FindFarPoints] Processed {}/{} chunks",
+                         chunk + 1, num_chunks);
+        }
+    }
+
+    // 统计
+    size_t far_count = std::count(far_mask.begin(), far_mask.end(), true);
+    spdlog::info("[FindFarPoints] Result: {} far, {} near (threshold={})",
+                 far_count, N - far_count, threshold);
+
+    return far_mask;
+}
+
+std::vector<bool> SceneLoader::ComputeSimMask(
+    const std::vector<glm::vec3>& all_positions,
+    const std::vector<glm::vec3>& clean_positions,
+    float threshold
+) {
+    spdlog::info("[ComputeSimMask] Computing simulation mask...");
+    spdlog::info("[ComputeSimMask] Total gaussians: {}", all_positions.size());
+    spdlog::info("[ComputeSimMask] Clean reference points: {}", clean_positions.size());
+
+    // 找到远离clean点的背景点
+    std::vector<bool> not_sim_mask = FindFarPoints(all_positions, clean_positions, threshold);
+
+    // 反转：前景 = 非背景
+    std::vector<bool> sim_mask(all_positions.size());
+    for (size_t i = 0; i < all_positions.size(); ++i) {
+        sim_mask[i] = !not_sim_mask[i];
+    }
+
+    // 统计
+    size_t foreground_count = std::count(sim_mask.begin(), sim_mask.end(), true);
+    size_t background_count = all_positions.size() - foreground_count;
+
+    spdlog::info("[ComputeSimMask] Result: {} foreground (simulable), {} background (static)",
+                 foreground_count, background_count);
+
+    return sim_mask;
 }

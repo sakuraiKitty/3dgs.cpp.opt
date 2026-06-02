@@ -58,6 +58,36 @@ public:
     const PLYData& GetCleanObjectPoints() const { return clean_object_data_; }
     const PLYData& GetMovingPartPoints() const { return moving_part_data_; }
 
+    /**
+     * FindFarPoints函数 - C++版本
+     * 对应 physDreamer: local_utils.find_far_points()
+     *
+     * @param xyzs 要分类的点云 [N, 3]
+     * @param selected_points 参考点云 [M, 3]
+     * @param threshold 距离阈值
+     * @return far_mask [N] (true = 远, false = 近)
+     */
+    static std::vector<bool> FindFarPoints(
+        const std::vector<glm::vec3>& xyzs,
+        const std::vector<glm::vec3>& selected_points,
+        float threshold = 0.01f
+    );
+
+    /**
+     * 计算前景仿真掩码
+     * 对应 physDreamer: find_far_points() + sim_mask_in_raw_gaussian
+     *
+     * @param all_positions 完整高斯点云位置
+     * @param clean_positions 前景物体参考点
+     * @param threshold 距离阈值（默认0.01，与Python一致）
+     * @return sim_mask (true = 前景, false = 背景)
+     */
+    static std::vector<bool> ComputeSimMask(
+        const std::vector<glm::vec3>& all_positions,
+        const std::vector<glm::vec3>& clean_positions,
+        float threshold = 0.01f
+    );
+
 private:
     PLYData point_cloud_data_;
     PLYData clean_object_data_;

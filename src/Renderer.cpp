@@ -13,6 +13,7 @@
 #include <glm/gtc/quaternion.hpp>
 
 #include "vulkan/Utils.h"
+#include "GaussianModel.h"
 
 #include <spdlog/spdlog.h>
 
@@ -171,26 +172,59 @@ void Renderer::initializeVulkan() {
 }
 
 void Renderer::loadSceneToGPU() {
-    spdlog::debug("Loading scene to GPU");
+    spdlog::info("[Renderer] ===== Gaussian Model Initialization =====");
+
+    // Step 1: Create SceneDescriptor and validate all required files
+    auto descriptor = sceneLoader_.CreateDescriptor(configuration.scene);
+    if (!sceneLoader_.ValidateRequiredFiles(descriptor)) {
+        spdlog::critical("[Renderer] Required PLY files missing. Cannot initialize physics simulation.");
+        spdlog::critical("[Renderer] Please ensure all three PLY files exist in the scene directory.");
+        // Continue with basic rendering (will render all gaussians)
+        spdlog::warn("[Renderer] Falling back to basic rendering (all gaussians visible)");
+    } else {
+        spdlog::info("[Renderer] ✓ All required PLY files validated");
+
+        // Step 2: Load complete GaussianModel with all 3DGS attributes
+        GaussianModel gaussianModel;
+        if (!gaussianModel.LoadPLY(descriptor.point_cloud_ply)) {
+            spdlog::error("[Renderer] Failed to load Gaussian model from: {}", descriptor.point_cloud_ply);
+        } else {
+            spdlog::info("[Renderer] ✓ Gaussian model loaded: {} gaussians", gaussianModel.GetCount());
+
+            // Step 3: Load reference point clouds
+            if (!sceneLoader_.LoadScene(descriptor)) {
+                spdlog::error("[Renderer] Failed to load reference point clouds");
+            } else {
+                spdlog::info("[Renderer] ✓ Reference point clouds loaded");
+
+                // Step 4: Compute foreground simulation mask
+                std::vector<bool> sim_mask = SceneLoader::ComputeSimMask(
+                    gaussianModel.xyz_,
+                    sceneLoader_.GetCleanObjectPoints().positions,
+                    0.01f // Threshold consistent with Python
+                );
+                gaussianModel.sim_mask_ = sim_mask;
+
+                size_t foreground_count = std::count(sim_mask.begin(), sim_mask.end(), true);
+                spdlog::info("[Renderer] ✓ Simulation mask computed: {} foreground / {} total",
+                             foreground_count, sim_mask.size());
+
+                // Step 5: Store deformable indices for rendering
+                pendingDeformableIndices_ = gaussianModel.GetForegroundIndices();
+                spdlog::info("[Renderer] ✓ Deformable indices stored: {} indices",
+                             pendingDeformableIndices_.size());
+            }
+        }
+    }
+
+    // Step 6: Continue with existing GSScene loading flow (compatibility)
+    spdlog::info("[Renderer] Loading scene to GPU for rendering");
     scene = std::make_shared<GSScene>(configuration.scene);
     scene->load(context);
 
-    // Load deformable region from SceneLoader
-    auto descriptor = sceneLoader_.CreateDescriptor(configuration.scene);
-    if (sceneLoader_.ValidateRequiredFiles(descriptor)) {
-        if (sceneLoader_.LoadScene(descriptor)) {
-            auto region = sceneLoader_.MatchAgainstPointCloud(scene->cpuPositions);
-            if (region.IsValid()) {
-                spdlog::info("[Renderer] Deformable region: {} foreground, {} background",
-                            region.deformable_indices.size(), region.static_indices.size());
-                setDeformableIndices(region.deformable_indices);
-            } else {
-                spdlog::warn("[Renderer] No valid deformable region found");
-            }
-        }
-    } else {
-        spdlog::info("[Renderer] No deformable region files, rendering all Gaussians");
-    }
+    // Step 7: Create visibility mask buffer
+    // This is done in createPreprocessPipeline(), but we log here for clarity
+    spdlog::info("[Renderer] ===== Gaussian Model Initialization Complete =====");
 
     // reset descriptor pool
     context->device->resetDescriptorPool(context->descriptorPool.get());

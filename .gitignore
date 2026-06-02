@@ -45,6 +45,7 @@ project.xcconfig
 # Build directories
 build/
 .claude/
+CLAUDE.md
 
 # IDE specific files
 imgui.ini
@@ -54,3 +55,4 @@ imgui.ini
 # Temporary files
 *.tmp
 *.log
+
