@@ -306,29 +306,73 @@ std::vector<bool> SceneLoader::FindFarPoints(
 
     const float threshold_sq = threshold * threshold;
 
-    // 分块处理（与Python一致，每块10000个点）
+    spdlog::info("[FindFarPoints] Processing {} points against {} references (spatial hash)...",
+                 N, M);
+
+    // ========== 空间哈希优化 ==========
+    // 使用空间哈希将复杂度从 O(N×M) 降低到 O(N)
+    // 基于 SceneLoader 中的空间哈希实现
+
+    // 计算合适的网格单元大小（基于阈值）
+    const float cellSize = threshold * 0.5f;  // 确保邻域搜索覆盖阈值范围
+    const float searchRadius = threshold;     // 搜索半径
+
+    auto hashKey = [cellSize](const glm::vec3& p) -> int64_t {
+        int64_t ix = static_cast<int64_t>(std::floor(p.x / cellSize));
+        int64_t iy = static_cast<int64_t>(std::floor(p.y / cellSize));
+        int64_t iz = static_cast<int64_t>(std::floor(p.z / cellSize));
+        return ix * 73856093LL ^ iy * 19349663LL ^ iz * 83492791LL;
+    };
+
+    // 构建参考点的空间哈希网格
+    std::unordered_map<int64_t, std::vector<uint32_t>> grid;
+    grid.reserve(M / 4);
+    for (size_t i = 0; i < M; i++) {
+        grid[hashKey(selected_points[i])].push_back(static_cast<uint32_t>(i));
+    }
+
+    // 分块处理（每块10000个点）
     const size_t chunk_size = 10000;
     const size_t num_chunks = (N + chunk_size - 1) / chunk_size;
-
-    spdlog::info("[FindFarPoints] Processing {} points against {} references ({} chunks)",
-                 N, M, num_chunks);
 
     for (size_t chunk = 0; chunk < num_chunks; ++chunk) {
         size_t start = chunk * chunk_size;
         size_t end = std::min(start + chunk_size, N);
 
-        // 对每个块中的点，计算到所有参考点的最小距离
+        // 对每个块中的点，使用空间哈希加速查找
         for (size_t i = start; i < end; ++i) {
             const glm::vec3& p = xyzs[i];
 
-            // 找到最近的参考点
+            // 计算该点所在的网格单元
+            int64_t cx = static_cast<int64_t>(std::floor(p.x / cellSize));
+            int64_t cy = static_cast<int64_t>(std::floor(p.y / cellSize));
+            int64_t cz = static_cast<int64_t>(std::floor(p.z / cellSize));
+
             float min_dist_sq = std::numeric_limits<float>::max();
-            for (size_t j = 0; j < M; ++j) {
-                float dist_sq = glm::dot(p - selected_points[j], p - selected_points[j]);
-                if (dist_sq < min_dist_sq) {
-                    min_dist_sq = dist_sq;
+
+            // 搜索邻域单元（根据阈值确定搜索范围）
+            const int searchCells = static_cast<int>(std::ceil(searchRadius / cellSize));
+
+            for (int64_t dx = -searchCells; dx <= searchCells; dx++) {
+                for (int64_t dy = -searchCells; dy <= searchCells; dy++) {
+                    for (int64_t dz = -searchCells; dz <= searchCells; dz++) {
+                        int64_t key = (cx + dx) * 73856093LL ^ (cy + dy) * 19349663LL ^ (cz + dz) * 83492791LL;
+                        auto it = grid.find(key);
+                        if (it == grid.end()) continue;
+
+                        // 检查该单元内的所有参考点
+                        for (uint32_t idx : it->second) {
+                            float dist_sq = glm::dot(p - selected_points[idx], p - selected_points[idx]);
+                            if (dist_sq < min_dist_sq) {
+                                min_dist_sq = dist_sq;
+                                // 如果已经找到非常近的点，可以提前退出
+                                if (min_dist_sq < 1e-6f) goto found_closest;
+                            }
+                        }
+                    }
                 }
             }
+            found_closest:
 
             // 如果最小距离超过阈值，标记为"远"
             far_mask[i] = (min_dist_sq > threshold_sq);

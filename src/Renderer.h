@@ -16,6 +16,8 @@
 #include "vulkan/ImguiManager.h"
 #include "vulkan/QueryManager.h"
 #include "SceneLoader.h"
+#include "mpm/MPMInitializer.h"
+#include "mpm/MPMStructs.h"
 
 class Renderer {
 public:
@@ -135,6 +137,16 @@ private:
     bool renderForegroundOnly_ = false;
     SceneLoader sceneLoader_;
     std::vector<uint32_t> pendingDeformableIndices_;  // Stored indices, uploaded after pipeline creation
+
+    // MPM Physics Simulation
+    std::vector<MPM::ParticleData> mpm_particles_;                    // MPM粒子数据
+    MPM::CoordinateTransform mpm_coord_transform_;                    // 坐标变换
+    std::vector<MPM::TopKMapping> mpm_top_k_mappings_;                 // Top-K映射
+    std::vector<bool> mpm_freeze_mask_;                               // 粒子冻结掩码
+    MPM::AABB mpm_simulation_aabb_;                                   // 仿真区域包围盒
+    size_t mpm_num_drive_particles_ = 0;                              // 驱动粒子数
+    size_t mpm_num_render_particles_ = 0;                             // 渲染粒子数
+    bool mpm_initialized_ = false;                                    // MPM是否已初始化
 
     std::shared_ptr<DescriptorSet> inputSet;
 

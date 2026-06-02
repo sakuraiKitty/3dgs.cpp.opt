@@ -213,6 +213,48 @@ void Renderer::loadSceneToGPU() {
                 pendingDeformableIndices_ = gaussianModel.GetForegroundIndices();
                 spdlog::info("[Renderer] ✓ Deformable indices stored: {} indices",
                              pendingDeformableIndices_.size());
+
+                // Step 5.5: Initialize MPM Physics Simulation
+                spdlog::info("[Renderer] ===== Initializing MPM Physics Simulation =====");
+                if (sceneLoader_.GetMovingPartPoints().IsValid()) {
+                    MPM::MPMInitializer::Config mpm_config;
+                    mpm_config.grid_size = 64;
+                    mpm_config.downsample_scale = 0.1f;
+                    mpm_config.use_internal_fill = true;
+                    mpm_config.material.E = 2140628.25f;   // carnation默认值
+                    mpm_config.material.nu = 0.3f;
+                    mpm_config.material.density = 2000.0f;
+
+                    auto mpm_result = MPM::MPMInitializer::Initialize(
+                        descriptor,
+                        mpm_config,
+                        sim_mask
+                    );
+
+                    // 保存MPM初始化结果
+                    mpm_particles_ = std::move(mpm_result.particles);
+                    mpm_coord_transform_ = mpm_result.coord_transform;
+                    mpm_top_k_mappings_ = std::move(mpm_result.top_k_mappings);
+                    mpm_freeze_mask_ = std::move(mpm_result.freeze_mask);
+                    mpm_simulation_aabb_ = mpm_result.simulation_aabb;
+                    mpm_num_drive_particles_ = mpm_result.num_drive_particles;
+                    mpm_num_render_particles_ = mpm_result.num_render_particles;
+                    mpm_initialized_ = !mpm_particles_.empty();
+
+                    if (mpm_initialized_) {
+                        spdlog::info("[Renderer] ✓ MPM initialized successfully");
+                        spdlog::info("[Renderer]   - Drive particles: {}", mpm_num_drive_particles_);
+                        spdlog::info("[Renderer]   - Render particles: {}", mpm_num_render_particles_);
+                        spdlog::info("[Renderer]   - Active particles: {}", mpm_result.stats.active_count);
+                        spdlog::info("[Renderer]   - Frozen particles: {}", mpm_result.stats.frozen_count);
+                    } else {
+                        spdlog::warn("[Renderer] MPM initialization failed, physics disabled");
+                    }
+                } else {
+                    spdlog::warn("[Renderer] No moving_part_points.ply, MPM disabled");
+                    mpm_initialized_ = false;
+                }
+                spdlog::info("[Renderer] ===== MPM Initialization Complete =====");
             }
         }
     }

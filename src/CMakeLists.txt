@@ -16,16 +16,20 @@ file(GLOB SOURCE
         *.cpp
         vulkan/*.cpp
         vulkan/pipelines/*.cpp
-        vulkan/windowing/GLFWWindow.cpp)
+        vulkan/windowing/GLFWWindow.cpp
+        mpm/*.cpp)
 
 # Remove DummyGUIManager.cpp from source list
 list(REMOVE_ITEM SOURCE ${CMAKE_CURRENT_SOURCE_DIR}/DummyGUIManager.cpp)
 
-# Keep MPM/coupling disabled (not needed for foreground-only toggle)
+# Enable MPM initialization (still keep old MPMManager/ParticleGenerator disabled for now)
+# TODO: Re-enable MPMManager and ParticleGenerator when ready
 list(REMOVE_ITEM SOURCE ${CMAKE_CURRENT_SOURCE_DIR}/mpm/MPMManager.cpp)
 list(REMOVE_ITEM SOURCE ${CMAKE_CURRENT_SOURCE_DIR}/mpm/ParticleGenerator.cpp)
 list(REMOVE_ITEM SOURCE ${CMAKE_CURRENT_SOURCE_DIR}/coupling/GaussianParticleMapper.cpp)
 list(REMOVE_ITEM SOURCE ${CMAKE_CURRENT_SOURCE_DIR}/coupling/DisplacementMapper.cpp)
+
+# Note: MPMInitializer.cpp is automatically included by GLOB and will be compiled
 
 add_library(3dgs_cpp STATIC
         ${SOURCE}
@@ -49,6 +53,10 @@ target_include_directories(3dgs_cpp
 add_dependencies(3dgs_cpp shaders)
 
 target_link_libraries(3dgs_cpp PUBLIC Vulkan::Vulkan glfw spdlog::spdlog)
+if (MSVC)
+    # Use UTF-8 source file encoding
+    target_compile_options(3dgs_cpp PUBLIC /utf-8)
+endif ()
 if (UNIX)
     target_link_libraries(3dgs_cpp PUBLIC ${CMAKE_DL_LIBS})
 endif ()
