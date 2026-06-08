@@ -17,17 +17,19 @@ file(GLOB SOURCE
         vulkan/*.cpp
         vulkan/pipelines/*.cpp
         vulkan/windowing/GLFWWindow.cpp
-        mpm/*.cpp)
+        mpm/*.cpp
+        interaction/*.cpp
+        coupling/*.cpp)
 
 # Remove DummyGUIManager.cpp from source list
 list(REMOVE_ITEM SOURCE ${CMAKE_CURRENT_SOURCE_DIR}/DummyGUIManager.cpp)
 
-# Enable MPM initialization (still keep old MPMManager/ParticleGenerator disabled for now)
-# TODO: Re-enable MPMManager and ParticleGenerator when ready
-list(REMOVE_ITEM SOURCE ${CMAKE_CURRENT_SOURCE_DIR}/mpm/MPMManager.cpp)
-list(REMOVE_ITEM SOURCE ${CMAKE_CURRENT_SOURCE_DIR}/mpm/ParticleGenerator.cpp)
-list(REMOVE_ITEM SOURCE ${CMAKE_CURRENT_SOURCE_DIR}/coupling/GaussianParticleMapper.cpp)
-list(REMOVE_ITEM SOURCE ${CMAKE_CURRENT_SOURCE_DIR}/coupling/DisplacementMapper.cpp)
+# MPM physics simulation - Phase 1核心组件已启用
+# 以下组件保持启用：
+# - MPMManager.cpp (MPM核心仿真)
+# - ParticleGenerator.cpp (粒子生成)
+# - coupling/*.cpp (高斯-粒子耦合)
+# - interaction/*.cpp (用户交互系统)
 
 # Note: MPMInitializer.cpp is automatically included by GLOB and will be compiled
 

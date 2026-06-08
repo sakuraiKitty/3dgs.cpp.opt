@@ -1,0 +1,7 @@
+{
+  "tool_name": "Bash",
+  "tool_input_preview": "{\"command\":\"cmake --build ./build --config Release -j8\",\"timeout\":300000,\"description\":\"Build project in Release mode\"}",
+  "error": "Exit code 1\nError: D:/liuyue/physDreamerVulkanDemo/3dgs.cpp.opt/src/mpm/build is not a directory",
+  "timestamp": "2026-06-02T11:13:38.473Z",
+  "retry_count": 1
+}

@@ -1,0 +1,17 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Project ToolsVersion="17.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <ItemGroup>
+    <CustomBuild Include="D:\liuyue\physDreamerVulkanDemo\3dgs.cpp.opt\build_msvc143\CMakeFiles\92df26e6236eb33e5036cd131278c765\xcode_setup.rule">
+      <Filter>CMake Rules</Filter>
+    </CustomBuild>
+    <CustomBuild Include="D:\liuyue\physDreamerVulkanDemo\3dgs.cpp.opt\apps\apple\CMakeLists.txt" />
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="D:\liuyue\physDreamerVulkanDemo\3dgs.cpp.opt\build_msvc143\apps\apple\CMakeFiles\xcode_setup" />
+  </ItemGroup>
+  <ItemGroup>
+    <Filter Include="CMake Rules">
+      <UniqueIdentifier>{B5846DD4-9772-3191-B71A-F4E6853AD8CF}</UniqueIdentifier>
+    </Filter>
+  </ItemGroup>
+</Project>

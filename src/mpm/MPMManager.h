@@ -3,14 +3,16 @@
 
 #include "MPMStructs.h"
 #include "ParticleGenerator.h"
-#include "vulkan/VulkanContext.h"
-#include "vulkan/Buffer.h"
+#include "../vulkan/VulkanContext.h"
+#include "../vulkan/Buffer.h"
+#include "../vulkan/pipelines/ComputePipeline.h"
+#include "../vulkan/DescriptorSet.h"
+#include "../vulkan/Shader.h"
 #include <memory>
 #include <vector>
 
 // 前向声明
 class GSScene;
-class VkCommandBuffer;
 
 namespace MPM {
 
@@ -112,6 +114,11 @@ public:
     const DeformableRegion& GetRegion() const { return region_; }
 
     /**
+     * 获取粒子缓冲区（用于交互系统）
+     */
+    std::shared_ptr<Buffer> GetParticleBuffer() const { return particle_buffer_; }
+
+    /**
      * 获取粒子位移（用于高斯耦合）
      */
     std::vector<glm::vec3> GetParticleDisplacements() const;
@@ -126,6 +133,19 @@ public:
      */
     void AutoSegmentRegion(const std::vector<glm::vec3>& all_positions);
 
+    /**
+     * 应用外力到粒子（用于交互）
+     *
+     * @param particle_indices 粒子索引列表
+     * @param forces 对应的力向量
+     */
+    void ApplyExternalForces(const std::vector<uint32_t>& particle_indices, const std::vector<glm::vec3>& forces);
+
+    /**
+     * 获取粒子位置（用于射线检测）
+     */
+    std::vector<glm::vec3> GetParticlePositions() const;
+
 private:
     /**
      * 创建GPU缓冲区
@@ -135,9 +155,19 @@ private:
     void CreateDisplacementBuffer();
 
     /**
-     * 创建Compute Pipeline
+     * 创建Compute Pipeline和Descriptor Sets
      */
     void CreatePipelines();
+    void CreateDescriptorSets();
+
+    /**
+     * 创建单个MPM阶段的Pipeline
+     */
+    std::shared_ptr<ComputePipeline> CreateMPMPipeline(
+        const std::string& shaderName,
+        const std::vector<vk::DescriptorSetLayoutBinding>& bindings,
+        vk::PushConstantRange pushConstantRange
+    );
 
     /**
      * 记录命令缓冲区
@@ -177,11 +207,16 @@ private:
     std::shared_ptr<Buffer> grid_buffer_;                // 网格节点
     std::shared_ptr<Buffer> staging_buffer_;             // 用于下载结果
 
-    // Compute pipelines (将在下一阶段实现)
-    // std::shared_ptr<ComputePipeline> zero_grid_pipeline_;
-    // std::shared_ptr<ComputePipeline> p2g_pipeline_;
-    // std::shared_ptr<ComputePipeline> grid_update_pipeline_;
-    // std::shared_ptr<ComputePipeline> g2p_pipeline_;
+    // Compute pipelines
+    std::shared_ptr<ComputePipeline> zero_grid_pipeline_;
+    std::shared_ptr<ComputePipeline> compute_stress_pipeline_;
+    std::shared_ptr<ComputePipeline> p2g_pipeline_;
+    std::shared_ptr<ComputePipeline> grid_update_pipeline_;
+    std::shared_ptr<ComputePipeline> g2p_pipeline_;
+
+    // Descriptor sets
+    std::shared_ptr<DescriptorSet> particle_grid_descriptor_; // 粒子+网格绑定
+    std::shared_ptr<DescriptorSet> grid_only_descriptor_;      // 仅网格绑定
 
     // 粒子生成器
     ParticleGenerator generator_;

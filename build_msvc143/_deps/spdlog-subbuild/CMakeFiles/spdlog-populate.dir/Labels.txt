@@ -1,0 +1,14 @@
+# Target labels
+ spdlog-populate
+# Source files and their labels
+D:/liuyue/physDreamerVulkanDemo/3dgs.cpp.opt/build_msvc143/_deps/spdlog-subbuild/CMakeFiles/spdlog-populate
+D:/liuyue/physDreamerVulkanDemo/3dgs.cpp.opt/build_msvc143/_deps/spdlog-subbuild/CMakeFiles/eaf0b6434f32643cd45cbeb32381c783/spdlog-populate.rule
+D:/liuyue/physDreamerVulkanDemo/3dgs.cpp.opt/build_msvc143/_deps/spdlog-subbuild/CMakeFiles/0dad939a7646a876fe6ac3408ae9448c/spdlog-populate-complete.rule
+D:/liuyue/physDreamerVulkanDemo/3dgs.cpp.opt/build_msvc143/_deps/spdlog-subbuild/CMakeFiles/2ae666000715be8a68e00731b8cf2383/spdlog-populate-build.rule
+D:/liuyue/physDreamerVulkanDemo/3dgs.cpp.opt/build_msvc143/_deps/spdlog-subbuild/CMakeFiles/2ae666000715be8a68e00731b8cf2383/spdlog-populate-configure.rule
+D:/liuyue/physDreamerVulkanDemo/3dgs.cpp.opt/build_msvc143/_deps/spdlog-subbuild/CMakeFiles/2ae666000715be8a68e00731b8cf2383/spdlog-populate-download.rule
+D:/liuyue/physDreamerVulkanDemo/3dgs.cpp.opt/build_msvc143/_deps/spdlog-subbuild/CMakeFiles/2ae666000715be8a68e00731b8cf2383/spdlog-populate-install.rule
+D:/liuyue/physDreamerVulkanDemo/3dgs.cpp.opt/build_msvc143/_deps/spdlog-subbuild/CMakeFiles/2ae666000715be8a68e00731b8cf2383/spdlog-populate-mkdir.rule
+D:/liuyue/physDreamerVulkanDemo/3dgs.cpp.opt/build_msvc143/_deps/spdlog-subbuild/CMakeFiles/2ae666000715be8a68e00731b8cf2383/spdlog-populate-patch.rule
+D:/liuyue/physDreamerVulkanDemo/3dgs.cpp.opt/build_msvc143/_deps/spdlog-subbuild/CMakeFiles/2ae666000715be8a68e00731b8cf2383/spdlog-populate-test.rule
+D:/liuyue/physDreamerVulkanDemo/3dgs.cpp.opt/build_msvc143/_deps/spdlog-subbuild/CMakeFiles/2ae666000715be8a68e00731b8cf2383/spdlog-populate-update.rule

@@ -1,0 +1,13 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Project ToolsVersion="17.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <ItemGroup>
+    <CustomBuild Include="D:\liuyue\physDreamerVulkanDemo\3dgs.cpp.opt\build_msvc143\_deps\imgui-subbuild\CMakeFiles\94a7482c8910cdac6a39a4727b8c6593\generate.stamp.rule">
+      <Filter>CMake Rules</Filter>
+    </CustomBuild>
+  </ItemGroup>
+  <ItemGroup>
+    <Filter Include="CMake Rules">
+      <UniqueIdentifier>{500246B0-84E3-3180-AF86-4F19149EE1F8}</UniqueIdentifier>
+    </Filter>
+  </ItemGroup>
+</Project>

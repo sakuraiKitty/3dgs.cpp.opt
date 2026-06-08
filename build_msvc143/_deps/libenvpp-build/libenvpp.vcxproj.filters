@@ -1,0 +1,69 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Project ToolsVersion="17.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <ItemGroup>
+    <ClCompile Include="D:\liuyue\physDreamerVulkanDemo\3dgs.cpp.opt\build_msvc143\_deps\libenvpp-src\source\levenshtein.cpp">
+      <Filter>source</Filter>
+    </ClCompile>
+    <ClCompile Include="D:\liuyue\physDreamerVulkanDemo\3dgs.cpp.opt\build_msvc143\_deps\libenvpp-src\source\libenvpp_environment_unix.cpp">
+      <Filter>source</Filter>
+    </ClCompile>
+    <ClCompile Include="D:\liuyue\physDreamerVulkanDemo\3dgs.cpp.opt\build_msvc143\_deps\libenvpp-src\source\libenvpp_environment_windows.cpp">
+      <Filter>source</Filter>
+    </ClCompile>
+    <ClCompile Include="D:\liuyue\physDreamerVulkanDemo\3dgs.cpp.opt\build_msvc143\_deps\libenvpp-src\source\libenvpp_environment.cpp">
+      <Filter>source</Filter>
+    </ClCompile>
+    <ClCompile Include="D:\liuyue\physDreamerVulkanDemo\3dgs.cpp.opt\build_msvc143\_deps\libenvpp-src\source\libenvpp_errors.cpp">
+      <Filter>source</Filter>
+    </ClCompile>
+  </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="D:\liuyue\physDreamerVulkanDemo\3dgs.cpp.opt\build_msvc143\_deps\libenvpp-src\include\libenvpp\detail\check.hpp">
+      <Filter>include\libenvpp\detail</Filter>
+    </ClInclude>
+    <ClInclude Include="D:\liuyue\physDreamerVulkanDemo\3dgs.cpp.opt\build_msvc143\_deps\libenvpp-src\include\libenvpp\detail\edit_distance.hpp">
+      <Filter>include\libenvpp\detail</Filter>
+    </ClInclude>
+    <ClInclude Include="D:\liuyue\physDreamerVulkanDemo\3dgs.cpp.opt\build_msvc143\_deps\libenvpp-src\include\libenvpp\detail\environment.hpp">
+      <Filter>include\libenvpp\detail</Filter>
+    </ClInclude>
+    <ClInclude Include="D:\liuyue\physDreamerVulkanDemo\3dgs.cpp.opt\build_msvc143\_deps\libenvpp-src\include\libenvpp\detail\errors.hpp">
+      <Filter>include\libenvpp\detail</Filter>
+    </ClInclude>
+    <ClInclude Include="D:\liuyue\physDreamerVulkanDemo\3dgs.cpp.opt\build_msvc143\_deps\libenvpp-src\include\libenvpp\detail\expected.hpp">
+      <Filter>include\libenvpp\detail</Filter>
+    </ClInclude>
+    <ClInclude Include="D:\liuyue\physDreamerVulkanDemo\3dgs.cpp.opt\build_msvc143\_deps\libenvpp-src\include\libenvpp\detail\get.hpp">
+      <Filter>include\libenvpp\detail</Filter>
+    </ClInclude>
+    <ClInclude Include="D:\liuyue\physDreamerVulkanDemo\3dgs.cpp.opt\build_msvc143\_deps\libenvpp-src\include\libenvpp\detail\levenshtein.hpp">
+      <Filter>include\libenvpp\detail</Filter>
+    </ClInclude>
+    <ClInclude Include="D:\liuyue\physDreamerVulkanDemo\3dgs.cpp.opt\build_msvc143\_deps\libenvpp-src\include\libenvpp\detail\parser.hpp">
+      <Filter>include\libenvpp\detail</Filter>
+    </ClInclude>
+    <ClInclude Include="D:\liuyue\physDreamerVulkanDemo\3dgs.cpp.opt\build_msvc143\_deps\libenvpp-src\include\libenvpp\detail\util.hpp">
+      <Filter>include\libenvpp\detail</Filter>
+    </ClInclude>
+    <ClInclude Include="D:\liuyue\physDreamerVulkanDemo\3dgs.cpp.opt\build_msvc143\_deps\libenvpp-src\include\libenvpp\env.hpp">
+      <Filter>include\libenvpp</Filter>
+    </ClInclude>
+  </ItemGroup>
+  <ItemGroup>
+    <CustomBuild Include="D:\liuyue\physDreamerVulkanDemo\3dgs.cpp.opt\build_msvc143\_deps\libenvpp-src\CMakeLists.txt" />
+  </ItemGroup>
+  <ItemGroup>
+    <Filter Include="include">
+      <UniqueIdentifier>{5E1DFDD2-188A-3799-8C6B-4F7FD85E3774}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="include\libenvpp">
+      <UniqueIdentifier>{BFEDFCE3-C1D3-3A0E-AE87-C3F983C93B6E}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="include\libenvpp\detail">
+      <UniqueIdentifier>{D3C16B6F-2392-318B-90D9-58E611CD0644}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="source">
+      <UniqueIdentifier>{6E78945D-8D31-3CCD-A807-F45D460A0DE1}</UniqueIdentifier>
+    </Filter>
+  </ItemGroup>
+</Project>

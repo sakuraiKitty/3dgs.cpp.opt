@@ -1,0 +1,40 @@
+#version 460
+layout(local_size_x = 256) in;
+
+struct ParticleData {
+    vec3 position;
+    float mass;
+    vec3 velocity;
+    uint freeze_flag;
+};
+
+layout(std430, set = 0, binding = 0) readonly buffer ParticleBuffer {
+    ParticleData particles[];
+};
+
+layout(std430, set = 0, binding = 1) buffer DistanceBuffer {
+    float distances_sq[];
+};
+
+layout(push_constant) uniform RayCastUniforms {
+    vec3 ray_origin;
+    float max_distance_sq;
+    vec3 ray_direction;
+    uint num_particles;
+};
+
+void main() {
+    uint p_id = gl_GlobalInvocationID.x;
+    if (p_id >= num_particles) {
+        return;
+    }
+
+    vec3 particle_pos = particles[p_id].position;
+    vec3 v = particle_pos - ray_origin;
+    float projection = dot(v, ray_direction);
+    vec3 closest_point = ray_origin + ray_direction * projection;
+    vec3 diff = particle_pos - closest_point;
+    float distance_sq = dot(diff, diff);
+
+    distances_sq[p_id] = distance_sq;
+}

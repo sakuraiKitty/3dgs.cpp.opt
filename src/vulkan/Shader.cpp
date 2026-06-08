@@ -5,7 +5,7 @@ void Shader::load() {
     vk::ShaderModuleCreateInfo create_info;
     if (data == nullptr) {
         auto fn = "shaders/" + filename + ".spv";
-        auto shader_code = Utils::readFile(fn);
+        shader_code = Utils::readFile(fn);
         if (shader_code.empty()) {
             throw std::runtime_error("Failed to load shader: " + fn);
         }

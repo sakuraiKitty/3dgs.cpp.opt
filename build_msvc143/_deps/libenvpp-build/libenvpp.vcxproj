@@ -1,0 +1,349 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Project DefaultTargets="Build" ToolsVersion="17.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <PropertyGroup>
+    <PreferredToolArchitecture>x64</PreferredToolArchitecture>
+  </PropertyGroup>
+  <ItemGroup Label="ProjectConfigurations">
+    <ProjectConfiguration Include="Debug|x64">
+      <Configuration>Debug</Configuration>
+      <Platform>x64</Platform>
+    </ProjectConfiguration>
+    <ProjectConfiguration Include="Release|x64">
+      <Configuration>Release</Configuration>
+      <Platform>x64</Platform>
+    </ProjectConfiguration>
+    <ProjectConfiguration Include="MinSizeRel|x64">
+      <Configuration>MinSizeRel</Configuration>
+      <Platform>x64</Platform>
+    </ProjectConfiguration>
+    <ProjectConfiguration Include="RelWithDebInfo|x64">
+      <Configuration>RelWithDebInfo</Configuration>
+      <Platform>x64</Platform>
+    </ProjectConfiguration>
+  </ItemGroup>
+  <PropertyGroup Label="Globals">
+    <ProjectGuid>{7E5C835B-1861-3480-9FF1-B17D99A4CAA4}</ProjectGuid>
+    <Keyword>Win32Proj</Keyword>
+    <WindowsTargetPlatformVersion>10.0.26100.0</WindowsTargetPlatformVersion>
+    <Platform>x64</Platform>
+    <ProjectName>libenvpp</ProjectName>
+    <VCProjectUpgraderObjectName>NoUpgrade</VCProjectUpgraderObjectName>
+  </PropertyGroup>
+  <Import Project="$(VCTargetsPath)\Microsoft.Cpp.Default.props" />
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'" Label="Configuration">
+    <ConfigurationType>StaticLibrary</ConfigurationType>
+    <CharacterSet>MultiByte</CharacterSet>
+    <PlatformToolset>v143</PlatformToolset>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'" Label="Configuration">
+    <ConfigurationType>StaticLibrary</ConfigurationType>
+    <CharacterSet>MultiByte</CharacterSet>
+    <PlatformToolset>v143</PlatformToolset>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='MinSizeRel|x64'" Label="Configuration">
+    <ConfigurationType>StaticLibrary</ConfigurationType>
+    <CharacterSet>MultiByte</CharacterSet>
+    <PlatformToolset>v143</PlatformToolset>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='RelWithDebInfo|x64'" Label="Configuration">
+    <ConfigurationType>StaticLibrary</ConfigurationType>
+    <CharacterSet>MultiByte</CharacterSet>
+    <PlatformToolset>v143</PlatformToolset>
+  </PropertyGroup>
+  <Import Project="$(VCTargetsPath)\Microsoft.Cpp.props" />
+  <ImportGroup Label="ExtensionSettings">
+  </ImportGroup>
+  <ImportGroup Label="PropertySheets">
+    <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
+  </ImportGroup>
+  <PropertyGroup Label="UserMacros" />
+  <PropertyGroup>
+    <_ProjectFileVersion>10.0.20506.1</_ProjectFileVersion>
+    <OutDir Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">D:\liuyue\physDreamerVulkanDemo\3dgs.cpp.opt\build_msvc143\_deps\libenvpp-build\Debug\</OutDir>
+    <IntDir Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">libenvpp.dir\Debug\</IntDir>
+    <TargetName Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">libenvpp</TargetName>
+    <TargetExt Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">.lib</TargetExt>
+    <OutDir Condition="'$(Configuration)|$(Platform)'=='Release|x64'">D:\liuyue\physDreamerVulkanDemo\3dgs.cpp.opt\build_msvc143\_deps\libenvpp-build\Release\</OutDir>
+    <IntDir Condition="'$(Configuration)|$(Platform)'=='Release|x64'">libenvpp.dir\Release\</IntDir>
+    <TargetName Condition="'$(Configuration)|$(Platform)'=='Release|x64'">libenvpp</TargetName>
+    <TargetExt Condition="'$(Configuration)|$(Platform)'=='Release|x64'">.lib</TargetExt>
+    <OutDir Condition="'$(Configuration)|$(Platform)'=='MinSizeRel|x64'">D:\liuyue\physDreamerVulkanDemo\3dgs.cpp.opt\build_msvc143\_deps\libenvpp-build\MinSizeRel\</OutDir>
+    <IntDir Condition="'$(Configuration)|$(Platform)'=='MinSizeRel|x64'">libenvpp.dir\MinSizeRel\</IntDir>
+    <TargetName Condition="'$(Configuration)|$(Platform)'=='MinSizeRel|x64'">libenvpp</TargetName>
+    <TargetExt Condition="'$(Configuration)|$(Platform)'=='MinSizeRel|x64'">.lib</TargetExt>
+    <OutDir Condition="'$(Configuration)|$(Platform)'=='RelWithDebInfo|x64'">D:\liuyue\physDreamerVulkanDemo\3dgs.cpp.opt\build_msvc143\_deps\libenvpp-build\RelWithDebInfo\</OutDir>
+    <IntDir Condition="'$(Configuration)|$(Platform)'=='RelWithDebInfo|x64'">libenvpp.dir\RelWithDebInfo\</IntDir>
+    <TargetName Condition="'$(Configuration)|$(Platform)'=='RelWithDebInfo|x64'">libenvpp</TargetName>
+    <TargetExt Condition="'$(Configuration)|$(Platform)'=='RelWithDebInfo|x64'">.lib</TargetExt>
+  </PropertyGroup>
+  <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
+    <ClCompile>
+      <AdditionalIncludeDirectories>D:\liuyue\physDreamerVulkanDemo\3dgs.cpp.opt\build_msvc143\_deps\libenvpp-src\include;D:\liuyue\physDreamerVulkanDemo\3dgs.cpp.opt\build_msvc143\_deps\fmt-src\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalOptions>%(AdditionalOptions) /bigobj /utf-8</AdditionalOptions>
+      <AssemblerListingLocation>$(IntDir)</AssemblerListingLocation>
+      <BasicRuntimeChecks>EnableFastChecks</BasicRuntimeChecks>
+      <BufferSecurityCheck></BufferSecurityCheck>
+      <CallingConvention></CallingConvention>
+      <ConformanceMode>true</ConformanceMode>
+      <DebugInformationFormat>ProgramDatabase</DebugInformationFormat>
+      <ExceptionHandling>Sync</ExceptionHandling>
+      <FloatingPointModel></FloatingPointModel>
+      <ForceConformanceInForLoopScope></ForceConformanceInForLoopScope>
+      <InlineFunctionExpansion>Disabled</InlineFunctionExpansion>
+      <LanguageStandard>stdcpp17</LanguageStandard>
+      <MinimalRebuild></MinimalRebuild>
+      <MultiProcessorCompilation>true</MultiProcessorCompilation>
+      <Optimization>Disabled</Optimization>
+      <PrecompiledHeader>NotUsing</PrecompiledHeader>
+      <RemoveUnreferencedCodeData></RemoveUnreferencedCodeData>
+      <RuntimeLibrary>MultiThreadedDebugDLL</RuntimeLibrary>
+      <SupportJustMyCode></SupportJustMyCode>
+      <TreatWChar_tAsBuiltInType></TreatWChar_tAsBuiltInType>
+      <UseFullPaths>false</UseFullPaths>
+      <WarningLevel>Level4</WarningLevel>
+      <PreprocessorDefinitions>%(PreprocessorDefinitions);WIN32;_WINDOWS;_CRT_SECURE_NO_WARNINGS;LIBENVPP_CHECKS_ENABLED=1;LIBENVPP_TESTS_ENABLED=0;LIBENVPP_PLATFORM_WINDOWS=1;LIBENVPP_PLATFORM_UNIX=0;CMAKE_INTDIR="Debug"</PreprocessorDefinitions>
+      <ObjectFileName>$(IntDir)</ObjectFileName>
+      <ScanSourceForModuleDependencies>false</ScanSourceForModuleDependencies>
+    </ClCompile>
+    <ResourceCompile>
+      <PreprocessorDefinitions>%(PreprocessorDefinitions);WIN32;_DEBUG;_WINDOWS;_CRT_SECURE_NO_WARNINGS;LIBENVPP_CHECKS_ENABLED=1;LIBENVPP_TESTS_ENABLED=0;LIBENVPP_PLATFORM_WINDOWS=1;LIBENVPP_PLATFORM_UNIX=0;CMAKE_INTDIR=\"Debug\"</PreprocessorDefinitions>
+      <AdditionalIncludeDirectories>D:\liuyue\physDreamerVulkanDemo\3dgs.cpp.opt\build_msvc143\_deps\libenvpp-src\include;D:\liuyue\physDreamerVulkanDemo\3dgs.cpp.opt\build_msvc143\_deps\fmt-src\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+    </ResourceCompile>
+    <Midl>
+      <AdditionalIncludeDirectories>D:\liuyue\physDreamerVulkanDemo\3dgs.cpp.opt\build_msvc143\_deps\libenvpp-src\include;D:\liuyue\physDreamerVulkanDemo\3dgs.cpp.opt\build_msvc143\_deps\fmt-src\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <OutputDirectory>$(ProjectDir)/$(IntDir)</OutputDirectory>
+      <HeaderFileName>%(Filename).h</HeaderFileName>
+      <TypeLibraryName>%(Filename).tlb</TypeLibraryName>
+      <InterfaceIdentifierFileName>%(Filename)_i.c</InterfaceIdentifierFileName>
+      <ProxyFileName>%(Filename)_p.c</ProxyFileName>
+    </Midl>
+    <Lib>
+      <AdditionalOptions>%(AdditionalOptions) /machine:x64</AdditionalOptions>
+    </Lib>
+  </ItemDefinitionGroup>
+  <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
+    <ClCompile>
+      <AdditionalIncludeDirectories>D:\liuyue\physDreamerVulkanDemo\3dgs.cpp.opt\build_msvc143\_deps\libenvpp-src\include;D:\liuyue\physDreamerVulkanDemo\3dgs.cpp.opt\build_msvc143\_deps\fmt-src\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalOptions>%(AdditionalOptions) /bigobj /utf-8</AdditionalOptions>
+      <AssemblerListingLocation>$(IntDir)</AssemblerListingLocation>
+      <BasicRuntimeChecks>Default</BasicRuntimeChecks>
+      <BufferSecurityCheck></BufferSecurityCheck>
+      <CallingConvention></CallingConvention>
+      <ConformanceMode>true</ConformanceMode>
+      <DebugInformationFormat>ProgramDatabase</DebugInformationFormat>
+      <ExceptionHandling>Sync</ExceptionHandling>
+      <FloatingPointModel></FloatingPointModel>
+      <ForceConformanceInForLoopScope></ForceConformanceInForLoopScope>
+      <InlineFunctionExpansion>AnySuitable</InlineFunctionExpansion>
+      <LanguageStandard>stdcpp17</LanguageStandard>
+      <MinimalRebuild></MinimalRebuild>
+      <MultiProcessorCompilation>true</MultiProcessorCompilation>
+      <Optimization>MaxSpeed</Optimization>
+      <PrecompiledHeader>NotUsing</PrecompiledHeader>
+      <RemoveUnreferencedCodeData></RemoveUnreferencedCodeData>
+      <RuntimeLibrary>MultiThreadedDLL</RuntimeLibrary>
+      <SupportJustMyCode></SupportJustMyCode>
+      <TreatWChar_tAsBuiltInType></TreatWChar_tAsBuiltInType>
+      <UseFullPaths>false</UseFullPaths>
+      <WarningLevel>Level4</WarningLevel>
+      <PreprocessorDefinitions>%(PreprocessorDefinitions);WIN32;_WINDOWS;NDEBUG;_CRT_SECURE_NO_WARNINGS;LIBENVPP_CHECKS_ENABLED=0;LIBENVPP_TESTS_ENABLED=0;LIBENVPP_PLATFORM_WINDOWS=1;LIBENVPP_PLATFORM_UNIX=0;CMAKE_INTDIR="Release"</PreprocessorDefinitions>
+      <ObjectFileName>$(IntDir)</ObjectFileName>
+      <ScanSourceForModuleDependencies>false</ScanSourceForModuleDependencies>
+    </ClCompile>
+    <ResourceCompile>
+      <PreprocessorDefinitions>%(PreprocessorDefinitions);WIN32;_WINDOWS;NDEBUG;_CRT_SECURE_NO_WARNINGS;LIBENVPP_CHECKS_ENABLED=0;LIBENVPP_TESTS_ENABLED=0;LIBENVPP_PLATFORM_WINDOWS=1;LIBENVPP_PLATFORM_UNIX=0;CMAKE_INTDIR=\"Release\"</PreprocessorDefinitions>
+      <AdditionalIncludeDirectories>D:\liuyue\physDreamerVulkanDemo\3dgs.cpp.opt\build_msvc143\_deps\libenvpp-src\include;D:\liuyue\physDreamerVulkanDemo\3dgs.cpp.opt\build_msvc143\_deps\fmt-src\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+    </ResourceCompile>
+    <Midl>
+      <AdditionalIncludeDirectories>D:\liuyue\physDreamerVulkanDemo\3dgs.cpp.opt\build_msvc143\_deps\libenvpp-src\include;D:\liuyue\physDreamerVulkanDemo\3dgs.cpp.opt\build_msvc143\_deps\fmt-src\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <OutputDirectory>$(ProjectDir)/$(IntDir)</OutputDirectory>
+      <HeaderFileName>%(Filename).h</HeaderFileName>
+      <TypeLibraryName>%(Filename).tlb</TypeLibraryName>
+      <InterfaceIdentifierFileName>%(Filename)_i.c</InterfaceIdentifierFileName>
+      <ProxyFileName>%(Filename)_p.c</ProxyFileName>
+    </Midl>
+    <Lib>
+      <AdditionalOptions>%(AdditionalOptions) /machine:x64</AdditionalOptions>
+    </Lib>
+  </ItemDefinitionGroup>
+  <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='MinSizeRel|x64'">
+    <ClCompile>
+      <AdditionalIncludeDirectories>D:\liuyue\physDreamerVulkanDemo\3dgs.cpp.opt\build_msvc143\_deps\libenvpp-src\include;D:\liuyue\physDreamerVulkanDemo\3dgs.cpp.opt\build_msvc143\_deps\fmt-src\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalOptions>%(AdditionalOptions) /bigobj /utf-8</AdditionalOptions>
+      <AssemblerListingLocation>$(IntDir)</AssemblerListingLocation>
+      <BasicRuntimeChecks>Default</BasicRuntimeChecks>
+      <BufferSecurityCheck></BufferSecurityCheck>
+      <CallingConvention></CallingConvention>
+      <ConformanceMode>true</ConformanceMode>
+      <DebugInformationFormat>ProgramDatabase</DebugInformationFormat>
+      <ExceptionHandling>Sync</ExceptionHandling>
+      <FloatingPointModel></FloatingPointModel>
+      <ForceConformanceInForLoopScope></ForceConformanceInForLoopScope>
+      <InlineFunctionExpansion>OnlyExplicitInline</InlineFunctionExpansion>
+      <LanguageStandard>stdcpp17</LanguageStandard>
+      <MinimalRebuild></MinimalRebuild>
+      <MultiProcessorCompilation>true</MultiProcessorCompilation>
+      <Optimization>MinSpace</Optimization>
+      <PrecompiledHeader>NotUsing</PrecompiledHeader>
+      <RemoveUnreferencedCodeData></RemoveUnreferencedCodeData>
+      <RuntimeLibrary>MultiThreadedDLL</RuntimeLibrary>
+      <SupportJustMyCode></SupportJustMyCode>
+      <TreatWChar_tAsBuiltInType></TreatWChar_tAsBuiltInType>
+      <UseFullPaths>false</UseFullPaths>
+      <WarningLevel>Level4</WarningLevel>
+      <PreprocessorDefinitions>%(PreprocessorDefinitions);WIN32;_WINDOWS;NDEBUG;_CRT_SECURE_NO_WARNINGS;LIBENVPP_CHECKS_ENABLED=0;LIBENVPP_TESTS_ENABLED=0;LIBENVPP_PLATFORM_WINDOWS=1;LIBENVPP_PLATFORM_UNIX=0;CMAKE_INTDIR="MinSizeRel"</PreprocessorDefinitions>
+      <ObjectFileName>$(IntDir)</ObjectFileName>
+      <ScanSourceForModuleDependencies>false</ScanSourceForModuleDependencies>
+    </ClCompile>
+    <ResourceCompile>
+      <PreprocessorDefinitions>%(PreprocessorDefinitions);WIN32;_WINDOWS;NDEBUG;_CRT_SECURE_NO_WARNINGS;LIBENVPP_CHECKS_ENABLED=0;LIBENVPP_TESTS_ENABLED=0;LIBENVPP_PLATFORM_WINDOWS=1;LIBENVPP_PLATFORM_UNIX=0;CMAKE_INTDIR=\"MinSizeRel\"</PreprocessorDefinitions>
+      <AdditionalIncludeDirectories>D:\liuyue\physDreamerVulkanDemo\3dgs.cpp.opt\build_msvc143\_deps\libenvpp-src\include;D:\liuyue\physDreamerVulkanDemo\3dgs.cpp.opt\build_msvc143\_deps\fmt-src\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+    </ResourceCompile>
+    <Midl>
+      <AdditionalIncludeDirectories>D:\liuyue\physDreamerVulkanDemo\3dgs.cpp.opt\build_msvc143\_deps\libenvpp-src\include;D:\liuyue\physDreamerVulkanDemo\3dgs.cpp.opt\build_msvc143\_deps\fmt-src\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <OutputDirectory>$(ProjectDir)/$(IntDir)</OutputDirectory>
+      <HeaderFileName>%(Filename).h</HeaderFileName>
+      <TypeLibraryName>%(Filename).tlb</TypeLibraryName>
+      <InterfaceIdentifierFileName>%(Filename)_i.c</InterfaceIdentifierFileName>
+      <ProxyFileName>%(Filename)_p.c</ProxyFileName>
+    </Midl>
+    <Lib>
+      <AdditionalOptions>%(AdditionalOptions) /machine:x64</AdditionalOptions>
+    </Lib>
+  </ItemDefinitionGroup>
+  <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='RelWithDebInfo|x64'">
+    <ClCompile>
+      <AdditionalIncludeDirectories>D:\liuyue\physDreamerVulkanDemo\3dgs.cpp.opt\build_msvc143\_deps\libenvpp-src\include;D:\liuyue\physDreamerVulkanDemo\3dgs.cpp.opt\build_msvc143\_deps\fmt-src\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalOptions>%(AdditionalOptions) /bigobj /utf-8</AdditionalOptions>
+      <AssemblerListingLocation>$(IntDir)</AssemblerListingLocation>
+      <BasicRuntimeChecks>Default</BasicRuntimeChecks>
+      <BufferSecurityCheck></BufferSecurityCheck>
+      <CallingConvention></CallingConvention>
+      <ConformanceMode>true</ConformanceMode>
+      <DebugInformationFormat>ProgramDatabase</DebugInformationFormat>
+      <ExceptionHandling>Sync</ExceptionHandling>
+      <FloatingPointModel></FloatingPointModel>
+      <ForceConformanceInForLoopScope></ForceConformanceInForLoopScope>
+      <InlineFunctionExpansion>OnlyExplicitInline</InlineFunctionExpansion>
+      <LanguageStandard>stdcpp17</LanguageStandard>
+      <MinimalRebuild></MinimalRebuild>
+      <MultiProcessorCompilation>true</MultiProcessorCompilation>
+      <Optimization>MaxSpeed</Optimization>
+      <PrecompiledHeader>NotUsing</PrecompiledHeader>
+      <RemoveUnreferencedCodeData></RemoveUnreferencedCodeData>
+      <RuntimeLibrary>MultiThreadedDLL</RuntimeLibrary>
+      <SupportJustMyCode></SupportJustMyCode>
+      <TreatWChar_tAsBuiltInType></TreatWChar_tAsBuiltInType>
+      <UseFullPaths>false</UseFullPaths>
+      <WarningLevel>Level4</WarningLevel>
+      <PreprocessorDefinitions>%(PreprocessorDefinitions);WIN32;_WINDOWS;NDEBUG;_CRT_SECURE_NO_WARNINGS;LIBENVPP_CHECKS_ENABLED=0;LIBENVPP_TESTS_ENABLED=0;LIBENVPP_PLATFORM_WINDOWS=1;LIBENVPP_PLATFORM_UNIX=0;CMAKE_INTDIR="RelWithDebInfo"</PreprocessorDefinitions>
+      <ObjectFileName>$(IntDir)</ObjectFileName>
+      <ScanSourceForModuleDependencies>false</ScanSourceForModuleDependencies>
+    </ClCompile>
+    <ResourceCompile>
+      <PreprocessorDefinitions>%(PreprocessorDefinitions);WIN32;_WINDOWS;NDEBUG;_CRT_SECURE_NO_WARNINGS;LIBENVPP_CHECKS_ENABLED=0;LIBENVPP_TESTS_ENABLED=0;LIBENVPP_PLATFORM_WINDOWS=1;LIBENVPP_PLATFORM_UNIX=0;CMAKE_INTDIR=\"RelWithDebInfo\"</PreprocessorDefinitions>
+      <AdditionalIncludeDirectories>D:\liuyue\physDreamerVulkanDemo\3dgs.cpp.opt\build_msvc143\_deps\libenvpp-src\include;D:\liuyue\physDreamerVulkanDemo\3dgs.cpp.opt\build_msvc143\_deps\fmt-src\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+    </ResourceCompile>
+    <Midl>
+      <AdditionalIncludeDirectories>D:\liuyue\physDreamerVulkanDemo\3dgs.cpp.opt\build_msvc143\_deps\libenvpp-src\include;D:\liuyue\physDreamerVulkanDemo\3dgs.cpp.opt\build_msvc143\_deps\fmt-src\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <OutputDirectory>$(ProjectDir)/$(IntDir)</OutputDirectory>
+      <HeaderFileName>%(Filename).h</HeaderFileName>
+      <TypeLibraryName>%(Filename).tlb</TypeLibraryName>
+      <InterfaceIdentifierFileName>%(Filename)_i.c</InterfaceIdentifierFileName>
+      <ProxyFileName>%(Filename)_p.c</ProxyFileName>
+    </Midl>
+    <Lib>
+      <AdditionalOptions>%(AdditionalOptions) /machine:x64</AdditionalOptions>
+    </Lib>
+  </ItemDefinitionGroup>
+  <ItemGroup>
+    <CustomBuild Include="D:\liuyue\physDreamerVulkanDemo\3dgs.cpp.opt\build_msvc143\_deps\libenvpp-src\CMakeLists.txt">
+      <UseUtf8Encoding>Always</UseUtf8Encoding>
+      <Message Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">Building Custom Rule D:/liuyue/physDreamerVulkanDemo/3dgs.cpp.opt/build_msvc143/_deps/libenvpp-src/CMakeLists.txt</Message>
+      <Command Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">setlocal
+C:\Python314\Lib\site-packages\cmake\data\bin\cmake.exe -SD:/liuyue/physDreamerVulkanDemo/3dgs.cpp.opt -BD:/liuyue/physDreamerVulkanDemo/3dgs.cpp.opt/build_msvc143 --check-stamp-file D:/liuyue/physDreamerVulkanDemo/3dgs.cpp.opt/build_msvc143/_deps/libenvpp-build/CMakeFiles/generate.stamp
+if %errorlevel% neq 0 goto :cmEnd
+:cmEnd
+endlocal &amp; call :cmErrorLevel %errorlevel% &amp; goto :cmDone
+:cmErrorLevel
+exit /b %1
+:cmDone
+if %errorlevel% neq 0 goto :VCEnd</Command>
+      <AdditionalInputs Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">C:\Python314\Lib\site-packages\cmake\data\share\cmake-4.3\Modules\ExternalProject\shared_internal_commands.cmake;C:\Python314\Lib\site-packages\cmake\data\share\cmake-4.3\Modules\FetchContent.cmake;C:\Python314\Lib\site-packages\cmake\data\share\cmake-4.3\Modules\FetchContent\CMakeLists.cmake.in;C:\Python314\Lib\site-packages\cmake\data\share\cmake-4.3\Modules\FindGit.cmake;C:\Python314\Lib\site-packages\cmake\data\share\cmake-4.3\Modules\FindPackageHandleStandardArgs.cmake;C:\Python314\Lib\site-packages\cmake\data\share\cmake-4.3\Modules\FindPackageMessage.cmake;D:\liuyue\physDreamerVulkanDemo\3dgs.cpp.opt\build_msvc143\_deps\libenvpp-src\cmake\libenvpp_mt_utils.cmake;%(AdditionalInputs)</AdditionalInputs>
+      <Outputs Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">D:\liuyue\physDreamerVulkanDemo\3dgs.cpp.opt\build_msvc143\_deps\libenvpp-build\CMakeFiles\generate.stamp</Outputs>
+      <LinkObjects Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">false</LinkObjects>
+      <Message Condition="'$(Configuration)|$(Platform)'=='Release|x64'">Building Custom Rule D:/liuyue/physDreamerVulkanDemo/3dgs.cpp.opt/build_msvc143/_deps/libenvpp-src/CMakeLists.txt</Message>
+      <Command Condition="'$(Configuration)|$(Platform)'=='Release|x64'">setlocal
+C:\Python314\Lib\site-packages\cmake\data\bin\cmake.exe -SD:/liuyue/physDreamerVulkanDemo/3dgs.cpp.opt -BD:/liuyue/physDreamerVulkanDemo/3dgs.cpp.opt/build_msvc143 --check-stamp-file D:/liuyue/physDreamerVulkanDemo/3dgs.cpp.opt/build_msvc143/_deps/libenvpp-build/CMakeFiles/generate.stamp
+if %errorlevel% neq 0 goto :cmEnd
+:cmEnd
+endlocal &amp; call :cmErrorLevel %errorlevel% &amp; goto :cmDone
+:cmErrorLevel
+exit /b %1
+:cmDone
+if %errorlevel% neq 0 goto :VCEnd</Command>
+      <AdditionalInputs Condition="'$(Configuration)|$(Platform)'=='Release|x64'">C:\Python314\Lib\site-packages\cmake\data\share\cmake-4.3\Modules\ExternalProject\shared_internal_commands.cmake;C:\Python314\Lib\site-packages\cmake\data\share\cmake-4.3\Modules\FetchContent.cmake;C:\Python314\Lib\site-packages\cmake\data\share\cmake-4.3\Modules\FetchContent\CMakeLists.cmake.in;C:\Python314\Lib\site-packages\cmake\data\share\cmake-4.3\Modules\FindGit.cmake;C:\Python314\Lib\site-packages\cmake\data\share\cmake-4.3\Modules\FindPackageHandleStandardArgs.cmake;C:\Python314\Lib\site-packages\cmake\data\share\cmake-4.3\Modules\FindPackageMessage.cmake;D:\liuyue\physDreamerVulkanDemo\3dgs.cpp.opt\build_msvc143\_deps\libenvpp-src\cmake\libenvpp_mt_utils.cmake;%(AdditionalInputs)</AdditionalInputs>
+      <Outputs Condition="'$(Configuration)|$(Platform)'=='Release|x64'">D:\liuyue\physDreamerVulkanDemo\3dgs.cpp.opt\build_msvc143\_deps\libenvpp-build\CMakeFiles\generate.stamp</Outputs>
+      <LinkObjects Condition="'$(Configuration)|$(Platform)'=='Release|x64'">false</LinkObjects>
+      <Message Condition="'$(Configuration)|$(Platform)'=='MinSizeRel|x64'">Building Custom Rule D:/liuyue/physDreamerVulkanDemo/3dgs.cpp.opt/build_msvc143/_deps/libenvpp-src/CMakeLists.txt</Message>
+      <Command Condition="'$(Configuration)|$(Platform)'=='MinSizeRel|x64'">setlocal
+C:\Python314\Lib\site-packages\cmake\data\bin\cmake.exe -SD:/liuyue/physDreamerVulkanDemo/3dgs.cpp.opt -BD:/liuyue/physDreamerVulkanDemo/3dgs.cpp.opt/build_msvc143 --check-stamp-file D:/liuyue/physDreamerVulkanDemo/3dgs.cpp.opt/build_msvc143/_deps/libenvpp-build/CMakeFiles/generate.stamp
+if %errorlevel% neq 0 goto :cmEnd
+:cmEnd
+endlocal &amp; call :cmErrorLevel %errorlevel% &amp; goto :cmDone
+:cmErrorLevel
+exit /b %1
+:cmDone
+if %errorlevel% neq 0 goto :VCEnd</Command>
+      <AdditionalInputs Condition="'$(Configuration)|$(Platform)'=='MinSizeRel|x64'">C:\Python314\Lib\site-packages\cmake\data\share\cmake-4.3\Modules\ExternalProject\shared_internal_commands.cmake;C:\Python314\Lib\site-packages\cmake\data\share\cmake-4.3\Modules\FetchContent.cmake;C:\Python314\Lib\site-packages\cmake\data\share\cmake-4.3\Modules\FetchContent\CMakeLists.cmake.in;C:\Python314\Lib\site-packages\cmake\data\share\cmake-4.3\Modules\FindGit.cmake;C:\Python314\Lib\site-packages\cmake\data\share\cmake-4.3\Modules\FindPackageHandleStandardArgs.cmake;C:\Python314\Lib\site-packages\cmake\data\share\cmake-4.3\Modules\FindPackageMessage.cmake;D:\liuyue\physDreamerVulkanDemo\3dgs.cpp.opt\build_msvc143\_deps\libenvpp-src\cmake\libenvpp_mt_utils.cmake;%(AdditionalInputs)</AdditionalInputs>
+      <Outputs Condition="'$(Configuration)|$(Platform)'=='MinSizeRel|x64'">D:\liuyue\physDreamerVulkanDemo\3dgs.cpp.opt\build_msvc143\_deps\libenvpp-build\CMakeFiles\generate.stamp</Outputs>
+      <LinkObjects Condition="'$(Configuration)|$(Platform)'=='MinSizeRel|x64'">false</LinkObjects>
+      <Message Condition="'$(Configuration)|$(Platform)'=='RelWithDebInfo|x64'">Building Custom Rule D:/liuyue/physDreamerVulkanDemo/3dgs.cpp.opt/build_msvc143/_deps/libenvpp-src/CMakeLists.txt</Message>
+      <Command Condition="'$(Configuration)|$(Platform)'=='RelWithDebInfo|x64'">setlocal
+C:\Python314\Lib\site-packages\cmake\data\bin\cmake.exe -SD:/liuyue/physDreamerVulkanDemo/3dgs.cpp.opt -BD:/liuyue/physDreamerVulkanDemo/3dgs.cpp.opt/build_msvc143 --check-stamp-file D:/liuyue/physDreamerVulkanDemo/3dgs.cpp.opt/build_msvc143/_deps/libenvpp-build/CMakeFiles/generate.stamp
+if %errorlevel% neq 0 goto :cmEnd
+:cmEnd
+endlocal &amp; call :cmErrorLevel %errorlevel% &amp; goto :cmDone
+:cmErrorLevel
+exit /b %1
+:cmDone
+if %errorlevel% neq 0 goto :VCEnd</Command>
+      <AdditionalInputs Condition="'$(Configuration)|$(Platform)'=='RelWithDebInfo|x64'">C:\Python314\Lib\site-packages\cmake\data\share\cmake-4.3\Modules\ExternalProject\shared_internal_commands.cmake;C:\Python314\Lib\site-packages\cmake\data\share\cmake-4.3\Modules\FetchContent.cmake;C:\Python314\Lib\site-packages\cmake\data\share\cmake-4.3\Modules\FetchContent\CMakeLists.cmake.in;C:\Python314\Lib\site-packages\cmake\data\share\cmake-4.3\Modules\FindGit.cmake;C:\Python314\Lib\site-packages\cmake\data\share\cmake-4.3\Modules\FindPackageHandleStandardArgs.cmake;C:\Python314\Lib\site-packages\cmake\data\share\cmake-4.3\Modules\FindPackageMessage.cmake;D:\liuyue\physDreamerVulkanDemo\3dgs.cpp.opt\build_msvc143\_deps\libenvpp-src\cmake\libenvpp_mt_utils.cmake;%(AdditionalInputs)</AdditionalInputs>
+      <Outputs Condition="'$(Configuration)|$(Platform)'=='RelWithDebInfo|x64'">D:\liuyue\physDreamerVulkanDemo\3dgs.cpp.opt\build_msvc143\_deps\libenvpp-build\CMakeFiles\generate.stamp</Outputs>
+      <LinkObjects Condition="'$(Configuration)|$(Platform)'=='RelWithDebInfo|x64'">false</LinkObjects>
+    </CustomBuild>
+  </ItemGroup>
+  <ItemGroup>
+    <ClCompile Include="D:\liuyue\physDreamerVulkanDemo\3dgs.cpp.opt\build_msvc143\_deps\libenvpp-src\source\levenshtein.cpp" />
+    <ClCompile Include="D:\liuyue\physDreamerVulkanDemo\3dgs.cpp.opt\build_msvc143\_deps\libenvpp-src\source\libenvpp_environment_unix.cpp" />
+    <ClCompile Include="D:\liuyue\physDreamerVulkanDemo\3dgs.cpp.opt\build_msvc143\_deps\libenvpp-src\source\libenvpp_environment_windows.cpp" />
+    <ClCompile Include="D:\liuyue\physDreamerVulkanDemo\3dgs.cpp.opt\build_msvc143\_deps\libenvpp-src\source\libenvpp_environment.cpp" />
+    <ClCompile Include="D:\liuyue\physDreamerVulkanDemo\3dgs.cpp.opt\build_msvc143\_deps\libenvpp-src\source\libenvpp_errors.cpp" />
+    <ClInclude Include="D:\liuyue\physDreamerVulkanDemo\3dgs.cpp.opt\build_msvc143\_deps\libenvpp-src\include\libenvpp\detail\check.hpp" />
+    <ClInclude Include="D:\liuyue\physDreamerVulkanDemo\3dgs.cpp.opt\build_msvc143\_deps\libenvpp-src\include\libenvpp\detail\edit_distance.hpp" />
+    <ClInclude Include="D:\liuyue\physDreamerVulkanDemo\3dgs.cpp.opt\build_msvc143\_deps\libenvpp-src\include\libenvpp\detail\environment.hpp" />
+    <ClInclude Include="D:\liuyue\physDreamerVulkanDemo\3dgs.cpp.opt\build_msvc143\_deps\libenvpp-src\include\libenvpp\detail\errors.hpp" />
+    <ClInclude Include="D:\liuyue\physDreamerVulkanDemo\3dgs.cpp.opt\build_msvc143\_deps\libenvpp-src\include\libenvpp\detail\expected.hpp" />
+    <ClInclude Include="D:\liuyue\physDreamerVulkanDemo\3dgs.cpp.opt\build_msvc143\_deps\libenvpp-src\include\libenvpp\detail\get.hpp" />
+    <ClInclude Include="D:\liuyue\physDreamerVulkanDemo\3dgs.cpp.opt\build_msvc143\_deps\libenvpp-src\include\libenvpp\detail\levenshtein.hpp" />
+    <ClInclude Include="D:\liuyue\physDreamerVulkanDemo\3dgs.cpp.opt\build_msvc143\_deps\libenvpp-src\include\libenvpp\detail\parser.hpp" />
+    <ClInclude Include="D:\liuyue\physDreamerVulkanDemo\3dgs.cpp.opt\build_msvc143\_deps\libenvpp-src\include\libenvpp\detail\util.hpp" />
+    <ClInclude Include="D:\liuyue\physDreamerVulkanDemo\3dgs.cpp.opt\build_msvc143\_deps\libenvpp-src\include\libenvpp\env.hpp" />
+  </ItemGroup>
+  <ItemGroup />
+  <ItemGroup>
+    <ProjectReference Include="D:\liuyue\physDreamerVulkanDemo\3dgs.cpp.opt\build_msvc143\ZERO_CHECK.vcxproj">
+      <Project>{578C4487-A3AB-3DEA-83AE-5473ECFB0B7A}</Project>
+      <Name>ZERO_CHECK</Name>
+      <ReferenceOutputAssembly>false</ReferenceOutputAssembly>
+      <CopyToOutputDirectory>Never</CopyToOutputDirectory>
+    </ProjectReference>
+    <ProjectReference Include="D:\liuyue\physDreamerVulkanDemo\3dgs.cpp.opt\build_msvc143\_deps\fmt-build\fmt.vcxproj">
+      <Project>{CB1C4802-058E-30FB-9308-C0E6A56CDF7D}</Project>
+      <Name>fmt</Name>
+    </ProjectReference>
+  </ItemGroup>
+  <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
+  <ImportGroup Label="ExtensionTargets">
+  </ImportGroup>
+</Project>

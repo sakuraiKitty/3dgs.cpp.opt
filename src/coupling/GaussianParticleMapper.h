@@ -1,10 +1,13 @@
 #ifndef GAUSSIAN_PARTICLE_MAPPER_H
 #define GAUSSIAN_PARTICLE_MAPPER_H
 
-#include "mpm/MPMStructs.h"
+#include "../mpm/MPMStructs.h"
+#include "../vulkan/VulkanContext.h"
+#include "../vulkan/Buffer.h"
 #include <vector>
 #include <glm/glm.hpp>
 #include <cstdint>
+#include <memory>
 
 /**
  * 高斯-粒子映射器

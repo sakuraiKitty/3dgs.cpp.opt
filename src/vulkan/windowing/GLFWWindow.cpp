@@ -53,7 +53,13 @@ std::array<double, 2> GLFWWindow::getCursorTranslation() {
     return translation;
 }
 
-std::array<bool, 8> GLFWWindow::getKeys() {
+std::array<double, 2> GLFWWindow::getCursorPosition() {
+    double x, y;
+    glfwGetCursorPos(static_cast<GLFWwindow *>(window), &x, &y);
+    return {x, y};
+}
+
+std::array<bool, 9> GLFWWindow::getKeys() {
     return {
         glfwGetKey(static_cast<GLFWwindow *>(window), GLFW_KEY_W) == GLFW_PRESS,
         glfwGetKey(static_cast<GLFWwindow *>(window), GLFW_KEY_A) == GLFW_PRESS,
@@ -62,7 +68,8 @@ std::array<bool, 8> GLFWWindow::getKeys() {
         glfwGetKey(static_cast<GLFWwindow *>(window), GLFW_KEY_SPACE) == GLFW_PRESS,
         glfwGetKey(static_cast<GLFWwindow *>(window), GLFW_KEY_LEFT_SHIFT) == GLFW_PRESS,
         glfwGetKey(static_cast<GLFWwindow *>(window), GLFW_KEY_ESCAPE) == GLFW_PRESS,
-        glfwGetKey(static_cast<GLFWwindow *>(window), GLFW_KEY_F12) == GLFW_PRESS
+        glfwGetKey(static_cast<GLFWwindow *>(window), GLFW_KEY_F12) == GLFW_PRESS,
+        glfwGetKey(static_cast<GLFWwindow *>(window), GLFW_KEY_P) == GLFW_PRESS
     };
 }
 

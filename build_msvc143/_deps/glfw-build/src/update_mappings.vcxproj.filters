@@ -1,0 +1,24 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Project ToolsVersion="17.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <ItemGroup>
+    <CustomBuild Include="D:\liuyue\physDreamerVulkanDemo\3dgs.cpp.opt\build_msvc143\CMakeFiles\cd6b8ede45a4a894bba9835ccd55c67b\update_mappings.rule">
+      <Filter>CMake Rules</Filter>
+    </CustomBuild>
+    <CustomBuild Include="D:\liuyue\physDreamerVulkanDemo\3dgs.cpp.opt\build_msvc143\_deps\glfw-src\src\CMakeLists.txt" />
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="D:\liuyue\physDreamerVulkanDemo\3dgs.cpp.opt\build_msvc143\_deps\glfw-src\src\mappings.h.in">
+      <Filter>Header Files</Filter>
+    </None>
+    <None Include="D:\liuyue\physDreamerVulkanDemo\3dgs.cpp.opt\build_msvc143\_deps\glfw-src\CMake\GenerateMappings.cmake" />
+    <None Include="D:\liuyue\physDreamerVulkanDemo\3dgs.cpp.opt\build_msvc143\_deps\glfw-build\src\CMakeFiles\update_mappings" />
+  </ItemGroup>
+  <ItemGroup>
+    <Filter Include="CMake Rules">
+      <UniqueIdentifier>{B5846DD4-9772-3191-B71A-F4E6853AD8CF}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Header Files">
+      <UniqueIdentifier>{26E06C60-11F7-3C4D-B65E-8409624AE0E3}</UniqueIdentifier>
+    </Filter>
+  </ItemGroup>
+</Project>

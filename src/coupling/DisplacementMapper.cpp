@@ -1,6 +1,6 @@
 #include "DisplacementMapper.h"
-#include "vulkan/pipelines/ComputePipeline.h"
-#include "vulkan/Shader.h"
+#include "../vulkan/pipelines/ComputePipeline.h"
+#include "../vulkan/Shader.h"
 #include <spdlog/spdlog.h>
 
 // Shader编译结果 (将在编译时生成)
@@ -33,17 +33,21 @@ void DisplacementMapper::MapDisplacements(
 
     // 1. 上传粒子位移到GPU
     if (!displacement_buffer_) {
+        vk::BufferUsageFlags usageFlags =
+            vk::BufferUsageFlagBits::eStorageBuffer |
+            vk::BufferUsageFlagBits::eTransferSrc |
+            vk::BufferUsageFlagBits::eTransferDst;
+
         displacement_buffer_ = std::make_shared<Buffer>(
             context_,
-            particle_count * sizeof(glm::vec3),
-            VK_BUFFER_USAGE_STORAGE_BUFFER_BIT |
-            VK_BUFFER_USAGE_TRANSFER_SRC_BIT |
-            VK_BUFFER_USAGE_TRANSFER_DST_BIT,
-            VMA_MEMORY_USAGE_GPU_ONLY
+            static_cast<uint32_t>(particle_count * sizeof(glm::vec3)),
+            usageFlags,
+            VMA_MEMORY_USAGE_GPU_ONLY,
+            static_cast<VmaAllocationCreateFlags>(0)
         );
     }
 
-    displacement_buffer_->uploadData(particle_displacements);
+    displacement_buffer_->upload(particle_displacements.data(), sizeof(glm::vec3) * particle_displacements.size(), 0);
 
     // 2. 调用GPU版本的映射
     MapDisplacementsGPU(

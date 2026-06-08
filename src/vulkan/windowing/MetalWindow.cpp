@@ -28,7 +28,7 @@ std::array<double, 2> MetalWindow::getCursorTranslation() {
     return result;
 }
 
-std::array<bool, 8> MetalWindow::getKeys() {
+std::array<bool, 9> MetalWindow::getKeys() {
     return Window::getKeys();
 }
 

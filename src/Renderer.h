@@ -18,6 +18,9 @@
 #include "SceneLoader.h"
 #include "mpm/MPMInitializer.h"
 #include "mpm/MPMStructs.h"
+#include "mpm/MPMManager.h"
+#include "interaction/RayCaster.h"
+#include "interaction/DragHandler.h"
 
 class Renderer {
 public:
@@ -139,6 +142,7 @@ private:
     std::vector<uint32_t> pendingDeformableIndices_;  // Stored indices, uploaded after pipeline creation
 
     // MPM Physics Simulation
+    std::shared_ptr<MPM::MPMManager> mpm_manager_;                     // MPM管理器
     std::vector<MPM::ParticleData> mpm_particles_;                    // MPM粒子数据
     MPM::CoordinateTransform mpm_coord_transform_;                    // 坐标变换
     std::vector<MPM::TopKMapping> mpm_top_k_mappings_;                 // Top-K映射
@@ -147,6 +151,21 @@ private:
     size_t mpm_num_drive_particles_ = 0;                              // 驱动粒子数
     size_t mpm_num_render_particles_ = 0;                             // 渲染粒子数
     bool mpm_initialized_ = false;                                    // MPM是否已初始化
+
+    // Mouse interaction for physics
+    bool physics_interaction_mode_ = false;                           // 物理交互模式
+    bool is_dragging_ = false;                                        // 是否正在拖拽
+    std::vector<uint32_t> selected_particles_;                        // 选中的粒子索引
+    glm::vec3 drag_start_pos_;                                        // 拖拽起始位置
+    glm::ivec2 mouse_pos_on_press_;                                   // 鼠标按下位置
+    bool mouse_pressed_this_frame_ = false;                          // 本帧鼠标按下
+    bool mouse_released_this_frame_ = false;                          // 本帧鼠标释放
+
+    // Interaction System
+    std::shared_ptr<Interaction::RayCaster> ray_caster_;              // 射线拾取器
+    std::shared_ptr<Interaction::DragHandler> drag_handler_;          // 拖拽处理器
+    glm::ivec2 last_mouse_position_;                                  // 上一帧鼠标位置
+    bool prev_right_mouse_down_ = false;                              // 上一帧右键状态
 
     std::shared_ptr<DescriptorSet> inputSet;
 
@@ -219,6 +238,11 @@ private:
     void updateUniforms();
 
     void uploadVisibilityMask();
+
+    // 物理交互处理
+    void initializeInteractionSystem();
+    void handlePhysicsInteraction();
+    void updatePhysicsSimulation(VkCommandBuffer cmd);
 };
 
 

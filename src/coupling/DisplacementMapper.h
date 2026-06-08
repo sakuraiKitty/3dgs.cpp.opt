@@ -1,16 +1,13 @@
 #ifndef DISPLACEMENT_MAPPER_H
 #define DISPLACEMENT_MAPPER_H
 
-#include "vulkan/VulkanContext.h"
-#include <vulkan/Buffer.h>
-#include "mpm/MPMStructs.h"
-#include "coupling/GaussianParticleMapper.h"
+#include "../vulkan/VulkanContext.h"
+#include "../vulkan/Buffer.h"
+#include "../mpm/MPMStructs.h"
+#include "GaussianParticleMapper.h"
 #include <memory>
 #include <vector>
 #include <glm/glm.hpp>
-
-// 前向声明
-class VkCommandBuffer;
 
 /**
  * 位移映射器

@@ -1,0 +1,46 @@
+{
+	"sources" : 
+	[
+		{
+			"file" : "D:/liuyue/physDreamerVulkanDemo/3dgs.cpp.opt/build_msvc143/_deps/glfw-subbuild/CMakeFiles/glfw-populate"
+		},
+		{
+			"file" : "D:/liuyue/physDreamerVulkanDemo/3dgs.cpp.opt/build_msvc143/_deps/glfw-subbuild/CMakeFiles/f0bb8ca772f5ab7db3f06a0dd964f8ee/glfw-populate.rule"
+		},
+		{
+			"file" : "D:/liuyue/physDreamerVulkanDemo/3dgs.cpp.opt/build_msvc143/_deps/glfw-subbuild/CMakeFiles/a715e855c5fa134f856fd22729edb69d/glfw-populate-complete.rule"
+		},
+		{
+			"file" : "D:/liuyue/physDreamerVulkanDemo/3dgs.cpp.opt/build_msvc143/_deps/glfw-subbuild/CMakeFiles/83a6654c5d846e1c7015192437d90277/glfw-populate-build.rule"
+		},
+		{
+			"file" : "D:/liuyue/physDreamerVulkanDemo/3dgs.cpp.opt/build_msvc143/_deps/glfw-subbuild/CMakeFiles/83a6654c5d846e1c7015192437d90277/glfw-populate-configure.rule"
+		},
+		{
+			"file" : "D:/liuyue/physDreamerVulkanDemo/3dgs.cpp.opt/build_msvc143/_deps/glfw-subbuild/CMakeFiles/83a6654c5d846e1c7015192437d90277/glfw-populate-download.rule"
+		},
+		{
+			"file" : "D:/liuyue/physDreamerVulkanDemo/3dgs.cpp.opt/build_msvc143/_deps/glfw-subbuild/CMakeFiles/83a6654c5d846e1c7015192437d90277/glfw-populate-install.rule"
+		},
+		{
+			"file" : "D:/liuyue/physDreamerVulkanDemo/3dgs.cpp.opt/build_msvc143/_deps/glfw-subbuild/CMakeFiles/83a6654c5d846e1c7015192437d90277/glfw-populate-mkdir.rule"
+		},
+		{
+			"file" : "D:/liuyue/physDreamerVulkanDemo/3dgs.cpp.opt/build_msvc143/_deps/glfw-subbuild/CMakeFiles/83a6654c5d846e1c7015192437d90277/glfw-populate-patch.rule"
+		},
+		{
+			"file" : "D:/liuyue/physDreamerVulkanDemo/3dgs.cpp.opt/build_msvc143/_deps/glfw-subbuild/CMakeFiles/83a6654c5d846e1c7015192437d90277/glfw-populate-test.rule"
+		},
+		{
+			"file" : "D:/liuyue/physDreamerVulkanDemo/3dgs.cpp.opt/build_msvc143/_deps/glfw-subbuild/CMakeFiles/83a6654c5d846e1c7015192437d90277/glfw-populate-update.rule"
+		}
+	],
+	"target" : 
+	{
+		"labels" : 
+		[
+			"glfw-populate"
+		],
+		"name" : "glfw-populate"
+	}
+}

@@ -1,7 +1,7 @@
 #ifndef MPM_STRUCTS_GLSL
 #define MPM_STRUCTS_GLSL
 
-// MPM粒子数据结构 (128 bytes, 与C++端一致)
+// MPM粒子数据结构 (160 bytes, 与C++端一致)
 struct ParticleData {
     vec3 position;              // 0-12   - 位置 [m]
     float mass;                  // 12-16  - 质量 [kg]
@@ -13,7 +13,13 @@ struct ParticleData {
     float youngs_modulus;       // 88-92  - 杨氏模量 E [Pa]
     float poisson_ratio;        // 92-96  - 泊松比 nu
     float density;              // 96-100 - 密度 [kg/m^3]
-    vec3 padding;               // 100-112 - 对齐填充
+
+    // 新增字段（用于高级物理特性）
+    mat3 apic_matrix;           // 100-148 - APIC动量矩阵C（或临时存储应力）
+    uint is_filled_point;       // 148-152 - 是否为内部填充点 (0=原始高斯, 1=填充点)
+    float padding;              // 152-156 - 对齐填充
+
+    // 总计156字节 (需要对齐到160字节)
 };
 
 // MPM网格节点数据结构 (32 bytes, 与C++端一致)

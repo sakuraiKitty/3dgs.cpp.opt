@@ -1,7 +1,6 @@
 #include "GaussianParticleMapper.h"
-#include "vulkan/VulkanContext.h"
-#include "vulkan/Buffer.h"
-#include "vulkan/CommandPool.h"
+#include "../vulkan/VulkanContext.h"
+#include "../vulkan/Buffer.h"
 #include <spdlog/spdlog.h>
 #include <algorithm>
 #include <queue>
@@ -41,7 +40,8 @@ void GaussianParticleMapper::PrecomputeMapping(
                            std::greater<std::pair<float, uint32_t>>> pq;
 
         for (size_t j = 0; j < particle_positions.size(); j++) {
-            float dist_sq = glm::length2(gaussian_pos - particle_positions[j]);
+            glm::vec3 diff = gaussian_pos - particle_positions[j];
+            float dist_sq = glm::dot(diff, diff);
             pq.push({dist_sq, static_cast<uint32_t>(j)});
 
             if (pq.size() > k) {
@@ -108,16 +108,21 @@ void GaussianParticleMapper::UploadMappingToGPU(
 
     // 2. 创建KNN缓冲区
     size_t knn_buffer_size = knn_data.size() * sizeof(glm::uvec4);
+
+    vk::BufferUsageFlags usageFlags =
+        vk::BufferUsageFlagBits::eStorageBuffer |
+        vk::BufferUsageFlagBits::eTransferDst;
+
     knn_gpu_buffer_ = std::make_shared<Buffer>(
         context,
-        knn_buffer_size,
-        VK_BUFFER_USAGE_STORAGE_BUFFER_BIT |
-        VK_BUFFER_USAGE_TRANSFER_DST_BIT,
-        VMA_MEMORY_USAGE_GPU_ONLY
+        static_cast<uint32_t>(knn_buffer_size),
+        usageFlags,
+        VMA_MEMORY_USAGE_GPU_ONLY,
+        static_cast<VmaAllocationCreateFlags>(0)
     );
 
     // 上传数据
-    knn_gpu_buffer_->uploadData(knn_data);
+    knn_gpu_buffer_->upload(reinterpret_cast<const char*>(knn_data.data()), static_cast<uint32_t>(knn_data.size() * sizeof(glm::uvec4)), 0);
 
     spdlog::debug("[GaussianParticleMapper] KNN buffer uploaded: {} KB",
                  knn_buffer_size / 1024);
@@ -125,15 +130,20 @@ void GaussianParticleMapper::UploadMappingToGPU(
     // 3. 创建可变形索引缓冲区（如果设置了）
     if (!deformable_indices_.empty()) {
         size_t index_buffer_size = deformable_indices_.size() * sizeof(uint32_t);
+
+        vk::BufferUsageFlags usageFlags =
+            vk::BufferUsageFlagBits::eStorageBuffer |
+            vk::BufferUsageFlagBits::eTransferDst;
+
         deformable_index_buffer_ = std::make_shared<Buffer>(
             context,
-            index_buffer_size,
-            VK_BUFFER_USAGE_STORAGE_BUFFER_BIT |
-            VK_BUFFER_USAGE_TRANSFER_DST_BIT,
-            VMA_MEMORY_USAGE_GPU_ONLY
+            static_cast<uint32_t>(index_buffer_size),
+            usageFlags,
+            VMA_MEMORY_USAGE_GPU_ONLY,
+            static_cast<VmaAllocationCreateFlags>(0)
         );
 
-        deformable_index_buffer_->uploadData(deformable_indices_);
+        deformable_index_buffer_->upload(deformable_indices_.data(), static_cast<uint32_t>(sizeof(uint32_t) * deformable_indices_.size()), 0);
 
         spdlog::debug("[GaussianParticleMapper] Deformable index buffer uploaded: {} KB",
                      index_buffer_size / 1024);

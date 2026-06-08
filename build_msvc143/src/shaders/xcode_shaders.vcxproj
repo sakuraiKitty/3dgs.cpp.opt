@@ -1,0 +1,1572 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Project DefaultTargets="Build" ToolsVersion="17.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <PropertyGroup>
+    <PreferredToolArchitecture>x64</PreferredToolArchitecture>
+  </PropertyGroup>
+  <ItemGroup Label="ProjectConfigurations">
+    <ProjectConfiguration Include="Debug|x64">
+      <Configuration>Debug</Configuration>
+      <Platform>x64</Platform>
+    </ProjectConfiguration>
+    <ProjectConfiguration Include="Release|x64">
+      <Configuration>Release</Configuration>
+      <Platform>x64</Platform>
+    </ProjectConfiguration>
+    <ProjectConfiguration Include="MinSizeRel|x64">
+      <Configuration>MinSizeRel</Configuration>
+      <Platform>x64</Platform>
+    </ProjectConfiguration>
+    <ProjectConfiguration Include="RelWithDebInfo|x64">
+      <Configuration>RelWithDebInfo</Configuration>
+      <Platform>x64</Platform>
+    </ProjectConfiguration>
+  </ItemGroup>
+  <PropertyGroup Label="Globals">
+    <ProjectGuid>{C1682A7D-B974-3035-94DC-13B46C19A01A}</ProjectGuid>
+    <Keyword>Win32Proj</Keyword>
+    <WindowsTargetPlatformVersion>10.0.26100.0</WindowsTargetPlatformVersion>
+    <Platform>x64</Platform>
+    <ProjectName>xcode_shaders</ProjectName>
+    <VCProjectUpgraderObjectName>NoUpgrade</VCProjectUpgraderObjectName>
+  </PropertyGroup>
+  <Import Project="$(VCTargetsPath)\Microsoft.Cpp.Default.props" />
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'" Label="Configuration">
+    <ConfigurationType>Utility</ConfigurationType>
+    <CharacterSet>MultiByte</CharacterSet>
+    <PlatformToolset>v143</PlatformToolset>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'" Label="Configuration">
+    <ConfigurationType>Utility</ConfigurationType>
+    <CharacterSet>MultiByte</CharacterSet>
+    <PlatformToolset>v143</PlatformToolset>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='MinSizeRel|x64'" Label="Configuration">
+    <ConfigurationType>Utility</ConfigurationType>
+    <CharacterSet>MultiByte</CharacterSet>
+    <PlatformToolset>v143</PlatformToolset>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='RelWithDebInfo|x64'" Label="Configuration">
+    <ConfigurationType>Utility</ConfigurationType>
+    <CharacterSet>MultiByte</CharacterSet>
+    <PlatformToolset>v143</PlatformToolset>
+  </PropertyGroup>
+  <Import Project="$(VCTargetsPath)\Microsoft.Cpp.props" />
+  <ImportGroup Label="ExtensionSettings">
+  </ImportGroup>
+  <ImportGroup Label="PropertySheets">
+    <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
+  </ImportGroup>
+  <PropertyGroup Label="UserMacros" />
+  <PropertyGroup>
+    <_ProjectFileVersion>10.0.20506.1</_ProjectFileVersion>
+    <IntDir Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">$(Platform)\$(Configuration)\$(ProjectName)\</IntDir>
+    <IntDir Condition="'$(Configuration)|$(Platform)'=='Release|x64'">$(Platform)\$(Configuration)\$(ProjectName)\</IntDir>
+    <IntDir Condition="'$(Configuration)|$(Platform)'=='MinSizeRel|x64'">$(Platform)\$(Configuration)\$(ProjectName)\</IntDir>
+    <IntDir Condition="'$(Configuration)|$(Platform)'=='RelWithDebInfo|x64'">$(Platform)\$(Configuration)\$(ProjectName)\</IntDir>
+  </PropertyGroup>
+  <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
+    <Midl>
+      <AdditionalIncludeDirectories>%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <OutputDirectory>$(ProjectDir)/$(IntDir)</OutputDirectory>
+      <HeaderFileName>%(Filename).h</HeaderFileName>
+      <TypeLibraryName>%(Filename).tlb</TypeLibraryName>
+      <InterfaceIdentifierFileName>%(Filename)_i.c</InterfaceIdentifierFileName>
+      <ProxyFileName>%(Filename)_p.c</ProxyFileName>
+    </Midl>
+  </ItemDefinitionGroup>
+  <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
+    <Midl>
+      <AdditionalIncludeDirectories>%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <OutputDirectory>$(ProjectDir)/$(IntDir)</OutputDirectory>
+      <HeaderFileName>%(Filename).h</HeaderFileName>
+      <TypeLibraryName>%(Filename).tlb</TypeLibraryName>
+      <InterfaceIdentifierFileName>%(Filename)_i.c</InterfaceIdentifierFileName>
+      <ProxyFileName>%(Filename)_p.c</ProxyFileName>
+    </Midl>
+  </ItemDefinitionGroup>
+  <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='MinSizeRel|x64'">
+    <Midl>
+      <AdditionalIncludeDirectories>%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <OutputDirectory>$(ProjectDir)/$(IntDir)</OutputDirectory>
+      <HeaderFileName>%(Filename).h</HeaderFileName>
+      <TypeLibraryName>%(Filename).tlb</TypeLibraryName>
+      <InterfaceIdentifierFileName>%(Filename)_i.c</InterfaceIdentifierFileName>
+      <ProxyFileName>%(Filename)_p.c</ProxyFileName>
+    </Midl>
+  </ItemDefinitionGroup>
+  <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='RelWithDebInfo|x64'">
+    <Midl>
+      <AdditionalIncludeDirectories>%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <OutputDirectory>$(ProjectDir)/$(IntDir)</OutputDirectory>
+      <HeaderFileName>%(Filename).h</HeaderFileName>
+      <TypeLibraryName>%(Filename).tlb</TypeLibraryName>
+      <InterfaceIdentifierFileName>%(Filename)_i.c</InterfaceIdentifierFileName>
+      <ProxyFileName>%(Filename)_p.c</ProxyFileName>
+    </Midl>
+  </ItemDefinitionGroup>
+  <ItemGroup>
+    <CustomBuild Include="D:\liuyue\physDreamerVulkanDemo\3dgs.cpp.opt\build_msvc143\CMakeFiles\00bcc53426d4f746c66ab8ad83b9a340\apply_mouse_force.spv.rule">
+      <Message Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">Generating ../../shaders/apply_mouse_force.spv</Message>
+      <Command Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">setlocal
+C:\Python314\Lib\site-packages\cmake\data\bin\cmake.exe -E make_directory D:/liuyue/physDreamerVulkanDemo/3dgs.cpp.opt/build_msvc143/shaders/
+if %errorlevel% neq 0 goto :cmEnd
+C:\VulkanSDK\1.4.350.0\Bin\glslangValidator.exe --target-env vulkan1.2 -V D:/liuyue/physDreamerVulkanDemo/3dgs.cpp.opt/src/shaders/interaction/apply_mouse_force.comp -o D:/liuyue/physDreamerVulkanDemo/3dgs.cpp.opt/build_msvc143/shaders/apply_mouse_force.spv -DNDEBUG
+if %errorlevel% neq 0 goto :cmEnd
+:cmEnd
+endlocal &amp; call :cmErrorLevel %errorlevel% &amp; goto :cmDone
+:cmErrorLevel
+exit /b %1
+:cmDone
+if %errorlevel% neq 0 goto :VCEnd</Command>
+      <AdditionalInputs Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">D:\liuyue\physDreamerVulkanDemo\3dgs.cpp.opt\src\shaders\interaction\apply_mouse_force.comp;%(AdditionalInputs)</AdditionalInputs>
+      <Outputs Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">D:\liuyue\physDreamerVulkanDemo\3dgs.cpp.opt\build_msvc143\shaders\apply_mouse_force.spv</Outputs>
+      <LinkObjects Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">false</LinkObjects>
+      <Message Condition="'$(Configuration)|$(Platform)'=='Release|x64'">Generating ../../shaders/apply_mouse_force.spv</Message>
+      <Command Condition="'$(Configuration)|$(Platform)'=='Release|x64'">setlocal
+C:\Python314\Lib\site-packages\cmake\data\bin\cmake.exe -E make_directory D:/liuyue/physDreamerVulkanDemo/3dgs.cpp.opt/build_msvc143/shaders/
+if %errorlevel% neq 0 goto :cmEnd
+C:\VulkanSDK\1.4.350.0\Bin\glslangValidator.exe --target-env vulkan1.2 -V D:/liuyue/physDreamerVulkanDemo/3dgs.cpp.opt/src/shaders/interaction/apply_mouse_force.comp -o D:/liuyue/physDreamerVulkanDemo/3dgs.cpp.opt/build_msvc143/shaders/apply_mouse_force.spv -DNDEBUG
+if %errorlevel% neq 0 goto :cmEnd
+:cmEnd
+endlocal &amp; call :cmErrorLevel %errorlevel% &amp; goto :cmDone
+:cmErrorLevel
+exit /b %1
+:cmDone
+if %errorlevel% neq 0 goto :VCEnd</Command>
+      <AdditionalInputs Condition="'$(Configuration)|$(Platform)'=='Release|x64'">D:\liuyue\physDreamerVulkanDemo\3dgs.cpp.opt\src\shaders\interaction\apply_mouse_force.comp;%(AdditionalInputs)</AdditionalInputs>
+      <Outputs Condition="'$(Configuration)|$(Platform)'=='Release|x64'">D:\liuyue\physDreamerVulkanDemo\3dgs.cpp.opt\build_msvc143\shaders\apply_mouse_force.spv</Outputs>
+      <LinkObjects Condition="'$(Configuration)|$(Platform)'=='Release|x64'">false</LinkObjects>
+      <Message Condition="'$(Configuration)|$(Platform)'=='MinSizeRel|x64'">Generating ../../shaders/apply_mouse_force.spv</Message>
+      <Command Condition="'$(Configuration)|$(Platform)'=='MinSizeRel|x64'">setlocal
+C:\Python314\Lib\site-packages\cmake\data\bin\cmake.exe -E make_directory D:/liuyue/physDreamerVulkanDemo/3dgs.cpp.opt/build_msvc143/shaders/
+if %errorlevel% neq 0 goto :cmEnd
+C:\VulkanSDK\1.4.350.0\Bin\glslangValidator.exe --target-env vulkan1.2 -V D:/liuyue/physDreamerVulkanDemo/3dgs.cpp.opt/src/shaders/interaction/apply_mouse_force.comp -o D:/liuyue/physDreamerVulkanDemo/3dgs.cpp.opt/build_msvc143/shaders/apply_mouse_force.spv -DNDEBUG
+if %errorlevel% neq 0 goto :cmEnd
+:cmEnd
+endlocal &amp; call :cmErrorLevel %errorlevel% &amp; goto :cmDone
+:cmErrorLevel
+exit /b %1
+:cmDone
+if %errorlevel% neq 0 goto :VCEnd</Command>
+      <AdditionalInputs Condition="'$(Configuration)|$(Platform)'=='MinSizeRel|x64'">D:\liuyue\physDreamerVulkanDemo\3dgs.cpp.opt\src\shaders\interaction\apply_mouse_force.comp;%(AdditionalInputs)</AdditionalInputs>
+      <Outputs Condition="'$(Configuration)|$(Platform)'=='MinSizeRel|x64'">D:\liuyue\physDreamerVulkanDemo\3dgs.cpp.opt\build_msvc143\shaders\apply_mouse_force.spv</Outputs>
+      <LinkObjects Condition="'$(Configuration)|$(Platform)'=='MinSizeRel|x64'">false</LinkObjects>
+      <Message Condition="'$(Configuration)|$(Platform)'=='RelWithDebInfo|x64'">Generating ../../shaders/apply_mouse_force.spv</Message>
+      <Command Condition="'$(Configuration)|$(Platform)'=='RelWithDebInfo|x64'">setlocal
+C:\Python314\Lib\site-packages\cmake\data\bin\cmake.exe -E make_directory D:/liuyue/physDreamerVulkanDemo/3dgs.cpp.opt/build_msvc143/shaders/
+if %errorlevel% neq 0 goto :cmEnd
+C:\VulkanSDK\1.4.350.0\Bin\glslangValidator.exe --target-env vulkan1.2 -V D:/liuyue/physDreamerVulkanDemo/3dgs.cpp.opt/src/shaders/interaction/apply_mouse_force.comp -o D:/liuyue/physDreamerVulkanDemo/3dgs.cpp.opt/build_msvc143/shaders/apply_mouse_force.spv -DNDEBUG
+if %errorlevel% neq 0 goto :cmEnd
+:cmEnd
+endlocal &amp; call :cmErrorLevel %errorlevel% &amp; goto :cmDone
+:cmErrorLevel
+exit /b %1
+:cmDone
+if %errorlevel% neq 0 goto :VCEnd</Command>
+      <AdditionalInputs Condition="'$(Configuration)|$(Platform)'=='RelWithDebInfo|x64'">D:\liuyue\physDreamerVulkanDemo\3dgs.cpp.opt\src\shaders\interaction\apply_mouse_force.comp;%(AdditionalInputs)</AdditionalInputs>
+      <Outputs Condition="'$(Configuration)|$(Platform)'=='RelWithDebInfo|x64'">D:\liuyue\physDreamerVulkanDemo\3dgs.cpp.opt\build_msvc143\shaders\apply_mouse_force.spv</Outputs>
+      <LinkObjects Condition="'$(Configuration)|$(Platform)'=='RelWithDebInfo|x64'">false</LinkObjects>
+    </CustomBuild>
+  </ItemGroup>
+  <ItemGroup>
+    <CustomBuild Include="D:\liuyue\physDreamerVulkanDemo\3dgs.cpp.opt\build_msvc143\CMakeFiles\00bcc53426d4f746c66ab8ad83b9a340\calibrate.spv.rule">
+      <Message Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">Generating ../../shaders/calibrate.spv</Message>
+      <Command Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">setlocal
+C:\Python314\Lib\site-packages\cmake\data\bin\cmake.exe -E make_directory D:/liuyue/physDreamerVulkanDemo/3dgs.cpp.opt/build_msvc143/shaders/
+if %errorlevel% neq 0 goto :cmEnd
+C:\VulkanSDK\1.4.350.0\Bin\glslangValidator.exe --target-env vulkan1.2 -V D:/liuyue/physDreamerVulkanDemo/3dgs.cpp.opt/src/shaders/calibrate.comp -o D:/liuyue/physDreamerVulkanDemo/3dgs.cpp.opt/build_msvc143/shaders/calibrate.spv -DNDEBUG
+if %errorlevel% neq 0 goto :cmEnd
+:cmEnd
+endlocal &amp; call :cmErrorLevel %errorlevel% &amp; goto :cmDone
+:cmErrorLevel
+exit /b %1
+:cmDone
+if %errorlevel% neq 0 goto :VCEnd</Command>
+      <AdditionalInputs Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">D:\liuyue\physDreamerVulkanDemo\3dgs.cpp.opt\src\shaders\calibrate.comp;%(AdditionalInputs)</AdditionalInputs>
+      <Outputs Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">D:\liuyue\physDreamerVulkanDemo\3dgs.cpp.opt\build_msvc143\shaders\calibrate.spv</Outputs>
+      <LinkObjects Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">false</LinkObjects>
+      <Message Condition="'$(Configuration)|$(Platform)'=='Release|x64'">Generating ../../shaders/calibrate.spv</Message>
+      <Command Condition="'$(Configuration)|$(Platform)'=='Release|x64'">setlocal
+C:\Python314\Lib\site-packages\cmake\data\bin\cmake.exe -E make_directory D:/liuyue/physDreamerVulkanDemo/3dgs.cpp.opt/build_msvc143/shaders/
+if %errorlevel% neq 0 goto :cmEnd
+C:\VulkanSDK\1.4.350.0\Bin\glslangValidator.exe --target-env vulkan1.2 -V D:/liuyue/physDreamerVulkanDemo/3dgs.cpp.opt/src/shaders/calibrate.comp -o D:/liuyue/physDreamerVulkanDemo/3dgs.cpp.opt/build_msvc143/shaders/calibrate.spv -DNDEBUG
+if %errorlevel% neq 0 goto :cmEnd
+:cmEnd
+endlocal &amp; call :cmErrorLevel %errorlevel% &amp; goto :cmDone
+:cmErrorLevel
+exit /b %1
+:cmDone
+if %errorlevel% neq 0 goto :VCEnd</Command>
+      <AdditionalInputs Condition="'$(Configuration)|$(Platform)'=='Release|x64'">D:\liuyue\physDreamerVulkanDemo\3dgs.cpp.opt\src\shaders\calibrate.comp;%(AdditionalInputs)</AdditionalInputs>
+      <Outputs Condition="'$(Configuration)|$(Platform)'=='Release|x64'">D:\liuyue\physDreamerVulkanDemo\3dgs.cpp.opt\build_msvc143\shaders\calibrate.spv</Outputs>
+      <LinkObjects Condition="'$(Configuration)|$(Platform)'=='Release|x64'">false</LinkObjects>
+      <Message Condition="'$(Configuration)|$(Platform)'=='MinSizeRel|x64'">Generating ../../shaders/calibrate.spv</Message>
+      <Command Condition="'$(Configuration)|$(Platform)'=='MinSizeRel|x64'">setlocal
+C:\Python314\Lib\site-packages\cmake\data\bin\cmake.exe -E make_directory D:/liuyue/physDreamerVulkanDemo/3dgs.cpp.opt/build_msvc143/shaders/
+if %errorlevel% neq 0 goto :cmEnd
+C:\VulkanSDK\1.4.350.0\Bin\glslangValidator.exe --target-env vulkan1.2 -V D:/liuyue/physDreamerVulkanDemo/3dgs.cpp.opt/src/shaders/calibrate.comp -o D:/liuyue/physDreamerVulkanDemo/3dgs.cpp.opt/build_msvc143/shaders/calibrate.spv -DNDEBUG
+if %errorlevel% neq 0 goto :cmEnd
+:cmEnd
+endlocal &amp; call :cmErrorLevel %errorlevel% &amp; goto :cmDone
+:cmErrorLevel
+exit /b %1
+:cmDone
+if %errorlevel% neq 0 goto :VCEnd</Command>
+      <AdditionalInputs Condition="'$(Configuration)|$(Platform)'=='MinSizeRel|x64'">D:\liuyue\physDreamerVulkanDemo\3dgs.cpp.opt\src\shaders\calibrate.comp;%(AdditionalInputs)</AdditionalInputs>
+      <Outputs Condition="'$(Configuration)|$(Platform)'=='MinSizeRel|x64'">D:\liuyue\physDreamerVulkanDemo\3dgs.cpp.opt\build_msvc143\shaders\calibrate.spv</Outputs>
+      <LinkObjects Condition="'$(Configuration)|$(Platform)'=='MinSizeRel|x64'">false</LinkObjects>
+      <Message Condition="'$(Configuration)|$(Platform)'=='RelWithDebInfo|x64'">Generating ../../shaders/calibrate.spv</Message>
+      <Command Condition="'$(Configuration)|$(Platform)'=='RelWithDebInfo|x64'">setlocal
+C:\Python314\Lib\site-packages\cmake\data\bin\cmake.exe -E make_directory D:/liuyue/physDreamerVulkanDemo/3dgs.cpp.opt/build_msvc143/shaders/
+if %errorlevel% neq 0 goto :cmEnd
+C:\VulkanSDK\1.4.350.0\Bin\glslangValidator.exe --target-env vulkan1.2 -V D:/liuyue/physDreamerVulkanDemo/3dgs.cpp.opt/src/shaders/calibrate.comp -o D:/liuyue/physDreamerVulkanDemo/3dgs.cpp.opt/build_msvc143/shaders/calibrate.spv -DNDEBUG
+if %errorlevel% neq 0 goto :cmEnd
+:cmEnd
+endlocal &amp; call :cmErrorLevel %errorlevel% &amp; goto :cmDone
+:cmErrorLevel
+exit /b %1
+:cmDone
+if %errorlevel% neq 0 goto :VCEnd</Command>
+      <AdditionalInputs Condition="'$(Configuration)|$(Platform)'=='RelWithDebInfo|x64'">D:\liuyue\physDreamerVulkanDemo\3dgs.cpp.opt\src\shaders\calibrate.comp;%(AdditionalInputs)</AdditionalInputs>
+      <Outputs Condition="'$(Configuration)|$(Platform)'=='RelWithDebInfo|x64'">D:\liuyue\physDreamerVulkanDemo\3dgs.cpp.opt\build_msvc143\shaders\calibrate.spv</Outputs>
+      <LinkObjects Condition="'$(Configuration)|$(Platform)'=='RelWithDebInfo|x64'">false</LinkObjects>
+    </CustomBuild>
+  </ItemGroup>
+  <ItemGroup>
+    <CustomBuild Include="D:\liuyue\physDreamerVulkanDemo\3dgs.cpp.opt\build_msvc143\CMakeFiles\00bcc53426d4f746c66ab8ad83b9a340\compute_stress.spv.rule">
+      <Message Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">Generating ../../shaders/compute_stress.spv</Message>
+      <Command Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">setlocal
+C:\Python314\Lib\site-packages\cmake\data\bin\cmake.exe -E make_directory D:/liuyue/physDreamerVulkanDemo/3dgs.cpp.opt/build_msvc143/shaders/
+if %errorlevel% neq 0 goto :cmEnd
+C:\VulkanSDK\1.4.350.0\Bin\glslangValidator.exe --target-env vulkan1.2 -V D:/liuyue/physDreamerVulkanDemo/3dgs.cpp.opt/src/shaders/mpm/compute_stress.comp -o D:/liuyue/physDreamerVulkanDemo/3dgs.cpp.opt/build_msvc143/shaders/compute_stress.spv -DNDEBUG
+if %errorlevel% neq 0 goto :cmEnd
+:cmEnd
+endlocal &amp; call :cmErrorLevel %errorlevel% &amp; goto :cmDone
+:cmErrorLevel
+exit /b %1
+:cmDone
+if %errorlevel% neq 0 goto :VCEnd</Command>
+      <AdditionalInputs Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">D:\liuyue\physDreamerVulkanDemo\3dgs.cpp.opt\src\shaders\mpm\compute_stress.comp;%(AdditionalInputs)</AdditionalInputs>
+      <Outputs Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">D:\liuyue\physDreamerVulkanDemo\3dgs.cpp.opt\build_msvc143\shaders\compute_stress.spv</Outputs>
+      <LinkObjects Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">false</LinkObjects>
+      <Message Condition="'$(Configuration)|$(Platform)'=='Release|x64'">Generating ../../shaders/compute_stress.spv</Message>
+      <Command Condition="'$(Configuration)|$(Platform)'=='Release|x64'">setlocal
+C:\Python314\Lib\site-packages\cmake\data\bin\cmake.exe -E make_directory D:/liuyue/physDreamerVulkanDemo/3dgs.cpp.opt/build_msvc143/shaders/
+if %errorlevel% neq 0 goto :cmEnd
+C:\VulkanSDK\1.4.350.0\Bin\glslangValidator.exe --target-env vulkan1.2 -V D:/liuyue/physDreamerVulkanDemo/3dgs.cpp.opt/src/shaders/mpm/compute_stress.comp -o D:/liuyue/physDreamerVulkanDemo/3dgs.cpp.opt/build_msvc143/shaders/compute_stress.spv -DNDEBUG
+if %errorlevel% neq 0 goto :cmEnd
+:cmEnd
+endlocal &amp; call :cmErrorLevel %errorlevel% &amp; goto :cmDone
+:cmErrorLevel
+exit /b %1
+:cmDone
+if %errorlevel% neq 0 goto :VCEnd</Command>
+      <AdditionalInputs Condition="'$(Configuration)|$(Platform)'=='Release|x64'">D:\liuyue\physDreamerVulkanDemo\3dgs.cpp.opt\src\shaders\mpm\compute_stress.comp;%(AdditionalInputs)</AdditionalInputs>
+      <Outputs Condition="'$(Configuration)|$(Platform)'=='Release|x64'">D:\liuyue\physDreamerVulkanDemo\3dgs.cpp.opt\build_msvc143\shaders\compute_stress.spv</Outputs>
+      <LinkObjects Condition="'$(Configuration)|$(Platform)'=='Release|x64'">false</LinkObjects>
+      <Message Condition="'$(Configuration)|$(Platform)'=='MinSizeRel|x64'">Generating ../../shaders/compute_stress.spv</Message>
+      <Command Condition="'$(Configuration)|$(Platform)'=='MinSizeRel|x64'">setlocal
+C:\Python314\Lib\site-packages\cmake\data\bin\cmake.exe -E make_directory D:/liuyue/physDreamerVulkanDemo/3dgs.cpp.opt/build_msvc143/shaders/
+if %errorlevel% neq 0 goto :cmEnd
+C:\VulkanSDK\1.4.350.0\Bin\glslangValidator.exe --target-env vulkan1.2 -V D:/liuyue/physDreamerVulkanDemo/3dgs.cpp.opt/src/shaders/mpm/compute_stress.comp -o D:/liuyue/physDreamerVulkanDemo/3dgs.cpp.opt/build_msvc143/shaders/compute_stress.spv -DNDEBUG
+if %errorlevel% neq 0 goto :cmEnd
+:cmEnd
+endlocal &amp; call :cmErrorLevel %errorlevel% &amp; goto :cmDone
+:cmErrorLevel
+exit /b %1
+:cmDone
+if %errorlevel% neq 0 goto :VCEnd</Command>
+      <AdditionalInputs Condition="'$(Configuration)|$(Platform)'=='MinSizeRel|x64'">D:\liuyue\physDreamerVulkanDemo\3dgs.cpp.opt\src\shaders\mpm\compute_stress.comp;%(AdditionalInputs)</AdditionalInputs>
+      <Outputs Condition="'$(Configuration)|$(Platform)'=='MinSizeRel|x64'">D:\liuyue\physDreamerVulkanDemo\3dgs.cpp.opt\build_msvc143\shaders\compute_stress.spv</Outputs>
+      <LinkObjects Condition="'$(Configuration)|$(Platform)'=='MinSizeRel|x64'">false</LinkObjects>
+      <Message Condition="'$(Configuration)|$(Platform)'=='RelWithDebInfo|x64'">Generating ../../shaders/compute_stress.spv</Message>
+      <Command Condition="'$(Configuration)|$(Platform)'=='RelWithDebInfo|x64'">setlocal
+C:\Python314\Lib\site-packages\cmake\data\bin\cmake.exe -E make_directory D:/liuyue/physDreamerVulkanDemo/3dgs.cpp.opt/build_msvc143/shaders/
+if %errorlevel% neq 0 goto :cmEnd
+C:\VulkanSDK\1.4.350.0\Bin\glslangValidator.exe --target-env vulkan1.2 -V D:/liuyue/physDreamerVulkanDemo/3dgs.cpp.opt/src/shaders/mpm/compute_stress.comp -o D:/liuyue/physDreamerVulkanDemo/3dgs.cpp.opt/build_msvc143/shaders/compute_stress.spv -DNDEBUG
+if %errorlevel% neq 0 goto :cmEnd
+:cmEnd
+endlocal &amp; call :cmErrorLevel %errorlevel% &amp; goto :cmDone
+:cmErrorLevel
+exit /b %1
+:cmDone
+if %errorlevel% neq 0 goto :VCEnd</Command>
+      <AdditionalInputs Condition="'$(Configuration)|$(Platform)'=='RelWithDebInfo|x64'">D:\liuyue\physDreamerVulkanDemo\3dgs.cpp.opt\src\shaders\mpm\compute_stress.comp;%(AdditionalInputs)</AdditionalInputs>
+      <Outputs Condition="'$(Configuration)|$(Platform)'=='RelWithDebInfo|x64'">D:\liuyue\physDreamerVulkanDemo\3dgs.cpp.opt\build_msvc143\shaders\compute_stress.spv</Outputs>
+      <LinkObjects Condition="'$(Configuration)|$(Platform)'=='RelWithDebInfo|x64'">false</LinkObjects>
+    </CustomBuild>
+  </ItemGroup>
+  <ItemGroup>
+    <CustomBuild Include="D:\liuyue\physDreamerVulkanDemo\3dgs.cpp.opt\build_msvc143\CMakeFiles\00bcc53426d4f746c66ab8ad83b9a340\g2p.spv.rule">
+      <Message Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">Generating ../../shaders/g2p.spv</Message>
+      <Command Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">setlocal
+C:\Python314\Lib\site-packages\cmake\data\bin\cmake.exe -E make_directory D:/liuyue/physDreamerVulkanDemo/3dgs.cpp.opt/build_msvc143/shaders/
+if %errorlevel% neq 0 goto :cmEnd
+C:\VulkanSDK\1.4.350.0\Bin\glslangValidator.exe --target-env vulkan1.2 -V D:/liuyue/physDreamerVulkanDemo/3dgs.cpp.opt/src/shaders/mpm/g2p.comp -o D:/liuyue/physDreamerVulkanDemo/3dgs.cpp.opt/build_msvc143/shaders/g2p.spv -DNDEBUG
+if %errorlevel% neq 0 goto :cmEnd
+:cmEnd
+endlocal &amp; call :cmErrorLevel %errorlevel% &amp; goto :cmDone
+:cmErrorLevel
+exit /b %1
+:cmDone
+if %errorlevel% neq 0 goto :VCEnd</Command>
+      <AdditionalInputs Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">D:\liuyue\physDreamerVulkanDemo\3dgs.cpp.opt\src\shaders\mpm\g2p.comp;%(AdditionalInputs)</AdditionalInputs>
+      <Outputs Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">D:\liuyue\physDreamerVulkanDemo\3dgs.cpp.opt\build_msvc143\shaders\g2p.spv</Outputs>
+      <LinkObjects Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">false</LinkObjects>
+      <Message Condition="'$(Configuration)|$(Platform)'=='Release|x64'">Generating ../../shaders/g2p.spv</Message>
+      <Command Condition="'$(Configuration)|$(Platform)'=='Release|x64'">setlocal
+C:\Python314\Lib\site-packages\cmake\data\bin\cmake.exe -E make_directory D:/liuyue/physDreamerVulkanDemo/3dgs.cpp.opt/build_msvc143/shaders/
+if %errorlevel% neq 0 goto :cmEnd
+C:\VulkanSDK\1.4.350.0\Bin\glslangValidator.exe --target-env vulkan1.2 -V D:/liuyue/physDreamerVulkanDemo/3dgs.cpp.opt/src/shaders/mpm/g2p.comp -o D:/liuyue/physDreamerVulkanDemo/3dgs.cpp.opt/build_msvc143/shaders/g2p.spv -DNDEBUG
+if %errorlevel% neq 0 goto :cmEnd
+:cmEnd
+endlocal &amp; call :cmErrorLevel %errorlevel% &amp; goto :cmDone
+:cmErrorLevel
+exit /b %1
+:cmDone
+if %errorlevel% neq 0 goto :VCEnd</Command>
+      <AdditionalInputs Condition="'$(Configuration)|$(Platform)'=='Release|x64'">D:\liuyue\physDreamerVulkanDemo\3dgs.cpp.opt\src\shaders\mpm\g2p.comp;%(AdditionalInputs)</AdditionalInputs>
+      <Outputs Condition="'$(Configuration)|$(Platform)'=='Release|x64'">D:\liuyue\physDreamerVulkanDemo\3dgs.cpp.opt\build_msvc143\shaders\g2p.spv</Outputs>
+      <LinkObjects Condition="'$(Configuration)|$(Platform)'=='Release|x64'">false</LinkObjects>
+      <Message Condition="'$(Configuration)|$(Platform)'=='MinSizeRel|x64'">Generating ../../shaders/g2p.spv</Message>
+      <Command Condition="'$(Configuration)|$(Platform)'=='MinSizeRel|x64'">setlocal
+C:\Python314\Lib\site-packages\cmake\data\bin\cmake.exe -E make_directory D:/liuyue/physDreamerVulkanDemo/3dgs.cpp.opt/build_msvc143/shaders/
+if %errorlevel% neq 0 goto :cmEnd
+C:\VulkanSDK\1.4.350.0\Bin\glslangValidator.exe --target-env vulkan1.2 -V D:/liuyue/physDreamerVulkanDemo/3dgs.cpp.opt/src/shaders/mpm/g2p.comp -o D:/liuyue/physDreamerVulkanDemo/3dgs.cpp.opt/build_msvc143/shaders/g2p.spv -DNDEBUG
+if %errorlevel% neq 0 goto :cmEnd
+:cmEnd
+endlocal &amp; call :cmErrorLevel %errorlevel% &amp; goto :cmDone
+:cmErrorLevel
+exit /b %1
+:cmDone
+if %errorlevel% neq 0 goto :VCEnd</Command>
+      <AdditionalInputs Condition="'$(Configuration)|$(Platform)'=='MinSizeRel|x64'">D:\liuyue\physDreamerVulkanDemo\3dgs.cpp.opt\src\shaders\mpm\g2p.comp;%(AdditionalInputs)</AdditionalInputs>
+      <Outputs Condition="'$(Configuration)|$(Platform)'=='MinSizeRel|x64'">D:\liuyue\physDreamerVulkanDemo\3dgs.cpp.opt\build_msvc143\shaders\g2p.spv</Outputs>
+      <LinkObjects Condition="'$(Configuration)|$(Platform)'=='MinSizeRel|x64'">false</LinkObjects>
+      <Message Condition="'$(Configuration)|$(Platform)'=='RelWithDebInfo|x64'">Generating ../../shaders/g2p.spv</Message>
+      <Command Condition="'$(Configuration)|$(Platform)'=='RelWithDebInfo|x64'">setlocal
+C:\Python314\Lib\site-packages\cmake\data\bin\cmake.exe -E make_directory D:/liuyue/physDreamerVulkanDemo/3dgs.cpp.opt/build_msvc143/shaders/
+if %errorlevel% neq 0 goto :cmEnd
+C:\VulkanSDK\1.4.350.0\Bin\glslangValidator.exe --target-env vulkan1.2 -V D:/liuyue/physDreamerVulkanDemo/3dgs.cpp.opt/src/shaders/mpm/g2p.comp -o D:/liuyue/physDreamerVulkanDemo/3dgs.cpp.opt/build_msvc143/shaders/g2p.spv -DNDEBUG
+if %errorlevel% neq 0 goto :cmEnd
+:cmEnd
+endlocal &amp; call :cmErrorLevel %errorlevel% &amp; goto :cmDone
+:cmErrorLevel
+exit /b %1
+:cmDone
+if %errorlevel% neq 0 goto :VCEnd</Command>
+      <AdditionalInputs Condition="'$(Configuration)|$(Platform)'=='RelWithDebInfo|x64'">D:\liuyue\physDreamerVulkanDemo\3dgs.cpp.opt\src\shaders\mpm\g2p.comp;%(AdditionalInputs)</AdditionalInputs>
+      <Outputs Condition="'$(Configuration)|$(Platform)'=='RelWithDebInfo|x64'">D:\liuyue\physDreamerVulkanDemo\3dgs.cpp.opt\build_msvc143\shaders\g2p.spv</Outputs>
+      <LinkObjects Condition="'$(Configuration)|$(Platform)'=='RelWithDebInfo|x64'">false</LinkObjects>
+    </CustomBuild>
+  </ItemGroup>
+  <ItemGroup>
+    <CustomBuild Include="D:\liuyue\physDreamerVulkanDemo\3dgs.cpp.opt\build_msvc143\CMakeFiles\00bcc53426d4f746c66ab8ad83b9a340\grid_update.spv.rule">
+      <Message Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">Generating ../../shaders/grid_update.spv</Message>
+      <Command Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">setlocal
+C:\Python314\Lib\site-packages\cmake\data\bin\cmake.exe -E make_directory D:/liuyue/physDreamerVulkanDemo/3dgs.cpp.opt/build_msvc143/shaders/
+if %errorlevel% neq 0 goto :cmEnd
+C:\VulkanSDK\1.4.350.0\Bin\glslangValidator.exe --target-env vulkan1.2 -V D:/liuyue/physDreamerVulkanDemo/3dgs.cpp.opt/src/shaders/mpm/grid_update.comp -o D:/liuyue/physDreamerVulkanDemo/3dgs.cpp.opt/build_msvc143/shaders/grid_update.spv -DNDEBUG
+if %errorlevel% neq 0 goto :cmEnd
+:cmEnd
+endlocal &amp; call :cmErrorLevel %errorlevel% &amp; goto :cmDone
+:cmErrorLevel
+exit /b %1
+:cmDone
+if %errorlevel% neq 0 goto :VCEnd</Command>
+      <AdditionalInputs Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">D:\liuyue\physDreamerVulkanDemo\3dgs.cpp.opt\src\shaders\mpm\grid_update.comp;%(AdditionalInputs)</AdditionalInputs>
+      <Outputs Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">D:\liuyue\physDreamerVulkanDemo\3dgs.cpp.opt\build_msvc143\shaders\grid_update.spv</Outputs>
+      <LinkObjects Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">false</LinkObjects>
+      <Message Condition="'$(Configuration)|$(Platform)'=='Release|x64'">Generating ../../shaders/grid_update.spv</Message>
+      <Command Condition="'$(Configuration)|$(Platform)'=='Release|x64'">setlocal
+C:\Python314\Lib\site-packages\cmake\data\bin\cmake.exe -E make_directory D:/liuyue/physDreamerVulkanDemo/3dgs.cpp.opt/build_msvc143/shaders/
+if %errorlevel% neq 0 goto :cmEnd
+C:\VulkanSDK\1.4.350.0\Bin\glslangValidator.exe --target-env vulkan1.2 -V D:/liuyue/physDreamerVulkanDemo/3dgs.cpp.opt/src/shaders/mpm/grid_update.comp -o D:/liuyue/physDreamerVulkanDemo/3dgs.cpp.opt/build_msvc143/shaders/grid_update.spv -DNDEBUG
+if %errorlevel% neq 0 goto :cmEnd
+:cmEnd
+endlocal &amp; call :cmErrorLevel %errorlevel% &amp; goto :cmDone
+:cmErrorLevel
+exit /b %1
+:cmDone
+if %errorlevel% neq 0 goto :VCEnd</Command>
+      <AdditionalInputs Condition="'$(Configuration)|$(Platform)'=='Release|x64'">D:\liuyue\physDreamerVulkanDemo\3dgs.cpp.opt\src\shaders\mpm\grid_update.comp;%(AdditionalInputs)</AdditionalInputs>
+      <Outputs Condition="'$(Configuration)|$(Platform)'=='Release|x64'">D:\liuyue\physDreamerVulkanDemo\3dgs.cpp.opt\build_msvc143\shaders\grid_update.spv</Outputs>
+      <LinkObjects Condition="'$(Configuration)|$(Platform)'=='Release|x64'">false</LinkObjects>
+      <Message Condition="'$(Configuration)|$(Platform)'=='MinSizeRel|x64'">Generating ../../shaders/grid_update.spv</Message>
+      <Command Condition="'$(Configuration)|$(Platform)'=='MinSizeRel|x64'">setlocal
+C:\Python314\Lib\site-packages\cmake\data\bin\cmake.exe -E make_directory D:/liuyue/physDreamerVulkanDemo/3dgs.cpp.opt/build_msvc143/shaders/
+if %errorlevel% neq 0 goto :cmEnd
+C:\VulkanSDK\1.4.350.0\Bin\glslangValidator.exe --target-env vulkan1.2 -V D:/liuyue/physDreamerVulkanDemo/3dgs.cpp.opt/src/shaders/mpm/grid_update.comp -o D:/liuyue/physDreamerVulkanDemo/3dgs.cpp.opt/build_msvc143/shaders/grid_update.spv -DNDEBUG
+if %errorlevel% neq 0 goto :cmEnd
+:cmEnd
+endlocal &amp; call :cmErrorLevel %errorlevel% &amp; goto :cmDone
+:cmErrorLevel
+exit /b %1
+:cmDone
+if %errorlevel% neq 0 goto :VCEnd</Command>
+      <AdditionalInputs Condition="'$(Configuration)|$(Platform)'=='MinSizeRel|x64'">D:\liuyue\physDreamerVulkanDemo\3dgs.cpp.opt\src\shaders\mpm\grid_update.comp;%(AdditionalInputs)</AdditionalInputs>
+      <Outputs Condition="'$(Configuration)|$(Platform)'=='MinSizeRel|x64'">D:\liuyue\physDreamerVulkanDemo\3dgs.cpp.opt\build_msvc143\shaders\grid_update.spv</Outputs>
+      <LinkObjects Condition="'$(Configuration)|$(Platform)'=='MinSizeRel|x64'">false</LinkObjects>
+      <Message Condition="'$(Configuration)|$(Platform)'=='RelWithDebInfo|x64'">Generating ../../shaders/grid_update.spv</Message>
+      <Command Condition="'$(Configuration)|$(Platform)'=='RelWithDebInfo|x64'">setlocal
+C:\Python314\Lib\site-packages\cmake\data\bin\cmake.exe -E make_directory D:/liuyue/physDreamerVulkanDemo/3dgs.cpp.opt/build_msvc143/shaders/
+if %errorlevel% neq 0 goto :cmEnd
+C:\VulkanSDK\1.4.350.0\Bin\glslangValidator.exe --target-env vulkan1.2 -V D:/liuyue/physDreamerVulkanDemo/3dgs.cpp.opt/src/shaders/mpm/grid_update.comp -o D:/liuyue/physDreamerVulkanDemo/3dgs.cpp.opt/build_msvc143/shaders/grid_update.spv -DNDEBUG
+if %errorlevel% neq 0 goto :cmEnd
+:cmEnd
+endlocal &amp; call :cmErrorLevel %errorlevel% &amp; goto :cmDone
+:cmErrorLevel
+exit /b %1
+:cmDone
+if %errorlevel% neq 0 goto :VCEnd</Command>
+      <AdditionalInputs Condition="'$(Configuration)|$(Platform)'=='RelWithDebInfo|x64'">D:\liuyue\physDreamerVulkanDemo\3dgs.cpp.opt\src\shaders\mpm\grid_update.comp;%(AdditionalInputs)</AdditionalInputs>
+      <Outputs Condition="'$(Configuration)|$(Platform)'=='RelWithDebInfo|x64'">D:\liuyue\physDreamerVulkanDemo\3dgs.cpp.opt\build_msvc143\shaders\grid_update.spv</Outputs>
+      <LinkObjects Condition="'$(Configuration)|$(Platform)'=='RelWithDebInfo|x64'">false</LinkObjects>
+    </CustomBuild>
+  </ItemGroup>
+  <ItemGroup>
+    <CustomBuild Include="D:\liuyue\physDreamerVulkanDemo\3dgs.cpp.opt\build_msvc143\CMakeFiles\00bcc53426d4f746c66ab8ad83b9a340\hist.spv.rule">
+      <Message Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">Generating ../../shaders/hist.spv</Message>
+      <Command Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">setlocal
+C:\Python314\Lib\site-packages\cmake\data\bin\cmake.exe -E make_directory D:/liuyue/physDreamerVulkanDemo/3dgs.cpp.opt/build_msvc143/shaders/
+if %errorlevel% neq 0 goto :cmEnd
+C:\VulkanSDK\1.4.350.0\Bin\glslangValidator.exe --target-env vulkan1.2 -V D:/liuyue/physDreamerVulkanDemo/3dgs.cpp.opt/src/shaders/sort/hist.comp -o D:/liuyue/physDreamerVulkanDemo/3dgs.cpp.opt/build_msvc143/shaders/hist.spv -DNDEBUG
+if %errorlevel% neq 0 goto :cmEnd
+:cmEnd
+endlocal &amp; call :cmErrorLevel %errorlevel% &amp; goto :cmDone
+:cmErrorLevel
+exit /b %1
+:cmDone
+if %errorlevel% neq 0 goto :VCEnd</Command>
+      <AdditionalInputs Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">D:\liuyue\physDreamerVulkanDemo\3dgs.cpp.opt\src\shaders\sort\hist.comp;%(AdditionalInputs)</AdditionalInputs>
+      <Outputs Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">D:\liuyue\physDreamerVulkanDemo\3dgs.cpp.opt\build_msvc143\shaders\hist.spv</Outputs>
+      <LinkObjects Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">false</LinkObjects>
+      <Message Condition="'$(Configuration)|$(Platform)'=='Release|x64'">Generating ../../shaders/hist.spv</Message>
+      <Command Condition="'$(Configuration)|$(Platform)'=='Release|x64'">setlocal
+C:\Python314\Lib\site-packages\cmake\data\bin\cmake.exe -E make_directory D:/liuyue/physDreamerVulkanDemo/3dgs.cpp.opt/build_msvc143/shaders/
+if %errorlevel% neq 0 goto :cmEnd
+C:\VulkanSDK\1.4.350.0\Bin\glslangValidator.exe --target-env vulkan1.2 -V D:/liuyue/physDreamerVulkanDemo/3dgs.cpp.opt/src/shaders/sort/hist.comp -o D:/liuyue/physDreamerVulkanDemo/3dgs.cpp.opt/build_msvc143/shaders/hist.spv -DNDEBUG
+if %errorlevel% neq 0 goto :cmEnd
+:cmEnd
+endlocal &amp; call :cmErrorLevel %errorlevel% &amp; goto :cmDone
+:cmErrorLevel
+exit /b %1
+:cmDone
+if %errorlevel% neq 0 goto :VCEnd</Command>
+      <AdditionalInputs Condition="'$(Configuration)|$(Platform)'=='Release|x64'">D:\liuyue\physDreamerVulkanDemo\3dgs.cpp.opt\src\shaders\sort\hist.comp;%(AdditionalInputs)</AdditionalInputs>
+      <Outputs Condition="'$(Configuration)|$(Platform)'=='Release|x64'">D:\liuyue\physDreamerVulkanDemo\3dgs.cpp.opt\build_msvc143\shaders\hist.spv</Outputs>
+      <LinkObjects Condition="'$(Configuration)|$(Platform)'=='Release|x64'">false</LinkObjects>
+      <Message Condition="'$(Configuration)|$(Platform)'=='MinSizeRel|x64'">Generating ../../shaders/hist.spv</Message>
+      <Command Condition="'$(Configuration)|$(Platform)'=='MinSizeRel|x64'">setlocal
+C:\Python314\Lib\site-packages\cmake\data\bin\cmake.exe -E make_directory D:/liuyue/physDreamerVulkanDemo/3dgs.cpp.opt/build_msvc143/shaders/
+if %errorlevel% neq 0 goto :cmEnd
+C:\VulkanSDK\1.4.350.0\Bin\glslangValidator.exe --target-env vulkan1.2 -V D:/liuyue/physDreamerVulkanDemo/3dgs.cpp.opt/src/shaders/sort/hist.comp -o D:/liuyue/physDreamerVulkanDemo/3dgs.cpp.opt/build_msvc143/shaders/hist.spv -DNDEBUG
+if %errorlevel% neq 0 goto :cmEnd
+:cmEnd
+endlocal &amp; call :cmErrorLevel %errorlevel% &amp; goto :cmDone
+:cmErrorLevel
+exit /b %1
+:cmDone
+if %errorlevel% neq 0 goto :VCEnd</Command>
+      <AdditionalInputs Condition="'$(Configuration)|$(Platform)'=='MinSizeRel|x64'">D:\liuyue\physDreamerVulkanDemo\3dgs.cpp.opt\src\shaders\sort\hist.comp;%(AdditionalInputs)</AdditionalInputs>
+      <Outputs Condition="'$(Configuration)|$(Platform)'=='MinSizeRel|x64'">D:\liuyue\physDreamerVulkanDemo\3dgs.cpp.opt\build_msvc143\shaders\hist.spv</Outputs>
+      <LinkObjects Condition="'$(Configuration)|$(Platform)'=='MinSizeRel|x64'">false</LinkObjects>
+      <Message Condition="'$(Configuration)|$(Platform)'=='RelWithDebInfo|x64'">Generating ../../shaders/hist.spv</Message>
+      <Command Condition="'$(Configuration)|$(Platform)'=='RelWithDebInfo|x64'">setlocal
+C:\Python314\Lib\site-packages\cmake\data\bin\cmake.exe -E make_directory D:/liuyue/physDreamerVulkanDemo/3dgs.cpp.opt/build_msvc143/shaders/
+if %errorlevel% neq 0 goto :cmEnd
+C:\VulkanSDK\1.4.350.0\Bin\glslangValidator.exe --target-env vulkan1.2 -V D:/liuyue/physDreamerVulkanDemo/3dgs.cpp.opt/src/shaders/sort/hist.comp -o D:/liuyue/physDreamerVulkanDemo/3dgs.cpp.opt/build_msvc143/shaders/hist.spv -DNDEBUG
+if %errorlevel% neq 0 goto :cmEnd
+:cmEnd
+endlocal &amp; call :cmErrorLevel %errorlevel% &amp; goto :cmDone
+:cmErrorLevel
+exit /b %1
+:cmDone
+if %errorlevel% neq 0 goto :VCEnd</Command>
+      <AdditionalInputs Condition="'$(Configuration)|$(Platform)'=='RelWithDebInfo|x64'">D:\liuyue\physDreamerVulkanDemo\3dgs.cpp.opt\src\shaders\sort\hist.comp;%(AdditionalInputs)</AdditionalInputs>
+      <Outputs Condition="'$(Configuration)|$(Platform)'=='RelWithDebInfo|x64'">D:\liuyue\physDreamerVulkanDemo\3dgs.cpp.opt\build_msvc143\shaders\hist.spv</Outputs>
+      <LinkObjects Condition="'$(Configuration)|$(Platform)'=='RelWithDebInfo|x64'">false</LinkObjects>
+    </CustomBuild>
+  </ItemGroup>
+  <ItemGroup>
+    <CustomBuild Include="D:\liuyue\physDreamerVulkanDemo\3dgs.cpp.opt\build_msvc143\CMakeFiles\00bcc53426d4f746c66ab8ad83b9a340\map_displacement.spv.rule">
+      <Message Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">Generating ../../shaders/map_displacement.spv</Message>
+      <Command Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">setlocal
+C:\Python314\Lib\site-packages\cmake\data\bin\cmake.exe -E make_directory D:/liuyue/physDreamerVulkanDemo/3dgs.cpp.opt/build_msvc143/shaders/
+if %errorlevel% neq 0 goto :cmEnd
+C:\VulkanSDK\1.4.350.0\Bin\glslangValidator.exe --target-env vulkan1.2 -V D:/liuyue/physDreamerVulkanDemo/3dgs.cpp.opt/src/shaders/coupling/map_displacement.comp -o D:/liuyue/physDreamerVulkanDemo/3dgs.cpp.opt/build_msvc143/shaders/map_displacement.spv -DNDEBUG
+if %errorlevel% neq 0 goto :cmEnd
+:cmEnd
+endlocal &amp; call :cmErrorLevel %errorlevel% &amp; goto :cmDone
+:cmErrorLevel
+exit /b %1
+:cmDone
+if %errorlevel% neq 0 goto :VCEnd</Command>
+      <AdditionalInputs Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">D:\liuyue\physDreamerVulkanDemo\3dgs.cpp.opt\src\shaders\coupling\map_displacement.comp;%(AdditionalInputs)</AdditionalInputs>
+      <Outputs Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">D:\liuyue\physDreamerVulkanDemo\3dgs.cpp.opt\build_msvc143\shaders\map_displacement.spv</Outputs>
+      <LinkObjects Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">false</LinkObjects>
+      <Message Condition="'$(Configuration)|$(Platform)'=='Release|x64'">Generating ../../shaders/map_displacement.spv</Message>
+      <Command Condition="'$(Configuration)|$(Platform)'=='Release|x64'">setlocal
+C:\Python314\Lib\site-packages\cmake\data\bin\cmake.exe -E make_directory D:/liuyue/physDreamerVulkanDemo/3dgs.cpp.opt/build_msvc143/shaders/
+if %errorlevel% neq 0 goto :cmEnd
+C:\VulkanSDK\1.4.350.0\Bin\glslangValidator.exe --target-env vulkan1.2 -V D:/liuyue/physDreamerVulkanDemo/3dgs.cpp.opt/src/shaders/coupling/map_displacement.comp -o D:/liuyue/physDreamerVulkanDemo/3dgs.cpp.opt/build_msvc143/shaders/map_displacement.spv -DNDEBUG
+if %errorlevel% neq 0 goto :cmEnd
+:cmEnd
+endlocal &amp; call :cmErrorLevel %errorlevel% &amp; goto :cmDone
+:cmErrorLevel
+exit /b %1
+:cmDone
+if %errorlevel% neq 0 goto :VCEnd</Command>
+      <AdditionalInputs Condition="'$(Configuration)|$(Platform)'=='Release|x64'">D:\liuyue\physDreamerVulkanDemo\3dgs.cpp.opt\src\shaders\coupling\map_displacement.comp;%(AdditionalInputs)</AdditionalInputs>
+      <Outputs Condition="'$(Configuration)|$(Platform)'=='Release|x64'">D:\liuyue\physDreamerVulkanDemo\3dgs.cpp.opt\build_msvc143\shaders\map_displacement.spv</Outputs>
+      <LinkObjects Condition="'$(Configuration)|$(Platform)'=='Release|x64'">false</LinkObjects>
+      <Message Condition="'$(Configuration)|$(Platform)'=='MinSizeRel|x64'">Generating ../../shaders/map_displacement.spv</Message>
+      <Command Condition="'$(Configuration)|$(Platform)'=='MinSizeRel|x64'">setlocal
+C:\Python314\Lib\site-packages\cmake\data\bin\cmake.exe -E make_directory D:/liuyue/physDreamerVulkanDemo/3dgs.cpp.opt/build_msvc143/shaders/
+if %errorlevel% neq 0 goto :cmEnd
+C:\VulkanSDK\1.4.350.0\Bin\glslangValidator.exe --target-env vulkan1.2 -V D:/liuyue/physDreamerVulkanDemo/3dgs.cpp.opt/src/shaders/coupling/map_displacement.comp -o D:/liuyue/physDreamerVulkanDemo/3dgs.cpp.opt/build_msvc143/shaders/map_displacement.spv -DNDEBUG
+if %errorlevel% neq 0 goto :cmEnd
+:cmEnd
+endlocal &amp; call :cmErrorLevel %errorlevel% &amp; goto :cmDone
+:cmErrorLevel
+exit /b %1
+:cmDone
+if %errorlevel% neq 0 goto :VCEnd</Command>
+      <AdditionalInputs Condition="'$(Configuration)|$(Platform)'=='MinSizeRel|x64'">D:\liuyue\physDreamerVulkanDemo\3dgs.cpp.opt\src\shaders\coupling\map_displacement.comp;%(AdditionalInputs)</AdditionalInputs>
+      <Outputs Condition="'$(Configuration)|$(Platform)'=='MinSizeRel|x64'">D:\liuyue\physDreamerVulkanDemo\3dgs.cpp.opt\build_msvc143\shaders\map_displacement.spv</Outputs>
+      <LinkObjects Condition="'$(Configuration)|$(Platform)'=='MinSizeRel|x64'">false</LinkObjects>
+      <Message Condition="'$(Configuration)|$(Platform)'=='RelWithDebInfo|x64'">Generating ../../shaders/map_displacement.spv</Message>
+      <Command Condition="'$(Configuration)|$(Platform)'=='RelWithDebInfo|x64'">setlocal
+C:\Python314\Lib\site-packages\cmake\data\bin\cmake.exe -E make_directory D:/liuyue/physDreamerVulkanDemo/3dgs.cpp.opt/build_msvc143/shaders/
+if %errorlevel% neq 0 goto :cmEnd
+C:\VulkanSDK\1.4.350.0\Bin\glslangValidator.exe --target-env vulkan1.2 -V D:/liuyue/physDreamerVulkanDemo/3dgs.cpp.opt/src/shaders/coupling/map_displacement.comp -o D:/liuyue/physDreamerVulkanDemo/3dgs.cpp.opt/build_msvc143/shaders/map_displacement.spv -DNDEBUG
+if %errorlevel% neq 0 goto :cmEnd
+:cmEnd
+endlocal &amp; call :cmErrorLevel %errorlevel% &amp; goto :cmDone
+:cmErrorLevel
+exit /b %1
+:cmDone
+if %errorlevel% neq 0 goto :VCEnd</Command>
+      <AdditionalInputs Condition="'$(Configuration)|$(Platform)'=='RelWithDebInfo|x64'">D:\liuyue\physDreamerVulkanDemo\3dgs.cpp.opt\src\shaders\coupling\map_displacement.comp;%(AdditionalInputs)</AdditionalInputs>
+      <Outputs Condition="'$(Configuration)|$(Platform)'=='RelWithDebInfo|x64'">D:\liuyue\physDreamerVulkanDemo\3dgs.cpp.opt\build_msvc143\shaders\map_displacement.spv</Outputs>
+      <LinkObjects Condition="'$(Configuration)|$(Platform)'=='RelWithDebInfo|x64'">false</LinkObjects>
+    </CustomBuild>
+  </ItemGroup>
+  <ItemGroup>
+    <CustomBuild Include="D:\liuyue\physDreamerVulkanDemo\3dgs.cpp.opt\build_msvc143\CMakeFiles\00bcc53426d4f746c66ab8ad83b9a340\p2g.spv.rule">
+      <Message Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">Generating ../../shaders/p2g.spv</Message>
+      <Command Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">setlocal
+C:\Python314\Lib\site-packages\cmake\data\bin\cmake.exe -E make_directory D:/liuyue/physDreamerVulkanDemo/3dgs.cpp.opt/build_msvc143/shaders/
+if %errorlevel% neq 0 goto :cmEnd
+C:\VulkanSDK\1.4.350.0\Bin\glslangValidator.exe --target-env vulkan1.2 -V D:/liuyue/physDreamerVulkanDemo/3dgs.cpp.opt/src/shaders/mpm/p2g.comp -o D:/liuyue/physDreamerVulkanDemo/3dgs.cpp.opt/build_msvc143/shaders/p2g.spv -DNDEBUG
+if %errorlevel% neq 0 goto :cmEnd
+:cmEnd
+endlocal &amp; call :cmErrorLevel %errorlevel% &amp; goto :cmDone
+:cmErrorLevel
+exit /b %1
+:cmDone
+if %errorlevel% neq 0 goto :VCEnd</Command>
+      <AdditionalInputs Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">D:\liuyue\physDreamerVulkanDemo\3dgs.cpp.opt\src\shaders\mpm\p2g.comp;%(AdditionalInputs)</AdditionalInputs>
+      <Outputs Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">D:\liuyue\physDreamerVulkanDemo\3dgs.cpp.opt\build_msvc143\shaders\p2g.spv</Outputs>
+      <LinkObjects Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">false</LinkObjects>
+      <Message Condition="'$(Configuration)|$(Platform)'=='Release|x64'">Generating ../../shaders/p2g.spv</Message>
+      <Command Condition="'$(Configuration)|$(Platform)'=='Release|x64'">setlocal
+C:\Python314\Lib\site-packages\cmake\data\bin\cmake.exe -E make_directory D:/liuyue/physDreamerVulkanDemo/3dgs.cpp.opt/build_msvc143/shaders/
+if %errorlevel% neq 0 goto :cmEnd
+C:\VulkanSDK\1.4.350.0\Bin\glslangValidator.exe --target-env vulkan1.2 -V D:/liuyue/physDreamerVulkanDemo/3dgs.cpp.opt/src/shaders/mpm/p2g.comp -o D:/liuyue/physDreamerVulkanDemo/3dgs.cpp.opt/build_msvc143/shaders/p2g.spv -DNDEBUG
+if %errorlevel% neq 0 goto :cmEnd
+:cmEnd
+endlocal &amp; call :cmErrorLevel %errorlevel% &amp; goto :cmDone
+:cmErrorLevel
+exit /b %1
+:cmDone
+if %errorlevel% neq 0 goto :VCEnd</Command>
+      <AdditionalInputs Condition="'$(Configuration)|$(Platform)'=='Release|x64'">D:\liuyue\physDreamerVulkanDemo\3dgs.cpp.opt\src\shaders\mpm\p2g.comp;%(AdditionalInputs)</AdditionalInputs>
+      <Outputs Condition="'$(Configuration)|$(Platform)'=='Release|x64'">D:\liuyue\physDreamerVulkanDemo\3dgs.cpp.opt\build_msvc143\shaders\p2g.spv</Outputs>
+      <LinkObjects Condition="'$(Configuration)|$(Platform)'=='Release|x64'">false</LinkObjects>
+      <Message Condition="'$(Configuration)|$(Platform)'=='MinSizeRel|x64'">Generating ../../shaders/p2g.spv</Message>
+      <Command Condition="'$(Configuration)|$(Platform)'=='MinSizeRel|x64'">setlocal
+C:\Python314\Lib\site-packages\cmake\data\bin\cmake.exe -E make_directory D:/liuyue/physDreamerVulkanDemo/3dgs.cpp.opt/build_msvc143/shaders/
+if %errorlevel% neq 0 goto :cmEnd
+C:\VulkanSDK\1.4.350.0\Bin\glslangValidator.exe --target-env vulkan1.2 -V D:/liuyue/physDreamerVulkanDemo/3dgs.cpp.opt/src/shaders/mpm/p2g.comp -o D:/liuyue/physDreamerVulkanDemo/3dgs.cpp.opt/build_msvc143/shaders/p2g.spv -DNDEBUG
+if %errorlevel% neq 0 goto :cmEnd
+:cmEnd
+endlocal &amp; call :cmErrorLevel %errorlevel% &amp; goto :cmDone
+:cmErrorLevel
+exit /b %1
+:cmDone
+if %errorlevel% neq 0 goto :VCEnd</Command>
+      <AdditionalInputs Condition="'$(Configuration)|$(Platform)'=='MinSizeRel|x64'">D:\liuyue\physDreamerVulkanDemo\3dgs.cpp.opt\src\shaders\mpm\p2g.comp;%(AdditionalInputs)</AdditionalInputs>
+      <Outputs Condition="'$(Configuration)|$(Platform)'=='MinSizeRel|x64'">D:\liuyue\physDreamerVulkanDemo\3dgs.cpp.opt\build_msvc143\shaders\p2g.spv</Outputs>
+      <LinkObjects Condition="'$(Configuration)|$(Platform)'=='MinSizeRel|x64'">false</LinkObjects>
+      <Message Condition="'$(Configuration)|$(Platform)'=='RelWithDebInfo|x64'">Generating ../../shaders/p2g.spv</Message>
+      <Command Condition="'$(Configuration)|$(Platform)'=='RelWithDebInfo|x64'">setlocal
+C:\Python314\Lib\site-packages\cmake\data\bin\cmake.exe -E make_directory D:/liuyue/physDreamerVulkanDemo/3dgs.cpp.opt/build_msvc143/shaders/
+if %errorlevel% neq 0 goto :cmEnd
+C:\VulkanSDK\1.4.350.0\Bin\glslangValidator.exe --target-env vulkan1.2 -V D:/liuyue/physDreamerVulkanDemo/3dgs.cpp.opt/src/shaders/mpm/p2g.comp -o D:/liuyue/physDreamerVulkanDemo/3dgs.cpp.opt/build_msvc143/shaders/p2g.spv -DNDEBUG
+if %errorlevel% neq 0 goto :cmEnd
+:cmEnd
+endlocal &amp; call :cmErrorLevel %errorlevel% &amp; goto :cmDone
+:cmErrorLevel
+exit /b %1
+:cmDone
+if %errorlevel% neq 0 goto :VCEnd</Command>
+      <AdditionalInputs Condition="'$(Configuration)|$(Platform)'=='RelWithDebInfo|x64'">D:\liuyue\physDreamerVulkanDemo\3dgs.cpp.opt\src\shaders\mpm\p2g.comp;%(AdditionalInputs)</AdditionalInputs>
+      <Outputs Condition="'$(Configuration)|$(Platform)'=='RelWithDebInfo|x64'">D:\liuyue\physDreamerVulkanDemo\3dgs.cpp.opt\build_msvc143\shaders\p2g.spv</Outputs>
+      <LinkObjects Condition="'$(Configuration)|$(Platform)'=='RelWithDebInfo|x64'">false</LinkObjects>
+    </CustomBuild>
+  </ItemGroup>
+  <ItemGroup>
+    <CustomBuild Include="D:\liuyue\physDreamerVulkanDemo\3dgs.cpp.opt\build_msvc143\CMakeFiles\00bcc53426d4f746c66ab8ad83b9a340\precomp_cov3d.spv.rule">
+      <Message Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">Generating ../../shaders/precomp_cov3d.spv</Message>
+      <Command Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">setlocal
+C:\Python314\Lib\site-packages\cmake\data\bin\cmake.exe -E make_directory D:/liuyue/physDreamerVulkanDemo/3dgs.cpp.opt/build_msvc143/shaders/
+if %errorlevel% neq 0 goto :cmEnd
+C:\VulkanSDK\1.4.350.0\Bin\glslangValidator.exe --target-env vulkan1.2 -V D:/liuyue/physDreamerVulkanDemo/3dgs.cpp.opt/src/shaders/precomp_cov3d.comp -o D:/liuyue/physDreamerVulkanDemo/3dgs.cpp.opt/build_msvc143/shaders/precomp_cov3d.spv -DNDEBUG
+if %errorlevel% neq 0 goto :cmEnd
+:cmEnd
+endlocal &amp; call :cmErrorLevel %errorlevel% &amp; goto :cmDone
+:cmErrorLevel
+exit /b %1
+:cmDone
+if %errorlevel% neq 0 goto :VCEnd</Command>
+      <AdditionalInputs Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">D:\liuyue\physDreamerVulkanDemo\3dgs.cpp.opt\src\shaders\precomp_cov3d.comp;%(AdditionalInputs)</AdditionalInputs>
+      <Outputs Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">D:\liuyue\physDreamerVulkanDemo\3dgs.cpp.opt\build_msvc143\shaders\precomp_cov3d.spv</Outputs>
+      <LinkObjects Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">false</LinkObjects>
+      <Message Condition="'$(Configuration)|$(Platform)'=='Release|x64'">Generating ../../shaders/precomp_cov3d.spv</Message>
+      <Command Condition="'$(Configuration)|$(Platform)'=='Release|x64'">setlocal
+C:\Python314\Lib\site-packages\cmake\data\bin\cmake.exe -E make_directory D:/liuyue/physDreamerVulkanDemo/3dgs.cpp.opt/build_msvc143/shaders/
+if %errorlevel% neq 0 goto :cmEnd
+C:\VulkanSDK\1.4.350.0\Bin\glslangValidator.exe --target-env vulkan1.2 -V D:/liuyue/physDreamerVulkanDemo/3dgs.cpp.opt/src/shaders/precomp_cov3d.comp -o D:/liuyue/physDreamerVulkanDemo/3dgs.cpp.opt/build_msvc143/shaders/precomp_cov3d.spv -DNDEBUG
+if %errorlevel% neq 0 goto :cmEnd
+:cmEnd
+endlocal &amp; call :cmErrorLevel %errorlevel% &amp; goto :cmDone
+:cmErrorLevel
+exit /b %1
+:cmDone
+if %errorlevel% neq 0 goto :VCEnd</Command>
+      <AdditionalInputs Condition="'$(Configuration)|$(Platform)'=='Release|x64'">D:\liuyue\physDreamerVulkanDemo\3dgs.cpp.opt\src\shaders\precomp_cov3d.comp;%(AdditionalInputs)</AdditionalInputs>
+      <Outputs Condition="'$(Configuration)|$(Platform)'=='Release|x64'">D:\liuyue\physDreamerVulkanDemo\3dgs.cpp.opt\build_msvc143\shaders\precomp_cov3d.spv</Outputs>
+      <LinkObjects Condition="'$(Configuration)|$(Platform)'=='Release|x64'">false</LinkObjects>
+      <Message Condition="'$(Configuration)|$(Platform)'=='MinSizeRel|x64'">Generating ../../shaders/precomp_cov3d.spv</Message>
+      <Command Condition="'$(Configuration)|$(Platform)'=='MinSizeRel|x64'">setlocal
+C:\Python314\Lib\site-packages\cmake\data\bin\cmake.exe -E make_directory D:/liuyue/physDreamerVulkanDemo/3dgs.cpp.opt/build_msvc143/shaders/
+if %errorlevel% neq 0 goto :cmEnd
+C:\VulkanSDK\1.4.350.0\Bin\glslangValidator.exe --target-env vulkan1.2 -V D:/liuyue/physDreamerVulkanDemo/3dgs.cpp.opt/src/shaders/precomp_cov3d.comp -o D:/liuyue/physDreamerVulkanDemo/3dgs.cpp.opt/build_msvc143/shaders/precomp_cov3d.spv -DNDEBUG
+if %errorlevel% neq 0 goto :cmEnd
+:cmEnd
+endlocal &amp; call :cmErrorLevel %errorlevel% &amp; goto :cmDone
+:cmErrorLevel
+exit /b %1
+:cmDone
+if %errorlevel% neq 0 goto :VCEnd</Command>
+      <AdditionalInputs Condition="'$(Configuration)|$(Platform)'=='MinSizeRel|x64'">D:\liuyue\physDreamerVulkanDemo\3dgs.cpp.opt\src\shaders\precomp_cov3d.comp;%(AdditionalInputs)</AdditionalInputs>
+      <Outputs Condition="'$(Configuration)|$(Platform)'=='MinSizeRel|x64'">D:\liuyue\physDreamerVulkanDemo\3dgs.cpp.opt\build_msvc143\shaders\precomp_cov3d.spv</Outputs>
+      <LinkObjects Condition="'$(Configuration)|$(Platform)'=='MinSizeRel|x64'">false</LinkObjects>
+      <Message Condition="'$(Configuration)|$(Platform)'=='RelWithDebInfo|x64'">Generating ../../shaders/precomp_cov3d.spv</Message>
+      <Command Condition="'$(Configuration)|$(Platform)'=='RelWithDebInfo|x64'">setlocal
+C:\Python314\Lib\site-packages\cmake\data\bin\cmake.exe -E make_directory D:/liuyue/physDreamerVulkanDemo/3dgs.cpp.opt/build_msvc143/shaders/
+if %errorlevel% neq 0 goto :cmEnd
+C:\VulkanSDK\1.4.350.0\Bin\glslangValidator.exe --target-env vulkan1.2 -V D:/liuyue/physDreamerVulkanDemo/3dgs.cpp.opt/src/shaders/precomp_cov3d.comp -o D:/liuyue/physDreamerVulkanDemo/3dgs.cpp.opt/build_msvc143/shaders/precomp_cov3d.spv -DNDEBUG
+if %errorlevel% neq 0 goto :cmEnd
+:cmEnd
+endlocal &amp; call :cmErrorLevel %errorlevel% &amp; goto :cmDone
+:cmErrorLevel
+exit /b %1
+:cmDone
+if %errorlevel% neq 0 goto :VCEnd</Command>
+      <AdditionalInputs Condition="'$(Configuration)|$(Platform)'=='RelWithDebInfo|x64'">D:\liuyue\physDreamerVulkanDemo\3dgs.cpp.opt\src\shaders\precomp_cov3d.comp;%(AdditionalInputs)</AdditionalInputs>
+      <Outputs Condition="'$(Configuration)|$(Platform)'=='RelWithDebInfo|x64'">D:\liuyue\physDreamerVulkanDemo\3dgs.cpp.opt\build_msvc143\shaders\precomp_cov3d.spv</Outputs>
+      <LinkObjects Condition="'$(Configuration)|$(Platform)'=='RelWithDebInfo|x64'">false</LinkObjects>
+    </CustomBuild>
+  </ItemGroup>
+  <ItemGroup>
+    <CustomBuild Include="D:\liuyue\physDreamerVulkanDemo\3dgs.cpp.opt\build_msvc143\CMakeFiles\00bcc53426d4f746c66ab8ad83b9a340\prefix_sum.spv.rule">
+      <Message Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">Generating ../../shaders/prefix_sum.spv</Message>
+      <Command Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">setlocal
+C:\Python314\Lib\site-packages\cmake\data\bin\cmake.exe -E make_directory D:/liuyue/physDreamerVulkanDemo/3dgs.cpp.opt/build_msvc143/shaders/
+if %errorlevel% neq 0 goto :cmEnd
+C:\VulkanSDK\1.4.350.0\Bin\glslangValidator.exe --target-env vulkan1.2 -V D:/liuyue/physDreamerVulkanDemo/3dgs.cpp.opt/src/shaders/prefix_sum.comp -o D:/liuyue/physDreamerVulkanDemo/3dgs.cpp.opt/build_msvc143/shaders/prefix_sum.spv -DNDEBUG
+if %errorlevel% neq 0 goto :cmEnd
+:cmEnd
+endlocal &amp; call :cmErrorLevel %errorlevel% &amp; goto :cmDone
+:cmErrorLevel
+exit /b %1
+:cmDone
+if %errorlevel% neq 0 goto :VCEnd</Command>
+      <AdditionalInputs Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">D:\liuyue\physDreamerVulkanDemo\3dgs.cpp.opt\src\shaders\prefix_sum.comp;%(AdditionalInputs)</AdditionalInputs>
+      <Outputs Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">D:\liuyue\physDreamerVulkanDemo\3dgs.cpp.opt\build_msvc143\shaders\prefix_sum.spv</Outputs>
+      <LinkObjects Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">false</LinkObjects>
+      <Message Condition="'$(Configuration)|$(Platform)'=='Release|x64'">Generating ../../shaders/prefix_sum.spv</Message>
+      <Command Condition="'$(Configuration)|$(Platform)'=='Release|x64'">setlocal
+C:\Python314\Lib\site-packages\cmake\data\bin\cmake.exe -E make_directory D:/liuyue/physDreamerVulkanDemo/3dgs.cpp.opt/build_msvc143/shaders/
+if %errorlevel% neq 0 goto :cmEnd
+C:\VulkanSDK\1.4.350.0\Bin\glslangValidator.exe --target-env vulkan1.2 -V D:/liuyue/physDreamerVulkanDemo/3dgs.cpp.opt/src/shaders/prefix_sum.comp -o D:/liuyue/physDreamerVulkanDemo/3dgs.cpp.opt/build_msvc143/shaders/prefix_sum.spv -DNDEBUG
+if %errorlevel% neq 0 goto :cmEnd
+:cmEnd
+endlocal &amp; call :cmErrorLevel %errorlevel% &amp; goto :cmDone
+:cmErrorLevel
+exit /b %1
+:cmDone
+if %errorlevel% neq 0 goto :VCEnd</Command>
+      <AdditionalInputs Condition="'$(Configuration)|$(Platform)'=='Release|x64'">D:\liuyue\physDreamerVulkanDemo\3dgs.cpp.opt\src\shaders\prefix_sum.comp;%(AdditionalInputs)</AdditionalInputs>
+      <Outputs Condition="'$(Configuration)|$(Platform)'=='Release|x64'">D:\liuyue\physDreamerVulkanDemo\3dgs.cpp.opt\build_msvc143\shaders\prefix_sum.spv</Outputs>
+      <LinkObjects Condition="'$(Configuration)|$(Platform)'=='Release|x64'">false</LinkObjects>
+      <Message Condition="'$(Configuration)|$(Platform)'=='MinSizeRel|x64'">Generating ../../shaders/prefix_sum.spv</Message>
+      <Command Condition="'$(Configuration)|$(Platform)'=='MinSizeRel|x64'">setlocal
+C:\Python314\Lib\site-packages\cmake\data\bin\cmake.exe -E make_directory D:/liuyue/physDreamerVulkanDemo/3dgs.cpp.opt/build_msvc143/shaders/
+if %errorlevel% neq 0 goto :cmEnd
+C:\VulkanSDK\1.4.350.0\Bin\glslangValidator.exe --target-env vulkan1.2 -V D:/liuyue/physDreamerVulkanDemo/3dgs.cpp.opt/src/shaders/prefix_sum.comp -o D:/liuyue/physDreamerVulkanDemo/3dgs.cpp.opt/build_msvc143/shaders/prefix_sum.spv -DNDEBUG
+if %errorlevel% neq 0 goto :cmEnd
+:cmEnd
+endlocal &amp; call :cmErrorLevel %errorlevel% &amp; goto :cmDone
+:cmErrorLevel
+exit /b %1
+:cmDone
+if %errorlevel% neq 0 goto :VCEnd</Command>
+      <AdditionalInputs Condition="'$(Configuration)|$(Platform)'=='MinSizeRel|x64'">D:\liuyue\physDreamerVulkanDemo\3dgs.cpp.opt\src\shaders\prefix_sum.comp;%(AdditionalInputs)</AdditionalInputs>
+      <Outputs Condition="'$(Configuration)|$(Platform)'=='MinSizeRel|x64'">D:\liuyue\physDreamerVulkanDemo\3dgs.cpp.opt\build_msvc143\shaders\prefix_sum.spv</Outputs>
+      <LinkObjects Condition="'$(Configuration)|$(Platform)'=='MinSizeRel|x64'">false</LinkObjects>
+      <Message Condition="'$(Configuration)|$(Platform)'=='RelWithDebInfo|x64'">Generating ../../shaders/prefix_sum.spv</Message>
+      <Command Condition="'$(Configuration)|$(Platform)'=='RelWithDebInfo|x64'">setlocal
+C:\Python314\Lib\site-packages\cmake\data\bin\cmake.exe -E make_directory D:/liuyue/physDreamerVulkanDemo/3dgs.cpp.opt/build_msvc143/shaders/
+if %errorlevel% neq 0 goto :cmEnd
+C:\VulkanSDK\1.4.350.0\Bin\glslangValidator.exe --target-env vulkan1.2 -V D:/liuyue/physDreamerVulkanDemo/3dgs.cpp.opt/src/shaders/prefix_sum.comp -o D:/liuyue/physDreamerVulkanDemo/3dgs.cpp.opt/build_msvc143/shaders/prefix_sum.spv -DNDEBUG
+if %errorlevel% neq 0 goto :cmEnd
+:cmEnd
+endlocal &amp; call :cmErrorLevel %errorlevel% &amp; goto :cmDone
+:cmErrorLevel
+exit /b %1
+:cmDone
+if %errorlevel% neq 0 goto :VCEnd</Command>
+      <AdditionalInputs Condition="'$(Configuration)|$(Platform)'=='RelWithDebInfo|x64'">D:\liuyue\physDreamerVulkanDemo\3dgs.cpp.opt\src\shaders\prefix_sum.comp;%(AdditionalInputs)</AdditionalInputs>
+      <Outputs Condition="'$(Configuration)|$(Platform)'=='RelWithDebInfo|x64'">D:\liuyue\physDreamerVulkanDemo\3dgs.cpp.opt\build_msvc143\shaders\prefix_sum.spv</Outputs>
+      <LinkObjects Condition="'$(Configuration)|$(Platform)'=='RelWithDebInfo|x64'">false</LinkObjects>
+    </CustomBuild>
+  </ItemGroup>
+  <ItemGroup>
+    <CustomBuild Include="D:\liuyue\physDreamerVulkanDemo\3dgs.cpp.opt\build_msvc143\CMakeFiles\00bcc53426d4f746c66ab8ad83b9a340\preprocess.spv.rule">
+      <Message Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">Generating ../../shaders/preprocess.spv</Message>
+      <Command Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">setlocal
+C:\Python314\Lib\site-packages\cmake\data\bin\cmake.exe -E make_directory D:/liuyue/physDreamerVulkanDemo/3dgs.cpp.opt/build_msvc143/shaders/
+if %errorlevel% neq 0 goto :cmEnd
+C:\VulkanSDK\1.4.350.0\Bin\glslangValidator.exe --target-env vulkan1.2 -V D:/liuyue/physDreamerVulkanDemo/3dgs.cpp.opt/src/shaders/preprocess.comp -o D:/liuyue/physDreamerVulkanDemo/3dgs.cpp.opt/build_msvc143/shaders/preprocess.spv -DNDEBUG
+if %errorlevel% neq 0 goto :cmEnd
+:cmEnd
+endlocal &amp; call :cmErrorLevel %errorlevel% &amp; goto :cmDone
+:cmErrorLevel
+exit /b %1
+:cmDone
+if %errorlevel% neq 0 goto :VCEnd</Command>
+      <AdditionalInputs Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">D:\liuyue\physDreamerVulkanDemo\3dgs.cpp.opt\src\shaders\preprocess.comp;%(AdditionalInputs)</AdditionalInputs>
+      <Outputs Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">D:\liuyue\physDreamerVulkanDemo\3dgs.cpp.opt\build_msvc143\shaders\preprocess.spv</Outputs>
+      <LinkObjects Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">false</LinkObjects>
+      <Message Condition="'$(Configuration)|$(Platform)'=='Release|x64'">Generating ../../shaders/preprocess.spv</Message>
+      <Command Condition="'$(Configuration)|$(Platform)'=='Release|x64'">setlocal
+C:\Python314\Lib\site-packages\cmake\data\bin\cmake.exe -E make_directory D:/liuyue/physDreamerVulkanDemo/3dgs.cpp.opt/build_msvc143/shaders/
+if %errorlevel% neq 0 goto :cmEnd
+C:\VulkanSDK\1.4.350.0\Bin\glslangValidator.exe --target-env vulkan1.2 -V D:/liuyue/physDreamerVulkanDemo/3dgs.cpp.opt/src/shaders/preprocess.comp -o D:/liuyue/physDreamerVulkanDemo/3dgs.cpp.opt/build_msvc143/shaders/preprocess.spv -DNDEBUG
+if %errorlevel% neq 0 goto :cmEnd
+:cmEnd
+endlocal &amp; call :cmErrorLevel %errorlevel% &amp; goto :cmDone
+:cmErrorLevel
+exit /b %1
+:cmDone
+if %errorlevel% neq 0 goto :VCEnd</Command>
+      <AdditionalInputs Condition="'$(Configuration)|$(Platform)'=='Release|x64'">D:\liuyue\physDreamerVulkanDemo\3dgs.cpp.opt\src\shaders\preprocess.comp;%(AdditionalInputs)</AdditionalInputs>
+      <Outputs Condition="'$(Configuration)|$(Platform)'=='Release|x64'">D:\liuyue\physDreamerVulkanDemo\3dgs.cpp.opt\build_msvc143\shaders\preprocess.spv</Outputs>
+      <LinkObjects Condition="'$(Configuration)|$(Platform)'=='Release|x64'">false</LinkObjects>
+      <Message Condition="'$(Configuration)|$(Platform)'=='MinSizeRel|x64'">Generating ../../shaders/preprocess.spv</Message>
+      <Command Condition="'$(Configuration)|$(Platform)'=='MinSizeRel|x64'">setlocal
+C:\Python314\Lib\site-packages\cmake\data\bin\cmake.exe -E make_directory D:/liuyue/physDreamerVulkanDemo/3dgs.cpp.opt/build_msvc143/shaders/
+if %errorlevel% neq 0 goto :cmEnd
+C:\VulkanSDK\1.4.350.0\Bin\glslangValidator.exe --target-env vulkan1.2 -V D:/liuyue/physDreamerVulkanDemo/3dgs.cpp.opt/src/shaders/preprocess.comp -o D:/liuyue/physDreamerVulkanDemo/3dgs.cpp.opt/build_msvc143/shaders/preprocess.spv -DNDEBUG
+if %errorlevel% neq 0 goto :cmEnd
+:cmEnd
+endlocal &amp; call :cmErrorLevel %errorlevel% &amp; goto :cmDone
+:cmErrorLevel
+exit /b %1
+:cmDone
+if %errorlevel% neq 0 goto :VCEnd</Command>
+      <AdditionalInputs Condition="'$(Configuration)|$(Platform)'=='MinSizeRel|x64'">D:\liuyue\physDreamerVulkanDemo\3dgs.cpp.opt\src\shaders\preprocess.comp;%(AdditionalInputs)</AdditionalInputs>
+      <Outputs Condition="'$(Configuration)|$(Platform)'=='MinSizeRel|x64'">D:\liuyue\physDreamerVulkanDemo\3dgs.cpp.opt\build_msvc143\shaders\preprocess.spv</Outputs>
+      <LinkObjects Condition="'$(Configuration)|$(Platform)'=='MinSizeRel|x64'">false</LinkObjects>
+      <Message Condition="'$(Configuration)|$(Platform)'=='RelWithDebInfo|x64'">Generating ../../shaders/preprocess.spv</Message>
+      <Command Condition="'$(Configuration)|$(Platform)'=='RelWithDebInfo|x64'">setlocal
+C:\Python314\Lib\site-packages\cmake\data\bin\cmake.exe -E make_directory D:/liuyue/physDreamerVulkanDemo/3dgs.cpp.opt/build_msvc143/shaders/
+if %errorlevel% neq 0 goto :cmEnd
+C:\VulkanSDK\1.4.350.0\Bin\glslangValidator.exe --target-env vulkan1.2 -V D:/liuyue/physDreamerVulkanDemo/3dgs.cpp.opt/src/shaders/preprocess.comp -o D:/liuyue/physDreamerVulkanDemo/3dgs.cpp.opt/build_msvc143/shaders/preprocess.spv -DNDEBUG
+if %errorlevel% neq 0 goto :cmEnd
+:cmEnd
+endlocal &amp; call :cmErrorLevel %errorlevel% &amp; goto :cmDone
+:cmErrorLevel
+exit /b %1
+:cmDone
+if %errorlevel% neq 0 goto :VCEnd</Command>
+      <AdditionalInputs Condition="'$(Configuration)|$(Platform)'=='RelWithDebInfo|x64'">D:\liuyue\physDreamerVulkanDemo\3dgs.cpp.opt\src\shaders\preprocess.comp;%(AdditionalInputs)</AdditionalInputs>
+      <Outputs Condition="'$(Configuration)|$(Platform)'=='RelWithDebInfo|x64'">D:\liuyue\physDreamerVulkanDemo\3dgs.cpp.opt\build_msvc143\shaders\preprocess.spv</Outputs>
+      <LinkObjects Condition="'$(Configuration)|$(Platform)'=='RelWithDebInfo|x64'">false</LinkObjects>
+    </CustomBuild>
+  </ItemGroup>
+  <ItemGroup>
+    <CustomBuild Include="D:\liuyue\physDreamerVulkanDemo\3dgs.cpp.opt\build_msvc143\CMakeFiles\00bcc53426d4f746c66ab8ad83b9a340\preprocess_sort.spv.rule">
+      <Message Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">Generating ../../shaders/preprocess_sort.spv</Message>
+      <Command Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">setlocal
+C:\Python314\Lib\site-packages\cmake\data\bin\cmake.exe -E make_directory D:/liuyue/physDreamerVulkanDemo/3dgs.cpp.opt/build_msvc143/shaders/
+if %errorlevel% neq 0 goto :cmEnd
+C:\VulkanSDK\1.4.350.0\Bin\glslangValidator.exe --target-env vulkan1.2 -V D:/liuyue/physDreamerVulkanDemo/3dgs.cpp.opt/src/shaders/preprocess_sort.comp -o D:/liuyue/physDreamerVulkanDemo/3dgs.cpp.opt/build_msvc143/shaders/preprocess_sort.spv -DNDEBUG
+if %errorlevel% neq 0 goto :cmEnd
+:cmEnd
+endlocal &amp; call :cmErrorLevel %errorlevel% &amp; goto :cmDone
+:cmErrorLevel
+exit /b %1
+:cmDone
+if %errorlevel% neq 0 goto :VCEnd</Command>
+      <AdditionalInputs Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">D:\liuyue\physDreamerVulkanDemo\3dgs.cpp.opt\src\shaders\preprocess_sort.comp;%(AdditionalInputs)</AdditionalInputs>
+      <Outputs Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">D:\liuyue\physDreamerVulkanDemo\3dgs.cpp.opt\build_msvc143\shaders\preprocess_sort.spv</Outputs>
+      <LinkObjects Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">false</LinkObjects>
+      <Message Condition="'$(Configuration)|$(Platform)'=='Release|x64'">Generating ../../shaders/preprocess_sort.spv</Message>
+      <Command Condition="'$(Configuration)|$(Platform)'=='Release|x64'">setlocal
+C:\Python314\Lib\site-packages\cmake\data\bin\cmake.exe -E make_directory D:/liuyue/physDreamerVulkanDemo/3dgs.cpp.opt/build_msvc143/shaders/
+if %errorlevel% neq 0 goto :cmEnd
+C:\VulkanSDK\1.4.350.0\Bin\glslangValidator.exe --target-env vulkan1.2 -V D:/liuyue/physDreamerVulkanDemo/3dgs.cpp.opt/src/shaders/preprocess_sort.comp -o D:/liuyue/physDreamerVulkanDemo/3dgs.cpp.opt/build_msvc143/shaders/preprocess_sort.spv -DNDEBUG
+if %errorlevel% neq 0 goto :cmEnd
+:cmEnd
+endlocal &amp; call :cmErrorLevel %errorlevel% &amp; goto :cmDone
+:cmErrorLevel
+exit /b %1
+:cmDone
+if %errorlevel% neq 0 goto :VCEnd</Command>
+      <AdditionalInputs Condition="'$(Configuration)|$(Platform)'=='Release|x64'">D:\liuyue\physDreamerVulkanDemo\3dgs.cpp.opt\src\shaders\preprocess_sort.comp;%(AdditionalInputs)</AdditionalInputs>
+      <Outputs Condition="'$(Configuration)|$(Platform)'=='Release|x64'">D:\liuyue\physDreamerVulkanDemo\3dgs.cpp.opt\build_msvc143\shaders\preprocess_sort.spv</Outputs>
+      <LinkObjects Condition="'$(Configuration)|$(Platform)'=='Release|x64'">false</LinkObjects>
+      <Message Condition="'$(Configuration)|$(Platform)'=='MinSizeRel|x64'">Generating ../../shaders/preprocess_sort.spv</Message>
+      <Command Condition="'$(Configuration)|$(Platform)'=='MinSizeRel|x64'">setlocal
+C:\Python314\Lib\site-packages\cmake\data\bin\cmake.exe -E make_directory D:/liuyue/physDreamerVulkanDemo/3dgs.cpp.opt/build_msvc143/shaders/
+if %errorlevel% neq 0 goto :cmEnd
+C:\VulkanSDK\1.4.350.0\Bin\glslangValidator.exe --target-env vulkan1.2 -V D:/liuyue/physDreamerVulkanDemo/3dgs.cpp.opt/src/shaders/preprocess_sort.comp -o D:/liuyue/physDreamerVulkanDemo/3dgs.cpp.opt/build_msvc143/shaders/preprocess_sort.spv -DNDEBUG
+if %errorlevel% neq 0 goto :cmEnd
+:cmEnd
+endlocal &amp; call :cmErrorLevel %errorlevel% &amp; goto :cmDone
+:cmErrorLevel
+exit /b %1
+:cmDone
+if %errorlevel% neq 0 goto :VCEnd</Command>
+      <AdditionalInputs Condition="'$(Configuration)|$(Platform)'=='MinSizeRel|x64'">D:\liuyue\physDreamerVulkanDemo\3dgs.cpp.opt\src\shaders\preprocess_sort.comp;%(AdditionalInputs)</AdditionalInputs>
+      <Outputs Condition="'$(Configuration)|$(Platform)'=='MinSizeRel|x64'">D:\liuyue\physDreamerVulkanDemo\3dgs.cpp.opt\build_msvc143\shaders\preprocess_sort.spv</Outputs>
+      <LinkObjects Condition="'$(Configuration)|$(Platform)'=='MinSizeRel|x64'">false</LinkObjects>
+      <Message Condition="'$(Configuration)|$(Platform)'=='RelWithDebInfo|x64'">Generating ../../shaders/preprocess_sort.spv</Message>
+      <Command Condition="'$(Configuration)|$(Platform)'=='RelWithDebInfo|x64'">setlocal
+C:\Python314\Lib\site-packages\cmake\data\bin\cmake.exe -E make_directory D:/liuyue/physDreamerVulkanDemo/3dgs.cpp.opt/build_msvc143/shaders/
+if %errorlevel% neq 0 goto :cmEnd
+C:\VulkanSDK\1.4.350.0\Bin\glslangValidator.exe --target-env vulkan1.2 -V D:/liuyue/physDreamerVulkanDemo/3dgs.cpp.opt/src/shaders/preprocess_sort.comp -o D:/liuyue/physDreamerVulkanDemo/3dgs.cpp.opt/build_msvc143/shaders/preprocess_sort.spv -DNDEBUG
+if %errorlevel% neq 0 goto :cmEnd
+:cmEnd
+endlocal &amp; call :cmErrorLevel %errorlevel% &amp; goto :cmDone
+:cmErrorLevel
+exit /b %1
+:cmDone
+if %errorlevel% neq 0 goto :VCEnd</Command>
+      <AdditionalInputs Condition="'$(Configuration)|$(Platform)'=='RelWithDebInfo|x64'">D:\liuyue\physDreamerVulkanDemo\3dgs.cpp.opt\src\shaders\preprocess_sort.comp;%(AdditionalInputs)</AdditionalInputs>
+      <Outputs Condition="'$(Configuration)|$(Platform)'=='RelWithDebInfo|x64'">D:\liuyue\physDreamerVulkanDemo\3dgs.cpp.opt\build_msvc143\shaders\preprocess_sort.spv</Outputs>
+      <LinkObjects Condition="'$(Configuration)|$(Platform)'=='RelWithDebInfo|x64'">false</LinkObjects>
+    </CustomBuild>
+  </ItemGroup>
+  <ItemGroup>
+    <CustomBuild Include="D:\liuyue\physDreamerVulkanDemo\3dgs.cpp.opt\build_msvc143\CMakeFiles\00bcc53426d4f746c66ab8ad83b9a340\ray_cast_particles.spv.rule">
+      <Message Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">Generating ../../shaders/ray_cast_particles.spv</Message>
+      <Command Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">setlocal
+C:\Python314\Lib\site-packages\cmake\data\bin\cmake.exe -E make_directory D:/liuyue/physDreamerVulkanDemo/3dgs.cpp.opt/build_msvc143/shaders/
+if %errorlevel% neq 0 goto :cmEnd
+C:\VulkanSDK\1.4.350.0\Bin\glslangValidator.exe --target-env vulkan1.2 -V D:/liuyue/physDreamerVulkanDemo/3dgs.cpp.opt/src/shaders/interaction/ray_cast_particles.comp -o D:/liuyue/physDreamerVulkanDemo/3dgs.cpp.opt/build_msvc143/shaders/ray_cast_particles.spv -DNDEBUG
+if %errorlevel% neq 0 goto :cmEnd
+:cmEnd
+endlocal &amp; call :cmErrorLevel %errorlevel% &amp; goto :cmDone
+:cmErrorLevel
+exit /b %1
+:cmDone
+if %errorlevel% neq 0 goto :VCEnd</Command>
+      <AdditionalInputs Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">D:\liuyue\physDreamerVulkanDemo\3dgs.cpp.opt\src\shaders\interaction\ray_cast_particles.comp;%(AdditionalInputs)</AdditionalInputs>
+      <Outputs Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">D:\liuyue\physDreamerVulkanDemo\3dgs.cpp.opt\build_msvc143\shaders\ray_cast_particles.spv</Outputs>
+      <LinkObjects Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">false</LinkObjects>
+      <Message Condition="'$(Configuration)|$(Platform)'=='Release|x64'">Generating ../../shaders/ray_cast_particles.spv</Message>
+      <Command Condition="'$(Configuration)|$(Platform)'=='Release|x64'">setlocal
+C:\Python314\Lib\site-packages\cmake\data\bin\cmake.exe -E make_directory D:/liuyue/physDreamerVulkanDemo/3dgs.cpp.opt/build_msvc143/shaders/
+if %errorlevel% neq 0 goto :cmEnd
+C:\VulkanSDK\1.4.350.0\Bin\glslangValidator.exe --target-env vulkan1.2 -V D:/liuyue/physDreamerVulkanDemo/3dgs.cpp.opt/src/shaders/interaction/ray_cast_particles.comp -o D:/liuyue/physDreamerVulkanDemo/3dgs.cpp.opt/build_msvc143/shaders/ray_cast_particles.spv -DNDEBUG
+if %errorlevel% neq 0 goto :cmEnd
+:cmEnd
+endlocal &amp; call :cmErrorLevel %errorlevel% &amp; goto :cmDone
+:cmErrorLevel
+exit /b %1
+:cmDone
+if %errorlevel% neq 0 goto :VCEnd</Command>
+      <AdditionalInputs Condition="'$(Configuration)|$(Platform)'=='Release|x64'">D:\liuyue\physDreamerVulkanDemo\3dgs.cpp.opt\src\shaders\interaction\ray_cast_particles.comp;%(AdditionalInputs)</AdditionalInputs>
+      <Outputs Condition="'$(Configuration)|$(Platform)'=='Release|x64'">D:\liuyue\physDreamerVulkanDemo\3dgs.cpp.opt\build_msvc143\shaders\ray_cast_particles.spv</Outputs>
+      <LinkObjects Condition="'$(Configuration)|$(Platform)'=='Release|x64'">false</LinkObjects>
+      <Message Condition="'$(Configuration)|$(Platform)'=='MinSizeRel|x64'">Generating ../../shaders/ray_cast_particles.spv</Message>
+      <Command Condition="'$(Configuration)|$(Platform)'=='MinSizeRel|x64'">setlocal
+C:\Python314\Lib\site-packages\cmake\data\bin\cmake.exe -E make_directory D:/liuyue/physDreamerVulkanDemo/3dgs.cpp.opt/build_msvc143/shaders/
+if %errorlevel% neq 0 goto :cmEnd
+C:\VulkanSDK\1.4.350.0\Bin\glslangValidator.exe --target-env vulkan1.2 -V D:/liuyue/physDreamerVulkanDemo/3dgs.cpp.opt/src/shaders/interaction/ray_cast_particles.comp -o D:/liuyue/physDreamerVulkanDemo/3dgs.cpp.opt/build_msvc143/shaders/ray_cast_particles.spv -DNDEBUG
+if %errorlevel% neq 0 goto :cmEnd
+:cmEnd
+endlocal &amp; call :cmErrorLevel %errorlevel% &amp; goto :cmDone
+:cmErrorLevel
+exit /b %1
+:cmDone
+if %errorlevel% neq 0 goto :VCEnd</Command>
+      <AdditionalInputs Condition="'$(Configuration)|$(Platform)'=='MinSizeRel|x64'">D:\liuyue\physDreamerVulkanDemo\3dgs.cpp.opt\src\shaders\interaction\ray_cast_particles.comp;%(AdditionalInputs)</AdditionalInputs>
+      <Outputs Condition="'$(Configuration)|$(Platform)'=='MinSizeRel|x64'">D:\liuyue\physDreamerVulkanDemo\3dgs.cpp.opt\build_msvc143\shaders\ray_cast_particles.spv</Outputs>
+      <LinkObjects Condition="'$(Configuration)|$(Platform)'=='MinSizeRel|x64'">false</LinkObjects>
+      <Message Condition="'$(Configuration)|$(Platform)'=='RelWithDebInfo|x64'">Generating ../../shaders/ray_cast_particles.spv</Message>
+      <Command Condition="'$(Configuration)|$(Platform)'=='RelWithDebInfo|x64'">setlocal
+C:\Python314\Lib\site-packages\cmake\data\bin\cmake.exe -E make_directory D:/liuyue/physDreamerVulkanDemo/3dgs.cpp.opt/build_msvc143/shaders/
+if %errorlevel% neq 0 goto :cmEnd
+C:\VulkanSDK\1.4.350.0\Bin\glslangValidator.exe --target-env vulkan1.2 -V D:/liuyue/physDreamerVulkanDemo/3dgs.cpp.opt/src/shaders/interaction/ray_cast_particles.comp -o D:/liuyue/physDreamerVulkanDemo/3dgs.cpp.opt/build_msvc143/shaders/ray_cast_particles.spv -DNDEBUG
+if %errorlevel% neq 0 goto :cmEnd
+:cmEnd
+endlocal &amp; call :cmErrorLevel %errorlevel% &amp; goto :cmDone
+:cmErrorLevel
+exit /b %1
+:cmDone
+if %errorlevel% neq 0 goto :VCEnd</Command>
+      <AdditionalInputs Condition="'$(Configuration)|$(Platform)'=='RelWithDebInfo|x64'">D:\liuyue\physDreamerVulkanDemo\3dgs.cpp.opt\src\shaders\interaction\ray_cast_particles.comp;%(AdditionalInputs)</AdditionalInputs>
+      <Outputs Condition="'$(Configuration)|$(Platform)'=='RelWithDebInfo|x64'">D:\liuyue\physDreamerVulkanDemo\3dgs.cpp.opt\build_msvc143\shaders\ray_cast_particles.spv</Outputs>
+      <LinkObjects Condition="'$(Configuration)|$(Platform)'=='RelWithDebInfo|x64'">false</LinkObjects>
+    </CustomBuild>
+  </ItemGroup>
+  <ItemGroup>
+    <CustomBuild Include="D:\liuyue\physDreamerVulkanDemo\3dgs.cpp.opt\build_msvc143\CMakeFiles\00bcc53426d4f746c66ab8ad83b9a340\render.spv.rule">
+      <Message Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">Generating ../../shaders/render.spv</Message>
+      <Command Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">setlocal
+C:\Python314\Lib\site-packages\cmake\data\bin\cmake.exe -E make_directory D:/liuyue/physDreamerVulkanDemo/3dgs.cpp.opt/build_msvc143/shaders/
+if %errorlevel% neq 0 goto :cmEnd
+C:\VulkanSDK\1.4.350.0\Bin\glslangValidator.exe --target-env vulkan1.2 -V D:/liuyue/physDreamerVulkanDemo/3dgs.cpp.opt/src/shaders/render.comp -o D:/liuyue/physDreamerVulkanDemo/3dgs.cpp.opt/build_msvc143/shaders/render.spv -DNDEBUG
+if %errorlevel% neq 0 goto :cmEnd
+:cmEnd
+endlocal &amp; call :cmErrorLevel %errorlevel% &amp; goto :cmDone
+:cmErrorLevel
+exit /b %1
+:cmDone
+if %errorlevel% neq 0 goto :VCEnd</Command>
+      <AdditionalInputs Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">D:\liuyue\physDreamerVulkanDemo\3dgs.cpp.opt\src\shaders\render.comp;%(AdditionalInputs)</AdditionalInputs>
+      <Outputs Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">D:\liuyue\physDreamerVulkanDemo\3dgs.cpp.opt\build_msvc143\shaders\render.spv</Outputs>
+      <LinkObjects Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">false</LinkObjects>
+      <Message Condition="'$(Configuration)|$(Platform)'=='Release|x64'">Generating ../../shaders/render.spv</Message>
+      <Command Condition="'$(Configuration)|$(Platform)'=='Release|x64'">setlocal
+C:\Python314\Lib\site-packages\cmake\data\bin\cmake.exe -E make_directory D:/liuyue/physDreamerVulkanDemo/3dgs.cpp.opt/build_msvc143/shaders/
+if %errorlevel% neq 0 goto :cmEnd
+C:\VulkanSDK\1.4.350.0\Bin\glslangValidator.exe --target-env vulkan1.2 -V D:/liuyue/physDreamerVulkanDemo/3dgs.cpp.opt/src/shaders/render.comp -o D:/liuyue/physDreamerVulkanDemo/3dgs.cpp.opt/build_msvc143/shaders/render.spv -DNDEBUG
+if %errorlevel% neq 0 goto :cmEnd
+:cmEnd
+endlocal &amp; call :cmErrorLevel %errorlevel% &amp; goto :cmDone
+:cmErrorLevel
+exit /b %1
+:cmDone
+if %errorlevel% neq 0 goto :VCEnd</Command>
+      <AdditionalInputs Condition="'$(Configuration)|$(Platform)'=='Release|x64'">D:\liuyue\physDreamerVulkanDemo\3dgs.cpp.opt\src\shaders\render.comp;%(AdditionalInputs)</AdditionalInputs>
+      <Outputs Condition="'$(Configuration)|$(Platform)'=='Release|x64'">D:\liuyue\physDreamerVulkanDemo\3dgs.cpp.opt\build_msvc143\shaders\render.spv</Outputs>
+      <LinkObjects Condition="'$(Configuration)|$(Platform)'=='Release|x64'">false</LinkObjects>
+      <Message Condition="'$(Configuration)|$(Platform)'=='MinSizeRel|x64'">Generating ../../shaders/render.spv</Message>
+      <Command Condition="'$(Configuration)|$(Platform)'=='MinSizeRel|x64'">setlocal
+C:\Python314\Lib\site-packages\cmake\data\bin\cmake.exe -E make_directory D:/liuyue/physDreamerVulkanDemo/3dgs.cpp.opt/build_msvc143/shaders/
+if %errorlevel% neq 0 goto :cmEnd
+C:\VulkanSDK\1.4.350.0\Bin\glslangValidator.exe --target-env vulkan1.2 -V D:/liuyue/physDreamerVulkanDemo/3dgs.cpp.opt/src/shaders/render.comp -o D:/liuyue/physDreamerVulkanDemo/3dgs.cpp.opt/build_msvc143/shaders/render.spv -DNDEBUG
+if %errorlevel% neq 0 goto :cmEnd
+:cmEnd
+endlocal &amp; call :cmErrorLevel %errorlevel% &amp; goto :cmDone
+:cmErrorLevel
+exit /b %1
+:cmDone
+if %errorlevel% neq 0 goto :VCEnd</Command>
+      <AdditionalInputs Condition="'$(Configuration)|$(Platform)'=='MinSizeRel|x64'">D:\liuyue\physDreamerVulkanDemo\3dgs.cpp.opt\src\shaders\render.comp;%(AdditionalInputs)</AdditionalInputs>
+      <Outputs Condition="'$(Configuration)|$(Platform)'=='MinSizeRel|x64'">D:\liuyue\physDreamerVulkanDemo\3dgs.cpp.opt\build_msvc143\shaders\render.spv</Outputs>
+      <LinkObjects Condition="'$(Configuration)|$(Platform)'=='MinSizeRel|x64'">false</LinkObjects>
+      <Message Condition="'$(Configuration)|$(Platform)'=='RelWithDebInfo|x64'">Generating ../../shaders/render.spv</Message>
+      <Command Condition="'$(Configuration)|$(Platform)'=='RelWithDebInfo|x64'">setlocal
+C:\Python314\Lib\site-packages\cmake\data\bin\cmake.exe -E make_directory D:/liuyue/physDreamerVulkanDemo/3dgs.cpp.opt/build_msvc143/shaders/
+if %errorlevel% neq 0 goto :cmEnd
+C:\VulkanSDK\1.4.350.0\Bin\glslangValidator.exe --target-env vulkan1.2 -V D:/liuyue/physDreamerVulkanDemo/3dgs.cpp.opt/src/shaders/render.comp -o D:/liuyue/physDreamerVulkanDemo/3dgs.cpp.opt/build_msvc143/shaders/render.spv -DNDEBUG
+if %errorlevel% neq 0 goto :cmEnd
+:cmEnd
+endlocal &amp; call :cmErrorLevel %errorlevel% &amp; goto :cmDone
+:cmErrorLevel
+exit /b %1
+:cmDone
+if %errorlevel% neq 0 goto :VCEnd</Command>
+      <AdditionalInputs Condition="'$(Configuration)|$(Platform)'=='RelWithDebInfo|x64'">D:\liuyue\physDreamerVulkanDemo\3dgs.cpp.opt\src\shaders\render.comp;%(AdditionalInputs)</AdditionalInputs>
+      <Outputs Condition="'$(Configuration)|$(Platform)'=='RelWithDebInfo|x64'">D:\liuyue\physDreamerVulkanDemo\3dgs.cpp.opt\build_msvc143\shaders\render.spv</Outputs>
+      <LinkObjects Condition="'$(Configuration)|$(Platform)'=='RelWithDebInfo|x64'">false</LinkObjects>
+    </CustomBuild>
+  </ItemGroup>
+  <ItemGroup>
+    <CustomBuild Include="D:\liuyue\physDreamerVulkanDemo\3dgs.cpp.opt\build_msvc143\CMakeFiles\00bcc53426d4f746c66ab8ad83b9a340\sort.spv.rule">
+      <Message Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">Generating ../../shaders/sort.spv</Message>
+      <Command Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">setlocal
+C:\Python314\Lib\site-packages\cmake\data\bin\cmake.exe -E make_directory D:/liuyue/physDreamerVulkanDemo/3dgs.cpp.opt/build_msvc143/shaders/
+if %errorlevel% neq 0 goto :cmEnd
+C:\VulkanSDK\1.4.350.0\Bin\glslangValidator.exe --target-env vulkan1.2 -V D:/liuyue/physDreamerVulkanDemo/3dgs.cpp.opt/src/shaders/sort/sort.comp -o D:/liuyue/physDreamerVulkanDemo/3dgs.cpp.opt/build_msvc143/shaders/sort.spv -DNDEBUG
+if %errorlevel% neq 0 goto :cmEnd
+:cmEnd
+endlocal &amp; call :cmErrorLevel %errorlevel% &amp; goto :cmDone
+:cmErrorLevel
+exit /b %1
+:cmDone
+if %errorlevel% neq 0 goto :VCEnd</Command>
+      <AdditionalInputs Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">D:\liuyue\physDreamerVulkanDemo\3dgs.cpp.opt\src\shaders\sort\sort.comp;%(AdditionalInputs)</AdditionalInputs>
+      <Outputs Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">D:\liuyue\physDreamerVulkanDemo\3dgs.cpp.opt\build_msvc143\shaders\sort.spv</Outputs>
+      <LinkObjects Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">false</LinkObjects>
+      <Message Condition="'$(Configuration)|$(Platform)'=='Release|x64'">Generating ../../shaders/sort.spv</Message>
+      <Command Condition="'$(Configuration)|$(Platform)'=='Release|x64'">setlocal
+C:\Python314\Lib\site-packages\cmake\data\bin\cmake.exe -E make_directory D:/liuyue/physDreamerVulkanDemo/3dgs.cpp.opt/build_msvc143/shaders/
+if %errorlevel% neq 0 goto :cmEnd
+C:\VulkanSDK\1.4.350.0\Bin\glslangValidator.exe --target-env vulkan1.2 -V D:/liuyue/physDreamerVulkanDemo/3dgs.cpp.opt/src/shaders/sort/sort.comp -o D:/liuyue/physDreamerVulkanDemo/3dgs.cpp.opt/build_msvc143/shaders/sort.spv -DNDEBUG
+if %errorlevel% neq 0 goto :cmEnd
+:cmEnd
+endlocal &amp; call :cmErrorLevel %errorlevel% &amp; goto :cmDone
+:cmErrorLevel
+exit /b %1
+:cmDone
+if %errorlevel% neq 0 goto :VCEnd</Command>
+      <AdditionalInputs Condition="'$(Configuration)|$(Platform)'=='Release|x64'">D:\liuyue\physDreamerVulkanDemo\3dgs.cpp.opt\src\shaders\sort\sort.comp;%(AdditionalInputs)</AdditionalInputs>
+      <Outputs Condition="'$(Configuration)|$(Platform)'=='Release|x64'">D:\liuyue\physDreamerVulkanDemo\3dgs.cpp.opt\build_msvc143\shaders\sort.spv</Outputs>
+      <LinkObjects Condition="'$(Configuration)|$(Platform)'=='Release|x64'">false</LinkObjects>
+      <Message Condition="'$(Configuration)|$(Platform)'=='MinSizeRel|x64'">Generating ../../shaders/sort.spv</Message>
+      <Command Condition="'$(Configuration)|$(Platform)'=='MinSizeRel|x64'">setlocal
+C:\Python314\Lib\site-packages\cmake\data\bin\cmake.exe -E make_directory D:/liuyue/physDreamerVulkanDemo/3dgs.cpp.opt/build_msvc143/shaders/
+if %errorlevel% neq 0 goto :cmEnd
+C:\VulkanSDK\1.4.350.0\Bin\glslangValidator.exe --target-env vulkan1.2 -V D:/liuyue/physDreamerVulkanDemo/3dgs.cpp.opt/src/shaders/sort/sort.comp -o D:/liuyue/physDreamerVulkanDemo/3dgs.cpp.opt/build_msvc143/shaders/sort.spv -DNDEBUG
+if %errorlevel% neq 0 goto :cmEnd
+:cmEnd
+endlocal &amp; call :cmErrorLevel %errorlevel% &amp; goto :cmDone
+:cmErrorLevel
+exit /b %1
+:cmDone
+if %errorlevel% neq 0 goto :VCEnd</Command>
+      <AdditionalInputs Condition="'$(Configuration)|$(Platform)'=='MinSizeRel|x64'">D:\liuyue\physDreamerVulkanDemo\3dgs.cpp.opt\src\shaders\sort\sort.comp;%(AdditionalInputs)</AdditionalInputs>
+      <Outputs Condition="'$(Configuration)|$(Platform)'=='MinSizeRel|x64'">D:\liuyue\physDreamerVulkanDemo\3dgs.cpp.opt\build_msvc143\shaders\sort.spv</Outputs>
+      <LinkObjects Condition="'$(Configuration)|$(Platform)'=='MinSizeRel|x64'">false</LinkObjects>
+      <Message Condition="'$(Configuration)|$(Platform)'=='RelWithDebInfo|x64'">Generating ../../shaders/sort.spv</Message>
+      <Command Condition="'$(Configuration)|$(Platform)'=='RelWithDebInfo|x64'">setlocal
+C:\Python314\Lib\site-packages\cmake\data\bin\cmake.exe -E make_directory D:/liuyue/physDreamerVulkanDemo/3dgs.cpp.opt/build_msvc143/shaders/
+if %errorlevel% neq 0 goto :cmEnd
+C:\VulkanSDK\1.4.350.0\Bin\glslangValidator.exe --target-env vulkan1.2 -V D:/liuyue/physDreamerVulkanDemo/3dgs.cpp.opt/src/shaders/sort/sort.comp -o D:/liuyue/physDreamerVulkanDemo/3dgs.cpp.opt/build_msvc143/shaders/sort.spv -DNDEBUG
+if %errorlevel% neq 0 goto :cmEnd
+:cmEnd
+endlocal &amp; call :cmErrorLevel %errorlevel% &amp; goto :cmDone
+:cmErrorLevel
+exit /b %1
+:cmDone
+if %errorlevel% neq 0 goto :VCEnd</Command>
+      <AdditionalInputs Condition="'$(Configuration)|$(Platform)'=='RelWithDebInfo|x64'">D:\liuyue\physDreamerVulkanDemo\3dgs.cpp.opt\src\shaders\sort\sort.comp;%(AdditionalInputs)</AdditionalInputs>
+      <Outputs Condition="'$(Configuration)|$(Platform)'=='RelWithDebInfo|x64'">D:\liuyue\physDreamerVulkanDemo\3dgs.cpp.opt\build_msvc143\shaders\sort.spv</Outputs>
+      <LinkObjects Condition="'$(Configuration)|$(Platform)'=='RelWithDebInfo|x64'">false</LinkObjects>
+    </CustomBuild>
+  </ItemGroup>
+  <ItemGroup>
+    <CustomBuild Include="D:\liuyue\physDreamerVulkanDemo\3dgs.cpp.opt\build_msvc143\CMakeFiles\00bcc53426d4f746c66ab8ad83b9a340\tile_boundary.spv.rule">
+      <Message Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">Generating ../../shaders/tile_boundary.spv</Message>
+      <Command Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">setlocal
+C:\Python314\Lib\site-packages\cmake\data\bin\cmake.exe -E make_directory D:/liuyue/physDreamerVulkanDemo/3dgs.cpp.opt/build_msvc143/shaders/
+if %errorlevel% neq 0 goto :cmEnd
+C:\VulkanSDK\1.4.350.0\Bin\glslangValidator.exe --target-env vulkan1.2 -V D:/liuyue/physDreamerVulkanDemo/3dgs.cpp.opt/src/shaders/tile_boundary.comp -o D:/liuyue/physDreamerVulkanDemo/3dgs.cpp.opt/build_msvc143/shaders/tile_boundary.spv -DNDEBUG
+if %errorlevel% neq 0 goto :cmEnd
+:cmEnd
+endlocal &amp; call :cmErrorLevel %errorlevel% &amp; goto :cmDone
+:cmErrorLevel
+exit /b %1
+:cmDone
+if %errorlevel% neq 0 goto :VCEnd</Command>
+      <AdditionalInputs Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">D:\liuyue\physDreamerVulkanDemo\3dgs.cpp.opt\src\shaders\tile_boundary.comp;%(AdditionalInputs)</AdditionalInputs>
+      <Outputs Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">D:\liuyue\physDreamerVulkanDemo\3dgs.cpp.opt\build_msvc143\shaders\tile_boundary.spv</Outputs>
+      <LinkObjects Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">false</LinkObjects>
+      <Message Condition="'$(Configuration)|$(Platform)'=='Release|x64'">Generating ../../shaders/tile_boundary.spv</Message>
+      <Command Condition="'$(Configuration)|$(Platform)'=='Release|x64'">setlocal
+C:\Python314\Lib\site-packages\cmake\data\bin\cmake.exe -E make_directory D:/liuyue/physDreamerVulkanDemo/3dgs.cpp.opt/build_msvc143/shaders/
+if %errorlevel% neq 0 goto :cmEnd
+C:\VulkanSDK\1.4.350.0\Bin\glslangValidator.exe --target-env vulkan1.2 -V D:/liuyue/physDreamerVulkanDemo/3dgs.cpp.opt/src/shaders/tile_boundary.comp -o D:/liuyue/physDreamerVulkanDemo/3dgs.cpp.opt/build_msvc143/shaders/tile_boundary.spv -DNDEBUG
+if %errorlevel% neq 0 goto :cmEnd
+:cmEnd
+endlocal &amp; call :cmErrorLevel %errorlevel% &amp; goto :cmDone
+:cmErrorLevel
+exit /b %1
+:cmDone
+if %errorlevel% neq 0 goto :VCEnd</Command>
+      <AdditionalInputs Condition="'$(Configuration)|$(Platform)'=='Release|x64'">D:\liuyue\physDreamerVulkanDemo\3dgs.cpp.opt\src\shaders\tile_boundary.comp;%(AdditionalInputs)</AdditionalInputs>
+      <Outputs Condition="'$(Configuration)|$(Platform)'=='Release|x64'">D:\liuyue\physDreamerVulkanDemo\3dgs.cpp.opt\build_msvc143\shaders\tile_boundary.spv</Outputs>
+      <LinkObjects Condition="'$(Configuration)|$(Platform)'=='Release|x64'">false</LinkObjects>
+      <Message Condition="'$(Configuration)|$(Platform)'=='MinSizeRel|x64'">Generating ../../shaders/tile_boundary.spv</Message>
+      <Command Condition="'$(Configuration)|$(Platform)'=='MinSizeRel|x64'">setlocal
+C:\Python314\Lib\site-packages\cmake\data\bin\cmake.exe -E make_directory D:/liuyue/physDreamerVulkanDemo/3dgs.cpp.opt/build_msvc143/shaders/
+if %errorlevel% neq 0 goto :cmEnd
+C:\VulkanSDK\1.4.350.0\Bin\glslangValidator.exe --target-env vulkan1.2 -V D:/liuyue/physDreamerVulkanDemo/3dgs.cpp.opt/src/shaders/tile_boundary.comp -o D:/liuyue/physDreamerVulkanDemo/3dgs.cpp.opt/build_msvc143/shaders/tile_boundary.spv -DNDEBUG
+if %errorlevel% neq 0 goto :cmEnd
+:cmEnd
+endlocal &amp; call :cmErrorLevel %errorlevel% &amp; goto :cmDone
+:cmErrorLevel
+exit /b %1
+:cmDone
+if %errorlevel% neq 0 goto :VCEnd</Command>
+      <AdditionalInputs Condition="'$(Configuration)|$(Platform)'=='MinSizeRel|x64'">D:\liuyue\physDreamerVulkanDemo\3dgs.cpp.opt\src\shaders\tile_boundary.comp;%(AdditionalInputs)</AdditionalInputs>
+      <Outputs Condition="'$(Configuration)|$(Platform)'=='MinSizeRel|x64'">D:\liuyue\physDreamerVulkanDemo\3dgs.cpp.opt\build_msvc143\shaders\tile_boundary.spv</Outputs>
+      <LinkObjects Condition="'$(Configuration)|$(Platform)'=='MinSizeRel|x64'">false</LinkObjects>
+      <Message Condition="'$(Configuration)|$(Platform)'=='RelWithDebInfo|x64'">Generating ../../shaders/tile_boundary.spv</Message>
+      <Command Condition="'$(Configuration)|$(Platform)'=='RelWithDebInfo|x64'">setlocal
+C:\Python314\Lib\site-packages\cmake\data\bin\cmake.exe -E make_directory D:/liuyue/physDreamerVulkanDemo/3dgs.cpp.opt/build_msvc143/shaders/
+if %errorlevel% neq 0 goto :cmEnd
+C:\VulkanSDK\1.4.350.0\Bin\glslangValidator.exe --target-env vulkan1.2 -V D:/liuyue/physDreamerVulkanDemo/3dgs.cpp.opt/src/shaders/tile_boundary.comp -o D:/liuyue/physDreamerVulkanDemo/3dgs.cpp.opt/build_msvc143/shaders/tile_boundary.spv -DNDEBUG
+if %errorlevel% neq 0 goto :cmEnd
+:cmEnd
+endlocal &amp; call :cmErrorLevel %errorlevel% &amp; goto :cmDone
+:cmErrorLevel
+exit /b %1
+:cmDone
+if %errorlevel% neq 0 goto :VCEnd</Command>
+      <AdditionalInputs Condition="'$(Configuration)|$(Platform)'=='RelWithDebInfo|x64'">D:\liuyue\physDreamerVulkanDemo\3dgs.cpp.opt\src\shaders\tile_boundary.comp;%(AdditionalInputs)</AdditionalInputs>
+      <Outputs Condition="'$(Configuration)|$(Platform)'=='RelWithDebInfo|x64'">D:\liuyue\physDreamerVulkanDemo\3dgs.cpp.opt\build_msvc143\shaders\tile_boundary.spv</Outputs>
+      <LinkObjects Condition="'$(Configuration)|$(Platform)'=='RelWithDebInfo|x64'">false</LinkObjects>
+    </CustomBuild>
+  </ItemGroup>
+  <ItemGroup>
+    <CustomBuild Include="D:\liuyue\physDreamerVulkanDemo\3dgs.cpp.opt\build_msvc143\CMakeFiles\00bcc53426d4f746c66ab8ad83b9a340\zero_grid.spv.rule">
+      <Message Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">Generating ../../shaders/zero_grid.spv</Message>
+      <Command Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">setlocal
+C:\Python314\Lib\site-packages\cmake\data\bin\cmake.exe -E make_directory D:/liuyue/physDreamerVulkanDemo/3dgs.cpp.opt/build_msvc143/shaders/
+if %errorlevel% neq 0 goto :cmEnd
+C:\VulkanSDK\1.4.350.0\Bin\glslangValidator.exe --target-env vulkan1.2 -V D:/liuyue/physDreamerVulkanDemo/3dgs.cpp.opt/src/shaders/mpm/zero_grid.comp -o D:/liuyue/physDreamerVulkanDemo/3dgs.cpp.opt/build_msvc143/shaders/zero_grid.spv -DNDEBUG
+if %errorlevel% neq 0 goto :cmEnd
+:cmEnd
+endlocal &amp; call :cmErrorLevel %errorlevel% &amp; goto :cmDone
+:cmErrorLevel
+exit /b %1
+:cmDone
+if %errorlevel% neq 0 goto :VCEnd</Command>
+      <AdditionalInputs Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">D:\liuyue\physDreamerVulkanDemo\3dgs.cpp.opt\src\shaders\mpm\zero_grid.comp;%(AdditionalInputs)</AdditionalInputs>
+      <Outputs Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">D:\liuyue\physDreamerVulkanDemo\3dgs.cpp.opt\build_msvc143\shaders\zero_grid.spv</Outputs>
+      <LinkObjects Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">false</LinkObjects>
+      <Message Condition="'$(Configuration)|$(Platform)'=='Release|x64'">Generating ../../shaders/zero_grid.spv</Message>
+      <Command Condition="'$(Configuration)|$(Platform)'=='Release|x64'">setlocal
+C:\Python314\Lib\site-packages\cmake\data\bin\cmake.exe -E make_directory D:/liuyue/physDreamerVulkanDemo/3dgs.cpp.opt/build_msvc143/shaders/
+if %errorlevel% neq 0 goto :cmEnd
+C:\VulkanSDK\1.4.350.0\Bin\glslangValidator.exe --target-env vulkan1.2 -V D:/liuyue/physDreamerVulkanDemo/3dgs.cpp.opt/src/shaders/mpm/zero_grid.comp -o D:/liuyue/physDreamerVulkanDemo/3dgs.cpp.opt/build_msvc143/shaders/zero_grid.spv -DNDEBUG
+if %errorlevel% neq 0 goto :cmEnd
+:cmEnd
+endlocal &amp; call :cmErrorLevel %errorlevel% &amp; goto :cmDone
+:cmErrorLevel
+exit /b %1
+:cmDone
+if %errorlevel% neq 0 goto :VCEnd</Command>
+      <AdditionalInputs Condition="'$(Configuration)|$(Platform)'=='Release|x64'">D:\liuyue\physDreamerVulkanDemo\3dgs.cpp.opt\src\shaders\mpm\zero_grid.comp;%(AdditionalInputs)</AdditionalInputs>
+      <Outputs Condition="'$(Configuration)|$(Platform)'=='Release|x64'">D:\liuyue\physDreamerVulkanDemo\3dgs.cpp.opt\build_msvc143\shaders\zero_grid.spv</Outputs>
+      <LinkObjects Condition="'$(Configuration)|$(Platform)'=='Release|x64'">false</LinkObjects>
+      <Message Condition="'$(Configuration)|$(Platform)'=='MinSizeRel|x64'">Generating ../../shaders/zero_grid.spv</Message>
+      <Command Condition="'$(Configuration)|$(Platform)'=='MinSizeRel|x64'">setlocal
+C:\Python314\Lib\site-packages\cmake\data\bin\cmake.exe -E make_directory D:/liuyue/physDreamerVulkanDemo/3dgs.cpp.opt/build_msvc143/shaders/
+if %errorlevel% neq 0 goto :cmEnd
+C:\VulkanSDK\1.4.350.0\Bin\glslangValidator.exe --target-env vulkan1.2 -V D:/liuyue/physDreamerVulkanDemo/3dgs.cpp.opt/src/shaders/mpm/zero_grid.comp -o D:/liuyue/physDreamerVulkanDemo/3dgs.cpp.opt/build_msvc143/shaders/zero_grid.spv -DNDEBUG
+if %errorlevel% neq 0 goto :cmEnd
+:cmEnd
+endlocal &amp; call :cmErrorLevel %errorlevel% &amp; goto :cmDone
+:cmErrorLevel
+exit /b %1
+:cmDone
+if %errorlevel% neq 0 goto :VCEnd</Command>
+      <AdditionalInputs Condition="'$(Configuration)|$(Platform)'=='MinSizeRel|x64'">D:\liuyue\physDreamerVulkanDemo\3dgs.cpp.opt\src\shaders\mpm\zero_grid.comp;%(AdditionalInputs)</AdditionalInputs>
+      <Outputs Condition="'$(Configuration)|$(Platform)'=='MinSizeRel|x64'">D:\liuyue\physDreamerVulkanDemo\3dgs.cpp.opt\build_msvc143\shaders\zero_grid.spv</Outputs>
+      <LinkObjects Condition="'$(Configuration)|$(Platform)'=='MinSizeRel|x64'">false</LinkObjects>
+      <Message Condition="'$(Configuration)|$(Platform)'=='RelWithDebInfo|x64'">Generating ../../shaders/zero_grid.spv</Message>
+      <Command Condition="'$(Configuration)|$(Platform)'=='RelWithDebInfo|x64'">setlocal
+C:\Python314\Lib\site-packages\cmake\data\bin\cmake.exe -E make_directory D:/liuyue/physDreamerVulkanDemo/3dgs.cpp.opt/build_msvc143/shaders/
+if %errorlevel% neq 0 goto :cmEnd
+C:\VulkanSDK\1.4.350.0\Bin\glslangValidator.exe --target-env vulkan1.2 -V D:/liuyue/physDreamerVulkanDemo/3dgs.cpp.opt/src/shaders/mpm/zero_grid.comp -o D:/liuyue/physDreamerVulkanDemo/3dgs.cpp.opt/build_msvc143/shaders/zero_grid.spv -DNDEBUG
+if %errorlevel% neq 0 goto :cmEnd
+:cmEnd
+endlocal &amp; call :cmErrorLevel %errorlevel% &amp; goto :cmDone
+:cmErrorLevel
+exit /b %1
+:cmDone
+if %errorlevel% neq 0 goto :VCEnd</Command>
+      <AdditionalInputs Condition="'$(Configuration)|$(Platform)'=='RelWithDebInfo|x64'">D:\liuyue\physDreamerVulkanDemo\3dgs.cpp.opt\src\shaders\mpm\zero_grid.comp;%(AdditionalInputs)</AdditionalInputs>
+      <Outputs Condition="'$(Configuration)|$(Platform)'=='RelWithDebInfo|x64'">D:\liuyue\physDreamerVulkanDemo\3dgs.cpp.opt\build_msvc143\shaders\zero_grid.spv</Outputs>
+      <LinkObjects Condition="'$(Configuration)|$(Platform)'=='RelWithDebInfo|x64'">false</LinkObjects>
+    </CustomBuild>
+  </ItemGroup>
+  <ItemGroup>
+    <CustomBuild Include="D:\liuyue\physDreamerVulkanDemo\3dgs.cpp.opt\build_msvc143\CMakeFiles\00bcc53426d4f746c66ab8ad83b9a340\shaders.h.rule">
+      <Message Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">Generating ../../shaders/shaders.h</Message>
+      <Command Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">setlocal
+C:\Python314\Lib\site-packages\cmake\data\bin\cmake.exe -E remove D:/liuyue/physDreamerVulkanDemo/3dgs.cpp.opt/build_msvc143/shaders/shaders.h
+if %errorlevel% neq 0 goto :cmEnd
+Debug\embedfile.exe SPV_CALIBRATE D:/liuyue/physDreamerVulkanDemo/3dgs.cpp.opt/build_msvc143/shaders/calibrate.spv D:/liuyue/physDreamerVulkanDemo/3dgs.cpp.opt/build_msvc143/shaders/shaders.h
+if %errorlevel% neq 0 goto :cmEnd
+Debug\embedfile.exe SPV_MAP_DISPLACEMENT D:/liuyue/physDreamerVulkanDemo/3dgs.cpp.opt/build_msvc143/shaders/map_displacement.spv D:/liuyue/physDreamerVulkanDemo/3dgs.cpp.opt/build_msvc143/shaders/shaders.h
+if %errorlevel% neq 0 goto :cmEnd
+Debug\embedfile.exe SPV_APPLY_MOUSE_FORCE D:/liuyue/physDreamerVulkanDemo/3dgs.cpp.opt/build_msvc143/shaders/apply_mouse_force.spv D:/liuyue/physDreamerVulkanDemo/3dgs.cpp.opt/build_msvc143/shaders/shaders.h
+if %errorlevel% neq 0 goto :cmEnd
+Debug\embedfile.exe SPV_RAY_CAST_PARTICLES D:/liuyue/physDreamerVulkanDemo/3dgs.cpp.opt/build_msvc143/shaders/ray_cast_particles.spv D:/liuyue/physDreamerVulkanDemo/3dgs.cpp.opt/build_msvc143/shaders/shaders.h
+if %errorlevel% neq 0 goto :cmEnd
+Debug\embedfile.exe SPV_COMPUTE_STRESS D:/liuyue/physDreamerVulkanDemo/3dgs.cpp.opt/build_msvc143/shaders/compute_stress.spv D:/liuyue/physDreamerVulkanDemo/3dgs.cpp.opt/build_msvc143/shaders/shaders.h
+if %errorlevel% neq 0 goto :cmEnd
+Debug\embedfile.exe SPV_G2P D:/liuyue/physDreamerVulkanDemo/3dgs.cpp.opt/build_msvc143/shaders/g2p.spv D:/liuyue/physDreamerVulkanDemo/3dgs.cpp.opt/build_msvc143/shaders/shaders.h
+if %errorlevel% neq 0 goto :cmEnd
+Debug\embedfile.exe SPV_GRID_UPDATE D:/liuyue/physDreamerVulkanDemo/3dgs.cpp.opt/build_msvc143/shaders/grid_update.spv D:/liuyue/physDreamerVulkanDemo/3dgs.cpp.opt/build_msvc143/shaders/shaders.h
+if %errorlevel% neq 0 goto :cmEnd
+Debug\embedfile.exe SPV_P2G D:/liuyue/physDreamerVulkanDemo/3dgs.cpp.opt/build_msvc143/shaders/p2g.spv D:/liuyue/physDreamerVulkanDemo/3dgs.cpp.opt/build_msvc143/shaders/shaders.h
+if %errorlevel% neq 0 goto :cmEnd
+Debug\embedfile.exe SPV_ZERO_GRID D:/liuyue/physDreamerVulkanDemo/3dgs.cpp.opt/build_msvc143/shaders/zero_grid.spv D:/liuyue/physDreamerVulkanDemo/3dgs.cpp.opt/build_msvc143/shaders/shaders.h
+if %errorlevel% neq 0 goto :cmEnd
+Debug\embedfile.exe SPV_PRECOMP_COV3D D:/liuyue/physDreamerVulkanDemo/3dgs.cpp.opt/build_msvc143/shaders/precomp_cov3d.spv D:/liuyue/physDreamerVulkanDemo/3dgs.cpp.opt/build_msvc143/shaders/shaders.h
+if %errorlevel% neq 0 goto :cmEnd
+Debug\embedfile.exe SPV_PREFIX_SUM D:/liuyue/physDreamerVulkanDemo/3dgs.cpp.opt/build_msvc143/shaders/prefix_sum.spv D:/liuyue/physDreamerVulkanDemo/3dgs.cpp.opt/build_msvc143/shaders/shaders.h
+if %errorlevel% neq 0 goto :cmEnd
+Debug\embedfile.exe SPV_PREPROCESS D:/liuyue/physDreamerVulkanDemo/3dgs.cpp.opt/build_msvc143/shaders/preprocess.spv D:/liuyue/physDreamerVulkanDemo/3dgs.cpp.opt/build_msvc143/shaders/shaders.h
+if %errorlevel% neq 0 goto :cmEnd
+Debug\embedfile.exe SPV_PREPROCESS_SORT D:/liuyue/physDreamerVulkanDemo/3dgs.cpp.opt/build_msvc143/shaders/preprocess_sort.spv D:/liuyue/physDreamerVulkanDemo/3dgs.cpp.opt/build_msvc143/shaders/shaders.h
+if %errorlevel% neq 0 goto :cmEnd
+Debug\embedfile.exe SPV_RENDER D:/liuyue/physDreamerVulkanDemo/3dgs.cpp.opt/build_msvc143/shaders/render.spv D:/liuyue/physDreamerVulkanDemo/3dgs.cpp.opt/build_msvc143/shaders/shaders.h
+if %errorlevel% neq 0 goto :cmEnd
+Debug\embedfile.exe SPV_HIST D:/liuyue/physDreamerVulkanDemo/3dgs.cpp.opt/build_msvc143/shaders/hist.spv D:/liuyue/physDreamerVulkanDemo/3dgs.cpp.opt/build_msvc143/shaders/shaders.h
+if %errorlevel% neq 0 goto :cmEnd
+Debug\embedfile.exe SPV_SORT D:/liuyue/physDreamerVulkanDemo/3dgs.cpp.opt/build_msvc143/shaders/sort.spv D:/liuyue/physDreamerVulkanDemo/3dgs.cpp.opt/build_msvc143/shaders/shaders.h
+if %errorlevel% neq 0 goto :cmEnd
+Debug\embedfile.exe SPV_TILE_BOUNDARY D:/liuyue/physDreamerVulkanDemo/3dgs.cpp.opt/build_msvc143/shaders/tile_boundary.spv D:/liuyue/physDreamerVulkanDemo/3dgs.cpp.opt/build_msvc143/shaders/shaders.h
+if %errorlevel% neq 0 goto :cmEnd
+:cmEnd
+endlocal &amp; call :cmErrorLevel %errorlevel% &amp; goto :cmDone
+:cmErrorLevel
+exit /b %1
+:cmDone
+if %errorlevel% neq 0 goto :VCEnd</Command>
+      <AdditionalInputs Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">D:\liuyue\physDreamerVulkanDemo\3dgs.cpp.opt\src\shaders\calibrate.comp;D:\liuyue\physDreamerVulkanDemo\3dgs.cpp.opt\src\shaders\coupling\map_displacement.comp;D:\liuyue\physDreamerVulkanDemo\3dgs.cpp.opt\src\shaders\interaction\apply_mouse_force.comp;D:\liuyue\physDreamerVulkanDemo\3dgs.cpp.opt\src\shaders\interaction\ray_cast_particles.comp;D:\liuyue\physDreamerVulkanDemo\3dgs.cpp.opt\src\shaders\mpm\compute_stress.comp;D:\liuyue\physDreamerVulkanDemo\3dgs.cpp.opt\src\shaders\mpm\g2p.comp;D:\liuyue\physDreamerVulkanDemo\3dgs.cpp.opt\src\shaders\mpm\grid_update.comp;D:\liuyue\physDreamerVulkanDemo\3dgs.cpp.opt\src\shaders\mpm\p2g.comp;D:\liuyue\physDreamerVulkanDemo\3dgs.cpp.opt\src\shaders\mpm\zero_grid.comp;D:\liuyue\physDreamerVulkanDemo\3dgs.cpp.opt\src\shaders\precomp_cov3d.comp;D:\liuyue\physDreamerVulkanDemo\3dgs.cpp.opt\src\shaders\prefix_sum.comp;D:\liuyue\physDreamerVulkanDemo\3dgs.cpp.opt\src\shaders\preprocess.comp;D:\liuyue\physDreamerVulkanDemo\3dgs.cpp.opt\src\shaders\preprocess_sort.comp;D:\liuyue\physDreamerVulkanDemo\3dgs.cpp.opt\src\shaders\render.comp;D:\liuyue\physDreamerVulkanDemo\3dgs.cpp.opt\src\shaders\sort\hist.comp;D:\liuyue\physDreamerVulkanDemo\3dgs.cpp.opt\src\shaders\sort\sort.comp;D:\liuyue\physDreamerVulkanDemo\3dgs.cpp.opt\src\shaders\tile_boundary.comp;D:\liuyue\physDreamerVulkanDemo\3dgs.cpp.opt\build_msvc143\shaders\calibrate.spv;D:\liuyue\physDreamerVulkanDemo\3dgs.cpp.opt\build_msvc143\shaders\map_displacement.spv;D:\liuyue\physDreamerVulkanDemo\3dgs.cpp.opt\build_msvc143\shaders\apply_mouse_force.spv;D:\liuyue\physDreamerVulkanDemo\3dgs.cpp.opt\build_msvc143\shaders\ray_cast_particles.spv;D:\liuyue\physDreamerVulkanDemo\3dgs.cpp.opt\build_msvc143\shaders\compute_stress.spv;D:\liuyue\physDreamerVulkanDemo\3dgs.cpp.opt\build_msvc143\shaders\g2p.spv;D:\liuyue\physDreamerVulkanDemo\3dgs.cpp.opt\build_msvc143\shaders\grid_update.spv;D:\liuyue\physDreamerVulkanDemo\3dgs.cpp.opt\build_msvc143\shaders\p2g.spv;D:\liuyue\physDreamerVulkanDemo\3dgs.cpp.opt\build_msvc143\shaders\zero_grid.spv;D:\liuyue\physDreamerVulkanDemo\3dgs.cpp.opt\build_msvc143\shaders\precomp_cov3d.spv;D:\liuyue\physDreamerVulkanDemo\3dgs.cpp.opt\build_msvc143\shaders\prefix_sum.spv;D:\liuyue\physDreamerVulkanDemo\3dgs.cpp.opt\build_msvc143\shaders\preprocess.spv;D:\liuyue\physDreamerVulkanDemo\3dgs.cpp.opt\build_msvc143\shaders\preprocess_sort.spv;D:\liuyue\physDreamerVulkanDemo\3dgs.cpp.opt\build_msvc143\shaders\render.spv;D:\liuyue\physDreamerVulkanDemo\3dgs.cpp.opt\build_msvc143\shaders\hist.spv;D:\liuyue\physDreamerVulkanDemo\3dgs.cpp.opt\build_msvc143\shaders\sort.spv;D:\liuyue\physDreamerVulkanDemo\3dgs.cpp.opt\build_msvc143\shaders\tile_boundary.spv;%(AdditionalInputs)</AdditionalInputs>
+      <Outputs Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">D:\liuyue\physDreamerVulkanDemo\3dgs.cpp.opt\build_msvc143\shaders\shaders.h</Outputs>
+      <LinkObjects Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">false</LinkObjects>
+      <Message Condition="'$(Configuration)|$(Platform)'=='Release|x64'">Generating ../../shaders/shaders.h</Message>
+      <Command Condition="'$(Configuration)|$(Platform)'=='Release|x64'">setlocal
+C:\Python314\Lib\site-packages\cmake\data\bin\cmake.exe -E remove D:/liuyue/physDreamerVulkanDemo/3dgs.cpp.opt/build_msvc143/shaders/shaders.h
+if %errorlevel% neq 0 goto :cmEnd
+Release\embedfile.exe SPV_CALIBRATE D:/liuyue/physDreamerVulkanDemo/3dgs.cpp.opt/build_msvc143/shaders/calibrate.spv D:/liuyue/physDreamerVulkanDemo/3dgs.cpp.opt/build_msvc143/shaders/shaders.h
+if %errorlevel% neq 0 goto :cmEnd
+Release\embedfile.exe SPV_MAP_DISPLACEMENT D:/liuyue/physDreamerVulkanDemo/3dgs.cpp.opt/build_msvc143/shaders/map_displacement.spv D:/liuyue/physDreamerVulkanDemo/3dgs.cpp.opt/build_msvc143/shaders/shaders.h
+if %errorlevel% neq 0 goto :cmEnd
+Release\embedfile.exe SPV_APPLY_MOUSE_FORCE D:/liuyue/physDreamerVulkanDemo/3dgs.cpp.opt/build_msvc143/shaders/apply_mouse_force.spv D:/liuyue/physDreamerVulkanDemo/3dgs.cpp.opt/build_msvc143/shaders/shaders.h
+if %errorlevel% neq 0 goto :cmEnd
+Release\embedfile.exe SPV_RAY_CAST_PARTICLES D:/liuyue/physDreamerVulkanDemo/3dgs.cpp.opt/build_msvc143/shaders/ray_cast_particles.spv D:/liuyue/physDreamerVulkanDemo/3dgs.cpp.opt/build_msvc143/shaders/shaders.h
+if %errorlevel% neq 0 goto :cmEnd
+Release\embedfile.exe SPV_COMPUTE_STRESS D:/liuyue/physDreamerVulkanDemo/3dgs.cpp.opt/build_msvc143/shaders/compute_stress.spv D:/liuyue/physDreamerVulkanDemo/3dgs.cpp.opt/build_msvc143/shaders/shaders.h
+if %errorlevel% neq 0 goto :cmEnd
+Release\embedfile.exe SPV_G2P D:/liuyue/physDreamerVulkanDemo/3dgs.cpp.opt/build_msvc143/shaders/g2p.spv D:/liuyue/physDreamerVulkanDemo/3dgs.cpp.opt/build_msvc143/shaders/shaders.h
+if %errorlevel% neq 0 goto :cmEnd
+Release\embedfile.exe SPV_GRID_UPDATE D:/liuyue/physDreamerVulkanDemo/3dgs.cpp.opt/build_msvc143/shaders/grid_update.spv D:/liuyue/physDreamerVulkanDemo/3dgs.cpp.opt/build_msvc143/shaders/shaders.h
+if %errorlevel% neq 0 goto :cmEnd
+Release\embedfile.exe SPV_P2G D:/liuyue/physDreamerVulkanDemo/3dgs.cpp.opt/build_msvc143/shaders/p2g.spv D:/liuyue/physDreamerVulkanDemo/3dgs.cpp.opt/build_msvc143/shaders/shaders.h
+if %errorlevel% neq 0 goto :cmEnd
+Release\embedfile.exe SPV_ZERO_GRID D:/liuyue/physDreamerVulkanDemo/3dgs.cpp.opt/build_msvc143/shaders/zero_grid.spv D:/liuyue/physDreamerVulkanDemo/3dgs.cpp.opt/build_msvc143/shaders/shaders.h
+if %errorlevel% neq 0 goto :cmEnd
+Release\embedfile.exe SPV_PRECOMP_COV3D D:/liuyue/physDreamerVulkanDemo/3dgs.cpp.opt/build_msvc143/shaders/precomp_cov3d.spv D:/liuyue/physDreamerVulkanDemo/3dgs.cpp.opt/build_msvc143/shaders/shaders.h
+if %errorlevel% neq 0 goto :cmEnd
+Release\embedfile.exe SPV_PREFIX_SUM D:/liuyue/physDreamerVulkanDemo/3dgs.cpp.opt/build_msvc143/shaders/prefix_sum.spv D:/liuyue/physDreamerVulkanDemo/3dgs.cpp.opt/build_msvc143/shaders/shaders.h
+if %errorlevel% neq 0 goto :cmEnd
+Release\embedfile.exe SPV_PREPROCESS D:/liuyue/physDreamerVulkanDemo/3dgs.cpp.opt/build_msvc143/shaders/preprocess.spv D:/liuyue/physDreamerVulkanDemo/3dgs.cpp.opt/build_msvc143/shaders/shaders.h
+if %errorlevel% neq 0 goto :cmEnd
+Release\embedfile.exe SPV_PREPROCESS_SORT D:/liuyue/physDreamerVulkanDemo/3dgs.cpp.opt/build_msvc143/shaders/preprocess_sort.spv D:/liuyue/physDreamerVulkanDemo/3dgs.cpp.opt/build_msvc143/shaders/shaders.h
+if %errorlevel% neq 0 goto :cmEnd
+Release\embedfile.exe SPV_RENDER D:/liuyue/physDreamerVulkanDemo/3dgs.cpp.opt/build_msvc143/shaders/render.spv D:/liuyue/physDreamerVulkanDemo/3dgs.cpp.opt/build_msvc143/shaders/shaders.h
+if %errorlevel% neq 0 goto :cmEnd
+Release\embedfile.exe SPV_HIST D:/liuyue/physDreamerVulkanDemo/3dgs.cpp.opt/build_msvc143/shaders/hist.spv D:/liuyue/physDreamerVulkanDemo/3dgs.cpp.opt/build_msvc143/shaders/shaders.h
+if %errorlevel% neq 0 goto :cmEnd
+Release\embedfile.exe SPV_SORT D:/liuyue/physDreamerVulkanDemo/3dgs.cpp.opt/build_msvc143/shaders/sort.spv D:/liuyue/physDreamerVulkanDemo/3dgs.cpp.opt/build_msvc143/shaders/shaders.h
+if %errorlevel% neq 0 goto :cmEnd
+Release\embedfile.exe SPV_TILE_BOUNDARY D:/liuyue/physDreamerVulkanDemo/3dgs.cpp.opt/build_msvc143/shaders/tile_boundary.spv D:/liuyue/physDreamerVulkanDemo/3dgs.cpp.opt/build_msvc143/shaders/shaders.h
+if %errorlevel% neq 0 goto :cmEnd
+:cmEnd
+endlocal &amp; call :cmErrorLevel %errorlevel% &amp; goto :cmDone
+:cmErrorLevel
+exit /b %1
+:cmDone
+if %errorlevel% neq 0 goto :VCEnd</Command>
+      <AdditionalInputs Condition="'$(Configuration)|$(Platform)'=='Release|x64'">D:\liuyue\physDreamerVulkanDemo\3dgs.cpp.opt\src\shaders\calibrate.comp;D:\liuyue\physDreamerVulkanDemo\3dgs.cpp.opt\src\shaders\coupling\map_displacement.comp;D:\liuyue\physDreamerVulkanDemo\3dgs.cpp.opt\src\shaders\interaction\apply_mouse_force.comp;D:\liuyue\physDreamerVulkanDemo\3dgs.cpp.opt\src\shaders\interaction\ray_cast_particles.comp;D:\liuyue\physDreamerVulkanDemo\3dgs.cpp.opt\src\shaders\mpm\compute_stress.comp;D:\liuyue\physDreamerVulkanDemo\3dgs.cpp.opt\src\shaders\mpm\g2p.comp;D:\liuyue\physDreamerVulkanDemo\3dgs.cpp.opt\src\shaders\mpm\grid_update.comp;D:\liuyue\physDreamerVulkanDemo\3dgs.cpp.opt\src\shaders\mpm\p2g.comp;D:\liuyue\physDreamerVulkanDemo\3dgs.cpp.opt\src\shaders\mpm\zero_grid.comp;D:\liuyue\physDreamerVulkanDemo\3dgs.cpp.opt\src\shaders\precomp_cov3d.comp;D:\liuyue\physDreamerVulkanDemo\3dgs.cpp.opt\src\shaders\prefix_sum.comp;D:\liuyue\physDreamerVulkanDemo\3dgs.cpp.opt\src\shaders\preprocess.comp;D:\liuyue\physDreamerVulkanDemo\3dgs.cpp.opt\src\shaders\preprocess_sort.comp;D:\liuyue\physDreamerVulkanDemo\3dgs.cpp.opt\src\shaders\render.comp;D:\liuyue\physDreamerVulkanDemo\3dgs.cpp.opt\src\shaders\sort\hist.comp;D:\liuyue\physDreamerVulkanDemo\3dgs.cpp.opt\src\shaders\sort\sort.comp;D:\liuyue\physDreamerVulkanDemo\3dgs.cpp.opt\src\shaders\tile_boundary.comp;D:\liuyue\physDreamerVulkanDemo\3dgs.cpp.opt\build_msvc143\shaders\calibrate.spv;D:\liuyue\physDreamerVulkanDemo\3dgs.cpp.opt\build_msvc143\shaders\map_displacement.spv;D:\liuyue\physDreamerVulkanDemo\3dgs.cpp.opt\build_msvc143\shaders\apply_mouse_force.spv;D:\liuyue\physDreamerVulkanDemo\3dgs.cpp.opt\build_msvc143\shaders\ray_cast_particles.spv;D:\liuyue\physDreamerVulkanDemo\3dgs.cpp.opt\build_msvc143\shaders\compute_stress.spv;D:\liuyue\physDreamerVulkanDemo\3dgs.cpp.opt\build_msvc143\shaders\g2p.spv;D:\liuyue\physDreamerVulkanDemo\3dgs.cpp.opt\build_msvc143\shaders\grid_update.spv;D:\liuyue\physDreamerVulkanDemo\3dgs.cpp.opt\build_msvc143\shaders\p2g.spv;D:\liuyue\physDreamerVulkanDemo\3dgs.cpp.opt\build_msvc143\shaders\zero_grid.spv;D:\liuyue\physDreamerVulkanDemo\3dgs.cpp.opt\build_msvc143\shaders\precomp_cov3d.spv;D:\liuyue\physDreamerVulkanDemo\3dgs.cpp.opt\build_msvc143\shaders\prefix_sum.spv;D:\liuyue\physDreamerVulkanDemo\3dgs.cpp.opt\build_msvc143\shaders\preprocess.spv;D:\liuyue\physDreamerVulkanDemo\3dgs.cpp.opt\build_msvc143\shaders\preprocess_sort.spv;D:\liuyue\physDreamerVulkanDemo\3dgs.cpp.opt\build_msvc143\shaders\render.spv;D:\liuyue\physDreamerVulkanDemo\3dgs.cpp.opt\build_msvc143\shaders\hist.spv;D:\liuyue\physDreamerVulkanDemo\3dgs.cpp.opt\build_msvc143\shaders\sort.spv;D:\liuyue\physDreamerVulkanDemo\3dgs.cpp.opt\build_msvc143\shaders\tile_boundary.spv;%(AdditionalInputs)</AdditionalInputs>
+      <Outputs Condition="'$(Configuration)|$(Platform)'=='Release|x64'">D:\liuyue\physDreamerVulkanDemo\3dgs.cpp.opt\build_msvc143\shaders\shaders.h</Outputs>
+      <LinkObjects Condition="'$(Configuration)|$(Platform)'=='Release|x64'">false</LinkObjects>
+      <Message Condition="'$(Configuration)|$(Platform)'=='MinSizeRel|x64'">Generating ../../shaders/shaders.h</Message>
+      <Command Condition="'$(Configuration)|$(Platform)'=='MinSizeRel|x64'">setlocal
+C:\Python314\Lib\site-packages\cmake\data\bin\cmake.exe -E remove D:/liuyue/physDreamerVulkanDemo/3dgs.cpp.opt/build_msvc143/shaders/shaders.h
+if %errorlevel% neq 0 goto :cmEnd
+MinSizeRel\embedfile.exe SPV_CALIBRATE D:/liuyue/physDreamerVulkanDemo/3dgs.cpp.opt/build_msvc143/shaders/calibrate.spv D:/liuyue/physDreamerVulkanDemo/3dgs.cpp.opt/build_msvc143/shaders/shaders.h
+if %errorlevel% neq 0 goto :cmEnd
+MinSizeRel\embedfile.exe SPV_MAP_DISPLACEMENT D:/liuyue/physDreamerVulkanDemo/3dgs.cpp.opt/build_msvc143/shaders/map_displacement.spv D:/liuyue/physDreamerVulkanDemo/3dgs.cpp.opt/build_msvc143/shaders/shaders.h
+if %errorlevel% neq 0 goto :cmEnd
+MinSizeRel\embedfile.exe SPV_APPLY_MOUSE_FORCE D:/liuyue/physDreamerVulkanDemo/3dgs.cpp.opt/build_msvc143/shaders/apply_mouse_force.spv D:/liuyue/physDreamerVulkanDemo/3dgs.cpp.opt/build_msvc143/shaders/shaders.h
+if %errorlevel% neq 0 goto :cmEnd
+MinSizeRel\embedfile.exe SPV_RAY_CAST_PARTICLES D:/liuyue/physDreamerVulkanDemo/3dgs.cpp.opt/build_msvc143/shaders/ray_cast_particles.spv D:/liuyue/physDreamerVulkanDemo/3dgs.cpp.opt/build_msvc143/shaders/shaders.h
+if %errorlevel% neq 0 goto :cmEnd
+MinSizeRel\embedfile.exe SPV_COMPUTE_STRESS D:/liuyue/physDreamerVulkanDemo/3dgs.cpp.opt/build_msvc143/shaders/compute_stress.spv D:/liuyue/physDreamerVulkanDemo/3dgs.cpp.opt/build_msvc143/shaders/shaders.h
+if %errorlevel% neq 0 goto :cmEnd
+MinSizeRel\embedfile.exe SPV_G2P D:/liuyue/physDreamerVulkanDemo/3dgs.cpp.opt/build_msvc143/shaders/g2p.spv D:/liuyue/physDreamerVulkanDemo/3dgs.cpp.opt/build_msvc143/shaders/shaders.h
+if %errorlevel% neq 0 goto :cmEnd
+MinSizeRel\embedfile.exe SPV_GRID_UPDATE D:/liuyue/physDreamerVulkanDemo/3dgs.cpp.opt/build_msvc143/shaders/grid_update.spv D:/liuyue/physDreamerVulkanDemo/3dgs.cpp.opt/build_msvc143/shaders/shaders.h
+if %errorlevel% neq 0 goto :cmEnd
+MinSizeRel\embedfile.exe SPV_P2G D:/liuyue/physDreamerVulkanDemo/3dgs.cpp.opt/build_msvc143/shaders/p2g.spv D:/liuyue/physDreamerVulkanDemo/3dgs.cpp.opt/build_msvc143/shaders/shaders.h
+if %errorlevel% neq 0 goto :cmEnd
+MinSizeRel\embedfile.exe SPV_ZERO_GRID D:/liuyue/physDreamerVulkanDemo/3dgs.cpp.opt/build_msvc143/shaders/zero_grid.spv D:/liuyue/physDreamerVulkanDemo/3dgs.cpp.opt/build_msvc143/shaders/shaders.h
+if %errorlevel% neq 0 goto :cmEnd
+MinSizeRel\embedfile.exe SPV_PRECOMP_COV3D D:/liuyue/physDreamerVulkanDemo/3dgs.cpp.opt/build_msvc143/shaders/precomp_cov3d.spv D:/liuyue/physDreamerVulkanDemo/3dgs.cpp.opt/build_msvc143/shaders/shaders.h
+if %errorlevel% neq 0 goto :cmEnd
+MinSizeRel\embedfile.exe SPV_PREFIX_SUM D:/liuyue/physDreamerVulkanDemo/3dgs.cpp.opt/build_msvc143/shaders/prefix_sum.spv D:/liuyue/physDreamerVulkanDemo/3dgs.cpp.opt/build_msvc143/shaders/shaders.h
+if %errorlevel% neq 0 goto :cmEnd
+MinSizeRel\embedfile.exe SPV_PREPROCESS D:/liuyue/physDreamerVulkanDemo/3dgs.cpp.opt/build_msvc143/shaders/preprocess.spv D:/liuyue/physDreamerVulkanDemo/3dgs.cpp.opt/build_msvc143/shaders/shaders.h
+if %errorlevel% neq 0 goto :cmEnd
+MinSizeRel\embedfile.exe SPV_PREPROCESS_SORT D:/liuyue/physDreamerVulkanDemo/3dgs.cpp.opt/build_msvc143/shaders/preprocess_sort.spv D:/liuyue/physDreamerVulkanDemo/3dgs.cpp.opt/build_msvc143/shaders/shaders.h
+if %errorlevel% neq 0 goto :cmEnd
+MinSizeRel\embedfile.exe SPV_RENDER D:/liuyue/physDreamerVulkanDemo/3dgs.cpp.opt/build_msvc143/shaders/render.spv D:/liuyue/physDreamerVulkanDemo/3dgs.cpp.opt/build_msvc143/shaders/shaders.h
+if %errorlevel% neq 0 goto :cmEnd
+MinSizeRel\embedfile.exe SPV_HIST D:/liuyue/physDreamerVulkanDemo/3dgs.cpp.opt/build_msvc143/shaders/hist.spv D:/liuyue/physDreamerVulkanDemo/3dgs.cpp.opt/build_msvc143/shaders/shaders.h
+if %errorlevel% neq 0 goto :cmEnd
+MinSizeRel\embedfile.exe SPV_SORT D:/liuyue/physDreamerVulkanDemo/3dgs.cpp.opt/build_msvc143/shaders/sort.spv D:/liuyue/physDreamerVulkanDemo/3dgs.cpp.opt/build_msvc143/shaders/shaders.h
+if %errorlevel% neq 0 goto :cmEnd
+MinSizeRel\embedfile.exe SPV_TILE_BOUNDARY D:/liuyue/physDreamerVulkanDemo/3dgs.cpp.opt/build_msvc143/shaders/tile_boundary.spv D:/liuyue/physDreamerVulkanDemo/3dgs.cpp.opt/build_msvc143/shaders/shaders.h
+if %errorlevel% neq 0 goto :cmEnd
+:cmEnd
+endlocal &amp; call :cmErrorLevel %errorlevel% &amp; goto :cmDone
+:cmErrorLevel
+exit /b %1
+:cmDone
+if %errorlevel% neq 0 goto :VCEnd</Command>
+      <AdditionalInputs Condition="'$(Configuration)|$(Platform)'=='MinSizeRel|x64'">D:\liuyue\physDreamerVulkanDemo\3dgs.cpp.opt\src\shaders\calibrate.comp;D:\liuyue\physDreamerVulkanDemo\3dgs.cpp.opt\src\shaders\coupling\map_displacement.comp;D:\liuyue\physDreamerVulkanDemo\3dgs.cpp.opt\src\shaders\interaction\apply_mouse_force.comp;D:\liuyue\physDreamerVulkanDemo\3dgs.cpp.opt\src\shaders\interaction\ray_cast_particles.comp;D:\liuyue\physDreamerVulkanDemo\3dgs.cpp.opt\src\shaders\mpm\compute_stress.comp;D:\liuyue\physDreamerVulkanDemo\3dgs.cpp.opt\src\shaders\mpm\g2p.comp;D:\liuyue\physDreamerVulkanDemo\3dgs.cpp.opt\src\shaders\mpm\grid_update.comp;D:\liuyue\physDreamerVulkanDemo\3dgs.cpp.opt\src\shaders\mpm\p2g.comp;D:\liuyue\physDreamerVulkanDemo\3dgs.cpp.opt\src\shaders\mpm\zero_grid.comp;D:\liuyue\physDreamerVulkanDemo\3dgs.cpp.opt\src\shaders\precomp_cov3d.comp;D:\liuyue\physDreamerVulkanDemo\3dgs.cpp.opt\src\shaders\prefix_sum.comp;D:\liuyue\physDreamerVulkanDemo\3dgs.cpp.opt\src\shaders\preprocess.comp;D:\liuyue\physDreamerVulkanDemo\3dgs.cpp.opt\src\shaders\preprocess_sort.comp;D:\liuyue\physDreamerVulkanDemo\3dgs.cpp.opt\src\shaders\render.comp;D:\liuyue\physDreamerVulkanDemo\3dgs.cpp.opt\src\shaders\sort\hist.comp;D:\liuyue\physDreamerVulkanDemo\3dgs.cpp.opt\src\shaders\sort\sort.comp;D:\liuyue\physDreamerVulkanDemo\3dgs.cpp.opt\src\shaders\tile_boundary.comp;D:\liuyue\physDreamerVulkanDemo\3dgs.cpp.opt\build_msvc143\shaders\calibrate.spv;D:\liuyue\physDreamerVulkanDemo\3dgs.cpp.opt\build_msvc143\shaders\map_displacement.spv;D:\liuyue\physDreamerVulkanDemo\3dgs.cpp.opt\build_msvc143\shaders\apply_mouse_force.spv;D:\liuyue\physDreamerVulkanDemo\3dgs.cpp.opt\build_msvc143\shaders\ray_cast_particles.spv;D:\liuyue\physDreamerVulkanDemo\3dgs.cpp.opt\build_msvc143\shaders\compute_stress.spv;D:\liuyue\physDreamerVulkanDemo\3dgs.cpp.opt\build_msvc143\shaders\g2p.spv;D:\liuyue\physDreamerVulkanDemo\3dgs.cpp.opt\build_msvc143\shaders\grid_update.spv;D:\liuyue\physDreamerVulkanDemo\3dgs.cpp.opt\build_msvc143\shaders\p2g.spv;D:\liuyue\physDreamerVulkanDemo\3dgs.cpp.opt\build_msvc143\shaders\zero_grid.spv;D:\liuyue\physDreamerVulkanDemo\3dgs.cpp.opt\build_msvc143\shaders\precomp_cov3d.spv;D:\liuyue\physDreamerVulkanDemo\3dgs.cpp.opt\build_msvc143\shaders\prefix_sum.spv;D:\liuyue\physDreamerVulkanDemo\3dgs.cpp.opt\build_msvc143\shaders\preprocess.spv;D:\liuyue\physDreamerVulkanDemo\3dgs.cpp.opt\build_msvc143\shaders\preprocess_sort.spv;D:\liuyue\physDreamerVulkanDemo\3dgs.cpp.opt\build_msvc143\shaders\render.spv;D:\liuyue\physDreamerVulkanDemo\3dgs.cpp.opt\build_msvc143\shaders\hist.spv;D:\liuyue\physDreamerVulkanDemo\3dgs.cpp.opt\build_msvc143\shaders\sort.spv;D:\liuyue\physDreamerVulkanDemo\3dgs.cpp.opt\build_msvc143\shaders\tile_boundary.spv;%(AdditionalInputs)</AdditionalInputs>
+      <Outputs Condition="'$(Configuration)|$(Platform)'=='MinSizeRel|x64'">D:\liuyue\physDreamerVulkanDemo\3dgs.cpp.opt\build_msvc143\shaders\shaders.h</Outputs>
+      <LinkObjects Condition="'$(Configuration)|$(Platform)'=='MinSizeRel|x64'">false</LinkObjects>
+      <Message Condition="'$(Configuration)|$(Platform)'=='RelWithDebInfo|x64'">Generating ../../shaders/shaders.h</Message>
+      <Command Condition="'$(Configuration)|$(Platform)'=='RelWithDebInfo|x64'">setlocal
+C:\Python314\Lib\site-packages\cmake\data\bin\cmake.exe -E remove D:/liuyue/physDreamerVulkanDemo/3dgs.cpp.opt/build_msvc143/shaders/shaders.h
+if %errorlevel% neq 0 goto :cmEnd
+RelWithDebInfo\embedfile.exe SPV_CALIBRATE D:/liuyue/physDreamerVulkanDemo/3dgs.cpp.opt/build_msvc143/shaders/calibrate.spv D:/liuyue/physDreamerVulkanDemo/3dgs.cpp.opt/build_msvc143/shaders/shaders.h
+if %errorlevel% neq 0 goto :cmEnd
+RelWithDebInfo\embedfile.exe SPV_MAP_DISPLACEMENT D:/liuyue/physDreamerVulkanDemo/3dgs.cpp.opt/build_msvc143/shaders/map_displacement.spv D:/liuyue/physDreamerVulkanDemo/3dgs.cpp.opt/build_msvc143/shaders/shaders.h
+if %errorlevel% neq 0 goto :cmEnd
+RelWithDebInfo\embedfile.exe SPV_APPLY_MOUSE_FORCE D:/liuyue/physDreamerVulkanDemo/3dgs.cpp.opt/build_msvc143/shaders/apply_mouse_force.spv D:/liuyue/physDreamerVulkanDemo/3dgs.cpp.opt/build_msvc143/shaders/shaders.h
+if %errorlevel% neq 0 goto :cmEnd
+RelWithDebInfo\embedfile.exe SPV_RAY_CAST_PARTICLES D:/liuyue/physDreamerVulkanDemo/3dgs.cpp.opt/build_msvc143/shaders/ray_cast_particles.spv D:/liuyue/physDreamerVulkanDemo/3dgs.cpp.opt/build_msvc143/shaders/shaders.h
+if %errorlevel% neq 0 goto :cmEnd
+RelWithDebInfo\embedfile.exe SPV_COMPUTE_STRESS D:/liuyue/physDreamerVulkanDemo/3dgs.cpp.opt/build_msvc143/shaders/compute_stress.spv D:/liuyue/physDreamerVulkanDemo/3dgs.cpp.opt/build_msvc143/shaders/shaders.h
+if %errorlevel% neq 0 goto :cmEnd
+RelWithDebInfo\embedfile.exe SPV_G2P D:/liuyue/physDreamerVulkanDemo/3dgs.cpp.opt/build_msvc143/shaders/g2p.spv D:/liuyue/physDreamerVulkanDemo/3dgs.cpp.opt/build_msvc143/shaders/shaders.h
+if %errorlevel% neq 0 goto :cmEnd
+RelWithDebInfo\embedfile.exe SPV_GRID_UPDATE D:/liuyue/physDreamerVulkanDemo/3dgs.cpp.opt/build_msvc143/shaders/grid_update.spv D:/liuyue/physDreamerVulkanDemo/3dgs.cpp.opt/build_msvc143/shaders/shaders.h
+if %errorlevel% neq 0 goto :cmEnd
+RelWithDebInfo\embedfile.exe SPV_P2G D:/liuyue/physDreamerVulkanDemo/3dgs.cpp.opt/build_msvc143/shaders/p2g.spv D:/liuyue/physDreamerVulkanDemo/3dgs.cpp.opt/build_msvc143/shaders/shaders.h
+if %errorlevel% neq 0 goto :cmEnd
+RelWithDebInfo\embedfile.exe SPV_ZERO_GRID D:/liuyue/physDreamerVulkanDemo/3dgs.cpp.opt/build_msvc143/shaders/zero_grid.spv D:/liuyue/physDreamerVulkanDemo/3dgs.cpp.opt/build_msvc143/shaders/shaders.h
+if %errorlevel% neq 0 goto :cmEnd
+RelWithDebInfo\embedfile.exe SPV_PRECOMP_COV3D D:/liuyue/physDreamerVulkanDemo/3dgs.cpp.opt/build_msvc143/shaders/precomp_cov3d.spv D:/liuyue/physDreamerVulkanDemo/3dgs.cpp.opt/build_msvc143/shaders/shaders.h
+if %errorlevel% neq 0 goto :cmEnd
+RelWithDebInfo\embedfile.exe SPV_PREFIX_SUM D:/liuyue/physDreamerVulkanDemo/3dgs.cpp.opt/build_msvc143/shaders/prefix_sum.spv D:/liuyue/physDreamerVulkanDemo/3dgs.cpp.opt/build_msvc143/shaders/shaders.h
+if %errorlevel% neq 0 goto :cmEnd
+RelWithDebInfo\embedfile.exe SPV_PREPROCESS D:/liuyue/physDreamerVulkanDemo/3dgs.cpp.opt/build_msvc143/shaders/preprocess.spv D:/liuyue/physDreamerVulkanDemo/3dgs.cpp.opt/build_msvc143/shaders/shaders.h
+if %errorlevel% neq 0 goto :cmEnd
+RelWithDebInfo\embedfile.exe SPV_PREPROCESS_SORT D:/liuyue/physDreamerVulkanDemo/3dgs.cpp.opt/build_msvc143/shaders/preprocess_sort.spv D:/liuyue/physDreamerVulkanDemo/3dgs.cpp.opt/build_msvc143/shaders/shaders.h
+if %errorlevel% neq 0 goto :cmEnd
+RelWithDebInfo\embedfile.exe SPV_RENDER D:/liuyue/physDreamerVulkanDemo/3dgs.cpp.opt/build_msvc143/shaders/render.spv D:/liuyue/physDreamerVulkanDemo/3dgs.cpp.opt/build_msvc143/shaders/shaders.h
+if %errorlevel% neq 0 goto :cmEnd
+RelWithDebInfo\embedfile.exe SPV_HIST D:/liuyue/physDreamerVulkanDemo/3dgs.cpp.opt/build_msvc143/shaders/hist.spv D:/liuyue/physDreamerVulkanDemo/3dgs.cpp.opt/build_msvc143/shaders/shaders.h
+if %errorlevel% neq 0 goto :cmEnd
+RelWithDebInfo\embedfile.exe SPV_SORT D:/liuyue/physDreamerVulkanDemo/3dgs.cpp.opt/build_msvc143/shaders/sort.spv D:/liuyue/physDreamerVulkanDemo/3dgs.cpp.opt/build_msvc143/shaders/shaders.h
+if %errorlevel% neq 0 goto :cmEnd
+RelWithDebInfo\embedfile.exe SPV_TILE_BOUNDARY D:/liuyue/physDreamerVulkanDemo/3dgs.cpp.opt/build_msvc143/shaders/tile_boundary.spv D:/liuyue/physDreamerVulkanDemo/3dgs.cpp.opt/build_msvc143/shaders/shaders.h
+if %errorlevel% neq 0 goto :cmEnd
+:cmEnd
+endlocal &amp; call :cmErrorLevel %errorlevel% &amp; goto :cmDone
+:cmErrorLevel
+exit /b %1
+:cmDone
+if %errorlevel% neq 0 goto :VCEnd</Command>
+      <AdditionalInputs Condition="'$(Configuration)|$(Platform)'=='RelWithDebInfo|x64'">D:\liuyue\physDreamerVulkanDemo\3dgs.cpp.opt\src\shaders\calibrate.comp;D:\liuyue\physDreamerVulkanDemo\3dgs.cpp.opt\src\shaders\coupling\map_displacement.comp;D:\liuyue\physDreamerVulkanDemo\3dgs.cpp.opt\src\shaders\interaction\apply_mouse_force.comp;D:\liuyue\physDreamerVulkanDemo\3dgs.cpp.opt\src\shaders\interaction\ray_cast_particles.comp;D:\liuyue\physDreamerVulkanDemo\3dgs.cpp.opt\src\shaders\mpm\compute_stress.comp;D:\liuyue\physDreamerVulkanDemo\3dgs.cpp.opt\src\shaders\mpm\g2p.comp;D:\liuyue\physDreamerVulkanDemo\3dgs.cpp.opt\src\shaders\mpm\grid_update.comp;D:\liuyue\physDreamerVulkanDemo\3dgs.cpp.opt\src\shaders\mpm\p2g.comp;D:\liuyue\physDreamerVulkanDemo\3dgs.cpp.opt\src\shaders\mpm\zero_grid.comp;D:\liuyue\physDreamerVulkanDemo\3dgs.cpp.opt\src\shaders\precomp_cov3d.comp;D:\liuyue\physDreamerVulkanDemo\3dgs.cpp.opt\src\shaders\prefix_sum.comp;D:\liuyue\physDreamerVulkanDemo\3dgs.cpp.opt\src\shaders\preprocess.comp;D:\liuyue\physDreamerVulkanDemo\3dgs.cpp.opt\src\shaders\preprocess_sort.comp;D:\liuyue\physDreamerVulkanDemo\3dgs.cpp.opt\src\shaders\render.comp;D:\liuyue\physDreamerVulkanDemo\3dgs.cpp.opt\src\shaders\sort\hist.comp;D:\liuyue\physDreamerVulkanDemo\3dgs.cpp.opt\src\shaders\sort\sort.comp;D:\liuyue\physDreamerVulkanDemo\3dgs.cpp.opt\src\shaders\tile_boundary.comp;D:\liuyue\physDreamerVulkanDemo\3dgs.cpp.opt\build_msvc143\shaders\calibrate.spv;D:\liuyue\physDreamerVulkanDemo\3dgs.cpp.opt\build_msvc143\shaders\map_displacement.spv;D:\liuyue\physDreamerVulkanDemo\3dgs.cpp.opt\build_msvc143\shaders\apply_mouse_force.spv;D:\liuyue\physDreamerVulkanDemo\3dgs.cpp.opt\build_msvc143\shaders\ray_cast_particles.spv;D:\liuyue\physDreamerVulkanDemo\3dgs.cpp.opt\build_msvc143\shaders\compute_stress.spv;D:\liuyue\physDreamerVulkanDemo\3dgs.cpp.opt\build_msvc143\shaders\g2p.spv;D:\liuyue\physDreamerVulkanDemo\3dgs.cpp.opt\build_msvc143\shaders\grid_update.spv;D:\liuyue\physDreamerVulkanDemo\3dgs.cpp.opt\build_msvc143\shaders\p2g.spv;D:\liuyue\physDreamerVulkanDemo\3dgs.cpp.opt\build_msvc143\shaders\zero_grid.spv;D:\liuyue\physDreamerVulkanDemo\3dgs.cpp.opt\build_msvc143\shaders\precomp_cov3d.spv;D:\liuyue\physDreamerVulkanDemo\3dgs.cpp.opt\build_msvc143\shaders\prefix_sum.spv;D:\liuyue\physDreamerVulkanDemo\3dgs.cpp.opt\build_msvc143\shaders\preprocess.spv;D:\liuyue\physDreamerVulkanDemo\3dgs.cpp.opt\build_msvc143\shaders\preprocess_sort.spv;D:\liuyue\physDreamerVulkanDemo\3dgs.cpp.opt\build_msvc143\shaders\render.spv;D:\liuyue\physDreamerVulkanDemo\3dgs.cpp.opt\build_msvc143\shaders\hist.spv;D:\liuyue\physDreamerVulkanDemo\3dgs.cpp.opt\build_msvc143\shaders\sort.spv;D:\liuyue\physDreamerVulkanDemo\3dgs.cpp.opt\build_msvc143\shaders\tile_boundary.spv;%(AdditionalInputs)</AdditionalInputs>
+      <Outputs Condition="'$(Configuration)|$(Platform)'=='RelWithDebInfo|x64'">D:\liuyue\physDreamerVulkanDemo\3dgs.cpp.opt\build_msvc143\shaders\shaders.h</Outputs>
+      <LinkObjects Condition="'$(Configuration)|$(Platform)'=='RelWithDebInfo|x64'">false</LinkObjects>
+    </CustomBuild>
+  </ItemGroup>
+  <ItemGroup>
+    <CustomBuild Include="D:\liuyue\physDreamerVulkanDemo\3dgs.cpp.opt\build_msvc143\CMakeFiles\9eeb4244f90b9263d3ffcb13a56eb6f3\shaders.h.rule">
+      <Message Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">Generating D:/liuyue/physDreamerVulkanDemo/3dgs.cpp.opt/apps/apple/VulkanSplatting/shaders.h</Message>
+      <Command Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">setlocal
+C:\Python314\Lib\site-packages\cmake\data\bin\cmake.exe -E copy D:/liuyue/physDreamerVulkanDemo/3dgs.cpp.opt/build_msvc143/shaders/shaders.h D:/liuyue/physDreamerVulkanDemo/3dgs.cpp.opt/apps/apple/VulkanSplatting/shaders.h
+if %errorlevel% neq 0 goto :cmEnd
+:cmEnd
+endlocal &amp; call :cmErrorLevel %errorlevel% &amp; goto :cmDone
+:cmErrorLevel
+exit /b %1
+:cmDone
+if %errorlevel% neq 0 goto :VCEnd</Command>
+      <AdditionalInputs Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">D:\liuyue\physDreamerVulkanDemo\3dgs.cpp.opt\build_msvc143\shaders\shaders.h;%(AdditionalInputs)</AdditionalInputs>
+      <Outputs Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">D:\liuyue\physDreamerVulkanDemo\3dgs.cpp.opt\apps\apple\VulkanSplatting\shaders.h</Outputs>
+      <LinkObjects Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">false</LinkObjects>
+      <Message Condition="'$(Configuration)|$(Platform)'=='Release|x64'">Generating D:/liuyue/physDreamerVulkanDemo/3dgs.cpp.opt/apps/apple/VulkanSplatting/shaders.h</Message>
+      <Command Condition="'$(Configuration)|$(Platform)'=='Release|x64'">setlocal
+C:\Python314\Lib\site-packages\cmake\data\bin\cmake.exe -E copy D:/liuyue/physDreamerVulkanDemo/3dgs.cpp.opt/build_msvc143/shaders/shaders.h D:/liuyue/physDreamerVulkanDemo/3dgs.cpp.opt/apps/apple/VulkanSplatting/shaders.h
+if %errorlevel% neq 0 goto :cmEnd
+:cmEnd
+endlocal &amp; call :cmErrorLevel %errorlevel% &amp; goto :cmDone
+:cmErrorLevel
+exit /b %1
+:cmDone
+if %errorlevel% neq 0 goto :VCEnd</Command>
+      <AdditionalInputs Condition="'$(Configuration)|$(Platform)'=='Release|x64'">D:\liuyue\physDreamerVulkanDemo\3dgs.cpp.opt\build_msvc143\shaders\shaders.h;%(AdditionalInputs)</AdditionalInputs>
+      <Outputs Condition="'$(Configuration)|$(Platform)'=='Release|x64'">D:\liuyue\physDreamerVulkanDemo\3dgs.cpp.opt\apps\apple\VulkanSplatting\shaders.h</Outputs>
+      <LinkObjects Condition="'$(Configuration)|$(Platform)'=='Release|x64'">false</LinkObjects>
+      <Message Condition="'$(Configuration)|$(Platform)'=='MinSizeRel|x64'">Generating D:/liuyue/physDreamerVulkanDemo/3dgs.cpp.opt/apps/apple/VulkanSplatting/shaders.h</Message>
+      <Command Condition="'$(Configuration)|$(Platform)'=='MinSizeRel|x64'">setlocal
+C:\Python314\Lib\site-packages\cmake\data\bin\cmake.exe -E copy D:/liuyue/physDreamerVulkanDemo/3dgs.cpp.opt/build_msvc143/shaders/shaders.h D:/liuyue/physDreamerVulkanDemo/3dgs.cpp.opt/apps/apple/VulkanSplatting/shaders.h
+if %errorlevel% neq 0 goto :cmEnd
+:cmEnd
+endlocal &amp; call :cmErrorLevel %errorlevel% &amp; goto :cmDone
+:cmErrorLevel
+exit /b %1
+:cmDone
+if %errorlevel% neq 0 goto :VCEnd</Command>
+      <AdditionalInputs Condition="'$(Configuration)|$(Platform)'=='MinSizeRel|x64'">D:\liuyue\physDreamerVulkanDemo\3dgs.cpp.opt\build_msvc143\shaders\shaders.h;%(AdditionalInputs)</AdditionalInputs>
+      <Outputs Condition="'$(Configuration)|$(Platform)'=='MinSizeRel|x64'">D:\liuyue\physDreamerVulkanDemo\3dgs.cpp.opt\apps\apple\VulkanSplatting\shaders.h</Outputs>
+      <LinkObjects Condition="'$(Configuration)|$(Platform)'=='MinSizeRel|x64'">false</LinkObjects>
+      <Message Condition="'$(Configuration)|$(Platform)'=='RelWithDebInfo|x64'">Generating D:/liuyue/physDreamerVulkanDemo/3dgs.cpp.opt/apps/apple/VulkanSplatting/shaders.h</Message>
+      <Command Condition="'$(Configuration)|$(Platform)'=='RelWithDebInfo|x64'">setlocal
+C:\Python314\Lib\site-packages\cmake\data\bin\cmake.exe -E copy D:/liuyue/physDreamerVulkanDemo/3dgs.cpp.opt/build_msvc143/shaders/shaders.h D:/liuyue/physDreamerVulkanDemo/3dgs.cpp.opt/apps/apple/VulkanSplatting/shaders.h
+if %errorlevel% neq 0 goto :cmEnd
+:cmEnd
+endlocal &amp; call :cmErrorLevel %errorlevel% &amp; goto :cmDone
+:cmErrorLevel
+exit /b %1
+:cmDone
+if %errorlevel% neq 0 goto :VCEnd</Command>
+      <AdditionalInputs Condition="'$(Configuration)|$(Platform)'=='RelWithDebInfo|x64'">D:\liuyue\physDreamerVulkanDemo\3dgs.cpp.opt\build_msvc143\shaders\shaders.h;%(AdditionalInputs)</AdditionalInputs>
+      <Outputs Condition="'$(Configuration)|$(Platform)'=='RelWithDebInfo|x64'">D:\liuyue\physDreamerVulkanDemo\3dgs.cpp.opt\apps\apple\VulkanSplatting\shaders.h</Outputs>
+      <LinkObjects Condition="'$(Configuration)|$(Platform)'=='RelWithDebInfo|x64'">false</LinkObjects>
+    </CustomBuild>
+  </ItemGroup>
+  <ItemGroup>
+    <CustomBuild Include="D:\liuyue\physDreamerVulkanDemo\3dgs.cpp.opt\build_msvc143\CMakeFiles\49d325772eeffa0b0ae2e7120b2e31a2\xcode_shaders.rule">
+      <Message Condition="'$(Configuration)|$(Platform)'=='Debug|x64'"></Message>
+      <Command Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">setlocal
+:cmEnd
+endlocal &amp; call :cmErrorLevel %errorlevel% &amp; goto :cmDone
+:cmErrorLevel
+exit /b %1
+:cmDone
+if %errorlevel% neq 0 goto :VCEnd</Command>
+      <AdditionalInputs Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">D:\liuyue\physDreamerVulkanDemo\3dgs.cpp.opt\apps\apple\VulkanSplatting\shaders.h;%(AdditionalInputs)</AdditionalInputs>
+      <Outputs Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">D:\liuyue\physDreamerVulkanDemo\3dgs.cpp.opt\build_msvc143\src\shaders\CMakeFiles\xcode_shaders</Outputs>
+      <LinkObjects Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">false</LinkObjects>
+      <VerifyInputsAndOutputsExist Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">false</VerifyInputsAndOutputsExist>
+      <Message Condition="'$(Configuration)|$(Platform)'=='Release|x64'"></Message>
+      <Command Condition="'$(Configuration)|$(Platform)'=='Release|x64'">setlocal
+:cmEnd
+endlocal &amp; call :cmErrorLevel %errorlevel% &amp; goto :cmDone
+:cmErrorLevel
+exit /b %1
+:cmDone
+if %errorlevel% neq 0 goto :VCEnd</Command>
+      <AdditionalInputs Condition="'$(Configuration)|$(Platform)'=='Release|x64'">D:\liuyue\physDreamerVulkanDemo\3dgs.cpp.opt\apps\apple\VulkanSplatting\shaders.h;%(AdditionalInputs)</AdditionalInputs>
+      <Outputs Condition="'$(Configuration)|$(Platform)'=='Release|x64'">D:\liuyue\physDreamerVulkanDemo\3dgs.cpp.opt\build_msvc143\src\shaders\CMakeFiles\xcode_shaders</Outputs>
+      <LinkObjects Condition="'$(Configuration)|$(Platform)'=='Release|x64'">false</LinkObjects>
+      <VerifyInputsAndOutputsExist Condition="'$(Configuration)|$(Platform)'=='Release|x64'">false</VerifyInputsAndOutputsExist>
+      <Message Condition="'$(Configuration)|$(Platform)'=='MinSizeRel|x64'"></Message>
+      <Command Condition="'$(Configuration)|$(Platform)'=='MinSizeRel|x64'">setlocal
+:cmEnd
+endlocal &amp; call :cmErrorLevel %errorlevel% &amp; goto :cmDone
+:cmErrorLevel
+exit /b %1
+:cmDone
+if %errorlevel% neq 0 goto :VCEnd</Command>
+      <AdditionalInputs Condition="'$(Configuration)|$(Platform)'=='MinSizeRel|x64'">D:\liuyue\physDreamerVulkanDemo\3dgs.cpp.opt\apps\apple\VulkanSplatting\shaders.h;%(AdditionalInputs)</AdditionalInputs>
+      <Outputs Condition="'$(Configuration)|$(Platform)'=='MinSizeRel|x64'">D:\liuyue\physDreamerVulkanDemo\3dgs.cpp.opt\build_msvc143\src\shaders\CMakeFiles\xcode_shaders</Outputs>
+      <LinkObjects Condition="'$(Configuration)|$(Platform)'=='MinSizeRel|x64'">false</LinkObjects>
+      <VerifyInputsAndOutputsExist Condition="'$(Configuration)|$(Platform)'=='MinSizeRel|x64'">false</VerifyInputsAndOutputsExist>
+      <Message Condition="'$(Configuration)|$(Platform)'=='RelWithDebInfo|x64'"></Message>
+      <Command Condition="'$(Configuration)|$(Platform)'=='RelWithDebInfo|x64'">setlocal
+:cmEnd
+endlocal &amp; call :cmErrorLevel %errorlevel% &amp; goto :cmDone
+:cmErrorLevel
+exit /b %1
+:cmDone
+if %errorlevel% neq 0 goto :VCEnd</Command>
+      <AdditionalInputs Condition="'$(Configuration)|$(Platform)'=='RelWithDebInfo|x64'">D:\liuyue\physDreamerVulkanDemo\3dgs.cpp.opt\apps\apple\VulkanSplatting\shaders.h;%(AdditionalInputs)</AdditionalInputs>
+      <Outputs Condition="'$(Configuration)|$(Platform)'=='RelWithDebInfo|x64'">D:\liuyue\physDreamerVulkanDemo\3dgs.cpp.opt\build_msvc143\src\shaders\CMakeFiles\xcode_shaders</Outputs>
+      <LinkObjects Condition="'$(Configuration)|$(Platform)'=='RelWithDebInfo|x64'">false</LinkObjects>
+      <VerifyInputsAndOutputsExist Condition="'$(Configuration)|$(Platform)'=='RelWithDebInfo|x64'">false</VerifyInputsAndOutputsExist>
+    </CustomBuild>
+  </ItemGroup>
+  <ItemGroup>
+    <CustomBuild Include="D:\liuyue\physDreamerVulkanDemo\3dgs.cpp.opt\src\shaders\CMakeLists.txt">
+      <UseUtf8Encoding>Always</UseUtf8Encoding>
+      <Message Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">Building Custom Rule D:/liuyue/physDreamerVulkanDemo/3dgs.cpp.opt/src/shaders/CMakeLists.txt</Message>
+      <Command Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">setlocal
+C:\Python314\Lib\site-packages\cmake\data\bin\cmake.exe -SD:/liuyue/physDreamerVulkanDemo/3dgs.cpp.opt -BD:/liuyue/physDreamerVulkanDemo/3dgs.cpp.opt/build_msvc143 --check-stamp-file D:/liuyue/physDreamerVulkanDemo/3dgs.cpp.opt/build_msvc143/src/shaders/CMakeFiles/generate.stamp
+if %errorlevel% neq 0 goto :cmEnd
+:cmEnd
+endlocal &amp; call :cmErrorLevel %errorlevel% &amp; goto :cmDone
+:cmErrorLevel
+exit /b %1
+:cmDone
+if %errorlevel% neq 0 goto :VCEnd</Command>
+      <AdditionalInputs Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">%(AdditionalInputs)</AdditionalInputs>
+      <Outputs Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">D:\liuyue\physDreamerVulkanDemo\3dgs.cpp.opt\build_msvc143\src\shaders\CMakeFiles\generate.stamp</Outputs>
+      <LinkObjects Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">false</LinkObjects>
+      <Message Condition="'$(Configuration)|$(Platform)'=='Release|x64'">Building Custom Rule D:/liuyue/physDreamerVulkanDemo/3dgs.cpp.opt/src/shaders/CMakeLists.txt</Message>
+      <Command Condition="'$(Configuration)|$(Platform)'=='Release|x64'">setlocal
+C:\Python314\Lib\site-packages\cmake\data\bin\cmake.exe -SD:/liuyue/physDreamerVulkanDemo/3dgs.cpp.opt -BD:/liuyue/physDreamerVulkanDemo/3dgs.cpp.opt/build_msvc143 --check-stamp-file D:/liuyue/physDreamerVulkanDemo/3dgs.cpp.opt/build_msvc143/src/shaders/CMakeFiles/generate.stamp
+if %errorlevel% neq 0 goto :cmEnd
+:cmEnd
+endlocal &amp; call :cmErrorLevel %errorlevel% &amp; goto :cmDone
+:cmErrorLevel
+exit /b %1
+:cmDone
+if %errorlevel% neq 0 goto :VCEnd</Command>
+      <AdditionalInputs Condition="'$(Configuration)|$(Platform)'=='Release|x64'">%(AdditionalInputs)</AdditionalInputs>
+      <Outputs Condition="'$(Configuration)|$(Platform)'=='Release|x64'">D:\liuyue\physDreamerVulkanDemo\3dgs.cpp.opt\build_msvc143\src\shaders\CMakeFiles\generate.stamp</Outputs>
+      <LinkObjects Condition="'$(Configuration)|$(Platform)'=='Release|x64'">false</LinkObjects>
+      <Message Condition="'$(Configuration)|$(Platform)'=='MinSizeRel|x64'">Building Custom Rule D:/liuyue/physDreamerVulkanDemo/3dgs.cpp.opt/src/shaders/CMakeLists.txt</Message>
+      <Command Condition="'$(Configuration)|$(Platform)'=='MinSizeRel|x64'">setlocal
+C:\Python314\Lib\site-packages\cmake\data\bin\cmake.exe -SD:/liuyue/physDreamerVulkanDemo/3dgs.cpp.opt -BD:/liuyue/physDreamerVulkanDemo/3dgs.cpp.opt/build_msvc143 --check-stamp-file D:/liuyue/physDreamerVulkanDemo/3dgs.cpp.opt/build_msvc143/src/shaders/CMakeFiles/generate.stamp
+if %errorlevel% neq 0 goto :cmEnd
+:cmEnd
+endlocal &amp; call :cmErrorLevel %errorlevel% &amp; goto :cmDone
+:cmErrorLevel
+exit /b %1
+:cmDone
+if %errorlevel% neq 0 goto :VCEnd</Command>
+      <AdditionalInputs Condition="'$(Configuration)|$(Platform)'=='MinSizeRel|x64'">%(AdditionalInputs)</AdditionalInputs>
+      <Outputs Condition="'$(Configuration)|$(Platform)'=='MinSizeRel|x64'">D:\liuyue\physDreamerVulkanDemo\3dgs.cpp.opt\build_msvc143\src\shaders\CMakeFiles\generate.stamp</Outputs>
+      <LinkObjects Condition="'$(Configuration)|$(Platform)'=='MinSizeRel|x64'">false</LinkObjects>
+      <Message Condition="'$(Configuration)|$(Platform)'=='RelWithDebInfo|x64'">Building Custom Rule D:/liuyue/physDreamerVulkanDemo/3dgs.cpp.opt/src/shaders/CMakeLists.txt</Message>
+      <Command Condition="'$(Configuration)|$(Platform)'=='RelWithDebInfo|x64'">setlocal
+C:\Python314\Lib\site-packages\cmake\data\bin\cmake.exe -SD:/liuyue/physDreamerVulkanDemo/3dgs.cpp.opt -BD:/liuyue/physDreamerVulkanDemo/3dgs.cpp.opt/build_msvc143 --check-stamp-file D:/liuyue/physDreamerVulkanDemo/3dgs.cpp.opt/build_msvc143/src/shaders/CMakeFiles/generate.stamp
+if %errorlevel% neq 0 goto :cmEnd
+:cmEnd
+endlocal &amp; call :cmErrorLevel %errorlevel% &amp; goto :cmDone
+:cmErrorLevel
+exit /b %1
+:cmDone
+if %errorlevel% neq 0 goto :VCEnd</Command>
+      <AdditionalInputs Condition="'$(Configuration)|$(Platform)'=='RelWithDebInfo|x64'">%(AdditionalInputs)</AdditionalInputs>
+      <Outputs Condition="'$(Configuration)|$(Platform)'=='RelWithDebInfo|x64'">D:\liuyue\physDreamerVulkanDemo\3dgs.cpp.opt\build_msvc143\src\shaders\CMakeFiles\generate.stamp</Outputs>
+      <LinkObjects Condition="'$(Configuration)|$(Platform)'=='RelWithDebInfo|x64'">false</LinkObjects>
+    </CustomBuild>
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="D:\liuyue\physDreamerVulkanDemo\3dgs.cpp.opt\build_msvc143\src\shaders\CMakeFiles\xcode_shaders">
+    </None>
+  </ItemGroup>
+  <ItemGroup />
+  <ItemGroup>
+    <ProjectReference Include="D:\liuyue\physDreamerVulkanDemo\3dgs.cpp.opt\build_msvc143\ZERO_CHECK.vcxproj">
+      <Project>{578C4487-A3AB-3DEA-83AE-5473ECFB0B7A}</Project>
+      <Name>ZERO_CHECK</Name>
+      <ReferenceOutputAssembly>false</ReferenceOutputAssembly>
+      <CopyToOutputDirectory>Never</CopyToOutputDirectory>
+    </ProjectReference>
+    <ProjectReference Include="D:\liuyue\physDreamerVulkanDemo\3dgs.cpp.opt\build_msvc143\src\shaders\embedfile.vcxproj">
+      <Project>{F5F7F894-DF99-3BE6-ACB5-94E5667854FA}</Project>
+      <Name>embedfile</Name>
+    </ProjectReference>
+  </ItemGroup>
+  <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
+  <ImportGroup Label="ExtensionTargets">
+  </ImportGroup>
+</Project>

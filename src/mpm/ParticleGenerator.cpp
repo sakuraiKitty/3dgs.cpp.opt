@@ -1,5 +1,5 @@
 #include "ParticleGenerator.h"
-#include "GSScene.h"
+#include "../GSScene.h"
 #include <spdlog/spdlog.h>
 #include <algorithm>
 #include <random>
@@ -23,7 +23,7 @@ std::vector<ParticleData> ParticleGenerator::GenerateFromScene(
     // 1. 获取高斯点云位置
     // 注意：需要从GSScene获取原始点云位置
     // 这里假设有一个方法可以获取，具体实现需要根据GSScene的接口调整
-    std::vector<glm::vec3> all_positions = /* scene->GetAllPositions() */;
+    std::vector<glm::vec3> all_positions; // TODO: Implement scene->GetAllPositions()
     std::vector<glm::vec3> sim_positions;
 
     // 2. 根据sim_mask筛选可变形区域的点
@@ -126,7 +126,8 @@ std::vector<glm::vec3> ParticleGenerator::KMeansDownsample(
             uint32_t best_center = 0;
 
             for (size_t j = 0; j < target_count; j++) {
-                float dist = glm::length2(positions[i] - centers[j]);
+                glm::vec3 diff = positions[i] - centers[j];
+                float dist = glm::dot(diff, diff);
                 if (dist < min_dist) {
                     min_dist = dist;
                     best_center = static_cast<uint32_t>(j);

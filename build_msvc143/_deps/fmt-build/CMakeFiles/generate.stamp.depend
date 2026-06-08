@@ -1,0 +1,12 @@
+# CMake generation dependency list for this directory.
+C:/Python314/Lib/site-packages/cmake/data/share/cmake-4.3/Modules/CMakeCheckCompilerFlagCommonPatterns.cmake
+C:/Python314/Lib/site-packages/cmake/data/share/cmake-4.3/Modules/CMakeParseArguments.cmake
+C:/Python314/Lib/site-packages/cmake/data/share/cmake-4.3/Modules/CheckCXXCompilerFlag.cmake
+C:/Python314/Lib/site-packages/cmake/data/share/cmake-4.3/Modules/CheckCXXSourceCompiles.cmake
+C:/Python314/Lib/site-packages/cmake/data/share/cmake-4.3/Modules/GNUInstallDirs.cmake
+C:/Python314/Lib/site-packages/cmake/data/share/cmake-4.3/Modules/Internal/CheckCompilerFlag.cmake
+C:/Python314/Lib/site-packages/cmake/data/share/cmake-4.3/Modules/Internal/CheckFlagCommonConfig.cmake
+C:/Python314/Lib/site-packages/cmake/data/share/cmake-4.3/Modules/Internal/CheckSourceCompiles.cmake
+D:/liuyue/physDreamerVulkanDemo/3dgs.cpp.opt/build_msvc143/_deps/fmt-src/CMakeLists.txt
+D:/liuyue/physDreamerVulkanDemo/3dgs.cpp.opt/build_msvc143/_deps/fmt-src/support/cmake/JoinPaths.cmake
+D:/liuyue/physDreamerVulkanDemo/3dgs.cpp.opt/build_msvc143/_deps/fmt-src/support/cmake/cxx14.cmake

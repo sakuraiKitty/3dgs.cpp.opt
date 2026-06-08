@@ -98,6 +98,10 @@ void GUIManager::buildGui() {
     ImGui::Text("ESC: release mouse");
     ImGui::Text("Mouse captured: %s", mouseCapture ? "true" : "false");
     ImGui::Separator();
+    ImGui::Text("Physics Interaction:");
+    ImGui::Text("  Hold P + Right Drag");
+    ImGui::Text("  to drag particles");
+    ImGui::Separator();
     if (ImGui::Button(renderModeText)) {
         renderBackgroundOnly = !renderBackgroundOnly;
         renderModeText = renderBackgroundOnly ? "Render Background" : "Foreground Only";

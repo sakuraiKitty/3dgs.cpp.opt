@@ -35,9 +35,15 @@ public:
 
     void addPushConstant(vk::ShaderStageFlags stageFlags, uint32_t offset, uint32_t size);
 
+    void addDescriptorSetLayoutBinding(const vk::DescriptorSetLayoutBinding& binding);
+
     virtual void build() = 0;
 
+    // C++ style API (for vk::UniqueCommandBuffer)
     virtual void bind(const vk::UniqueCommandBuffer &commandBuffer, uint8_t currentFrame, DescriptorOption option);
+
+    // C style API (for VkCommandBuffer - raw handle)
+    virtual void bind(VkCommandBuffer commandBuffer, uint8_t currentFrame, DescriptorOption option);
 
     vk::UniquePipelineLayout pipelineLayout;
     vk::UniquePipeline pipeline;
@@ -49,6 +55,7 @@ protected:
     std::vector<vk::PushConstantRange> pushConstantRanges;
 
     std::map<uint32_t, std::shared_ptr<DescriptorSet>> descriptorSets;
+    vk::UniqueDescriptorSetLayout tempDescriptorSetLayout;  // Keep temp layout alive
 };
 
 

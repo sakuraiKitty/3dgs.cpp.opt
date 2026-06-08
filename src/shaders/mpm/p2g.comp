@@ -8,24 +8,30 @@
  * 粒子到网格传递 (P2G - Particle to Grid)
  * 将粒子的质量和动量传递到网格节点
  *
- * 使用B样条插值权重，对2x2x2邻居节点进行传递
- * 使用原子操作确保线程安全
+ * 升级到 3x3x3 三次B样条插值（与 PhysDreamer 一致）
+ * 包含 APIC 动量矩阵传递
+ *
+ * 对应: mpm_utils.py p2g_apic_with_stress() 第359行
  */
 layout(local_size_x = 256) in;
 
+// 输入：粒子数据
 layout(std430, set = 0, binding = 0) readonly buffer ParticleBuffer {
     ParticleData particles[];
 };
 
+// 输出：网格节点
 layout(std430, set = 0, binding = 1) buffer GridBuffer {
     GridNode nodes[];
 };
 
+// Uniform 参数
 layout(push_constant) uniform P2GParams {
-    float dt;             // 时间步长 [s]
-    uint grid_size;      // 网格分辨率
-    uint num_particles;   // 粒子数量
-    float grid_spacing;  // 网格间距 [m]
+    float dt;              // 时间步长 [s]
+    uint grid_size;        // 网格分辨率 (每维)
+    uint num_particles;    // 粒子数量
+    float inv_dx;          // 网格间距的倒数 (1/dx)
+    uint padding[2];
 };
 
 void main() {
@@ -37,19 +43,21 @@ void main() {
     ParticleData p = particles[p_id];
 
     // 计算网格位置
-    vec3 grid_pos = p.position / grid_spacing;
+    vec3 grid_pos = p.position * inv_dx;
     ivec3 base_node = ivec3(floor(grid_pos - 0.5));
 
-    // 2x2x2邻居节点插值 (简化版本，实际MPM使用3x3x3)
-    for (int i = 0; i < 2; i++) {
-        for (int j = 0; j < 2; j++) {
-            for (int k = 0; k < 2; k++) {
-                ivec3 node_idx = base_node + ivec3(i, j, k);
-                vec3 offset = grid_pos - vec3(node_idx);
+    // 相对位置偏移 (在 [0, 1] 范围内)
+    vec3 fx = grid_pos - vec3(base_node);
 
-                // 简化的线性权重 (可以使用B样条获得更高精度)
-                vec3 diff = 1.0 - abs(offset);
-                float w = diff.x * diff.y * diff.z;
+    // 计算 3x3x3 B 样条权重和梯度
+    BSplineWeights weights;
+    compute_bspine_weights_3x3x3(fx, weights);
+
+    // 对 3x3x3 邻居节点进行传递
+    for (int i = 0; i < 3; i++) {
+        for (int j = 0; j < 3; j++) {
+            for (int k = 0; k < 3; k++) {
+                ivec3 node_idx = base_node + ivec3(i - 1, j - 1, k - 1);
 
                 // 边界检查
                 if (any(lessThan(node_idx, ivec3(0))) ||
@@ -57,15 +65,45 @@ void main() {
                     continue;
                 }
 
-                uint linear_idx = node_idx.x + node_idx.y * grid_size +
-                                 node_idx.z * grid_size * grid_size;
+                // 线性化索引
+                uint linear_idx = node_idx.x +
+                                  node_idx.y * grid_size +
+                                  node_idx.z * grid_size * grid_size;
 
-                // 原子操作累加质量和动量
+                // B 样条权重
+                float w = weights.w[i][j][k];
+
+                // 原子操作累加质量
                 atomicAdd(nodes[linear_idx].mass, p.mass * w);
-                atomicAdd(nodes[linear_idx].velocity.x, p.velocity.x * p.mass * w);
-                atomicAdd(nodes[linear_idx].velocity.y, p.velocity.y * p.mass * w);
-                atomicAdd(nodes[linear_idx].velocity.z, p.velocity.z * p.mass * w);
+
+                // APIC 动量传递：v + C * dp
+                // dp = node_pos - particle_pos
+                vec3 node_pos = vec3(node_idx) / inv_dx;
+                vec3 dp = node_pos - p.position;
+                vec3 v_apic = p.velocity + p.apic_matrix * dp;
+
+                // 原子操作累加动量
+                atomicAdd(nodes[linear_idx].velocity.x, v_apic.x * p.mass * w);
+                atomicAdd(nodes[linear_idx].velocity.y, v_apic.y * p.mass * w);
+                atomicAdd(nodes[linear_idx].velocity.z, v_apic.z * p.mass * w);
+
+                // 标记节点活跃
                 atomicMax(nodes[linear_idx].active_count, 1u);
+
+                // 应力力传递 (Phase 1.2)
+                // 公式: f_node = -volume * stress * ∇w
+                // 对应: mpm_utils.py p2g_apic_with_stress()
+                vec3 dw = compute_dweight(weights, i, j, k, inv_dx);
+
+                // 应力力 = -体积 * 应力张量 * 权重梯度
+                // stress × dw 表示矩阵-向量乘法
+                mat3 stress = p.apic_matrix;  // 应力存储在apic_matrix字段
+                vec3 force_stress = -p.volume * (stress * dw);
+
+                // 累加应力力到网格节点
+                atomicAdd(nodes[linear_idx].force.x, force_stress.x);
+                atomicAdd(nodes[linear_idx].force.y, force_stress.y);
+                atomicAdd(nodes[linear_idx].force.z, force_stress.z);
             }
         }
     }

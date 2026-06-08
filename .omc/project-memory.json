@@ -1,0 +1,167 @@
+{
+  "version": "1.0.0",
+  "lastScanned": 1780887905694,
+  "projectRoot": "d:\\liuyue\\physDreamerVulkanDemo\\3dgs.cpp.opt",
+  "techStack": {
+    "languages": [
+      {
+        "name": "C/C++",
+        "version": null,
+        "confidence": "high",
+        "markers": [
+          "CMakeLists.txt"
+        ]
+      }
+    ],
+    "frameworks": [],
+    "packageManager": null,
+    "runtime": null
+  },
+  "build": {
+    "buildCommand": null,
+    "testCommand": null,
+    "lintCommand": null,
+    "devCommand": null,
+    "scripts": {}
+  },
+  "conventions": {
+    "namingStyle": null,
+    "importStyle": null,
+    "testPattern": null,
+    "fileOrganization": null
+  },
+  "structure": {
+    "isMonorepo": false,
+    "workspaces": [],
+    "mainDirectories": [
+      "docs",
+      "scripts",
+      "src"
+    ],
+    "gitBranches": {
+      "defaultBranch": "main",
+      "branchingStrategy": null
+    }
+  },
+  "directoryMap": {
+    "apps": {
+      "path": "apps",
+      "purpose": null,
+      "fileCount": 1,
+      "lastAccessed": 1780887905679,
+      "keyFiles": [
+        "CMakeLists.txt"
+      ]
+    },
+    "build": {
+      "path": "build",
+      "purpose": "Build output",
+      "fileCount": 7,
+      "lastAccessed": 1780887905679,
+      "keyFiles": [
+        "3dgs_cpp_root.sln",
+        "ALL_BUILD.vcxproj",
+        "ALL_BUILD.vcxproj.filters",
+        "CMakeCache.txt",
+        "cmake_install.cmake"
+      ]
+    },
+    "build_msvc143": {
+      "path": "build_msvc143",
+      "purpose": null,
+      "fileCount": 7,
+      "lastAccessed": 1780887905679,
+      "keyFiles": [
+        "3dgs_cpp_root.sln",
+        "ALL_BUILD.vcxproj",
+        "ALL_BUILD.vcxproj.filters",
+        "CMakeCache.txt",
+        "cmake_install.cmake"
+      ]
+    },
+    "cmake": {
+      "path": "cmake",
+      "purpose": null,
+      "fileCount": 1,
+      "lastAccessed": 1780887905679,
+      "keyFiles": [
+        "embedfile.c"
+      ]
+    },
+    "docs": {
+      "path": "docs",
+      "purpose": "Documentation",
+      "fileCount": 4,
+      "lastAccessed": 1780887905679,
+      "keyFiles": [
+        "FILE_LOADING_GUIDE.md",
+        "GAUSSIAN_RENDER_INITIALIZATION_PLAN.md",
+        "INDEX.md",
+        "QUICK_START_GUIDE.md"
+      ]
+    },
+    "include": {
+      "path": "include",
+      "purpose": null,
+      "fileCount": 0,
+      "lastAccessed": 1780887905680,
+      "keyFiles": []
+    },
+    "scripts": {
+      "path": "scripts",
+      "purpose": "Build/utility scripts",
+      "fileCount": 3,
+      "lastAccessed": 1780887905680,
+      "keyFiles": [
+        "benchmark.py",
+        "compare_stages.py",
+        "README.md"
+      ]
+    },
+    "shaders": {
+      "path": "shaders",
+      "purpose": null,
+      "fileCount": 18,
+      "lastAccessed": 1780887905680,
+      "keyFiles": [
+        "apply_mouse_force.spv",
+        "calibrate.spv",
+        "compute_stress.spv",
+        "g2p.spv",
+        "grid_update.spv"
+      ]
+    },
+    "src": {
+      "path": "src",
+      "purpose": "Source code",
+      "fileCount": 13,
+      "lastAccessed": 1780887905680,
+      "keyFiles": [
+        "3dgs.cpp",
+        "CMakeLists.txt",
+        "DummyGUIManager.cpp",
+        "GaussianModel.cpp",
+        "GaussianModel.h"
+      ]
+    },
+    "verification": {
+      "path": "verification",
+      "purpose": null,
+      "fileCount": 0,
+      "lastAccessed": 1780887905681,
+      "keyFiles": []
+    },
+    "build\\src": {
+      "path": "build\\src",
+      "purpose": "Source code",
+      "fileCount": 6,
+      "lastAccessed": 1780887905682,
+      "keyFiles": [
+        "3dgs_cpp.sln",
+        "3dgs_cpp.vcxproj",
+        "3dgs_cpp.vcxproj.filters"
+      ]
+    }
+  },
+  "MPM_INIT_STATUS": "✅ 验收完成（2024-06-02）: MPM物理模拟初始化C++实现已完全修复并编译通过。修复内容：1)文件编码：移除pragma execution_character_set，添加/utf-8编译选项；2)GLM语法：向量乘法修复为glm::vec3显式转换。实现功能：MPMStructs.h数据结构、MPMInitializer初始化类、SceneLoader集成、Renderer集成。下一阶段：MPM Compute Shader实现。"
+}

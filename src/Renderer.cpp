@@ -23,6 +23,11 @@
 void Renderer::initialize() {
     initializeVulkan();
     createGui();
+
+    // MPM Manager will be initialized later when VkCommandBuffer compatibility is resolved
+    // mpm_manager_ = std::make_shared<MPM::MPMManager>(context);
+    spdlog::info("[Renderer] MPM Manager initialization deferred (pending type compatibility fix)");
+
     loadSceneToGPU();
     createPreprocessPipeline();
     createPrefixSumPipeline();
@@ -32,6 +37,11 @@ void Renderer::initialize() {
     createRenderPipeline();
     createCommandPool();
     recordPreprocessCommandBuffer();
+
+    // 初始化交互系统（如果MPM已初始化）
+    if (mpm_initialized_) {
+        initializeInteractionSystem();
+    }
 }
 
 void Renderer::handleInput() {
@@ -515,6 +525,10 @@ void Renderer::draw() {
 
 startOfRenderLoop:
     handleInput();
+
+    // 处理物理交互输入
+    handlePhysicsInteraction();
+
     updateUniforms();
 
     // Sync render mode from GUI
@@ -532,6 +546,16 @@ startOfRenderLoop:
         throw std::runtime_error("Failed to wait for preprocess fence");
     }
     context->device->resetFences(inflightFences[frameIdx].get());
+
+    // 执行物理仿真（在渲染之前）
+    if (mpm_initialized_ && mpm_manager_ && mpm_manager_->IsEnabled()) {
+        auto& renderCmd = renderCommandBuffers[frameIdx];
+        VkCommandBufferBeginInfo beginInfo = {VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO};
+        beginInfo.flags = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT;
+        vkBeginCommandBuffer(renderCmd.get(), &beginInfo);
+        updatePhysicsSimulation(renderCmd.get());
+        vkEndCommandBuffer(renderCmd.get());
+    }
 
     // 4. 记录并提交渲染命令
     if (!recordRenderCommandBuffer(frameIdx)) {
@@ -1143,6 +1167,118 @@ void Renderer::saveScreenshot(const std::string& filePath) {
     screenshotSaving = false;
 
     spdlog::info("Screenshot saved to: {}", filePath);
+}
+
+// === 物理交互系统实现 ===
+
+void Renderer::initializeInteractionSystem() {
+    if (!mpm_initialized_) {
+        spdlog::warn("[Renderer] MPM not initialized, skipping interaction system initialization");
+        return;
+    }
+
+    spdlog::info("[Renderer] Initializing interaction system...");
+
+    // 创建射线拾取器
+    Interaction::RayCaster::Config ray_caster_config;
+    ray_caster_config.max_distance = 0.5f;
+    ray_caster_ = std::make_shared<Interaction::RayCaster>(context, ray_caster_config);
+    ray_caster_->Initialize();
+
+    // 创建拖拽处理器
+    Interaction::DragHandler::Config drag_config;
+    drag_config.stiffness = 50.0f;
+    drag_config.max_force = 100.0f;
+    drag_handler_ = std::make_shared<Interaction::DragHandler>(context, drag_config);
+    drag_handler_->Initialize();
+
+    spdlog::info("[Renderer] Interaction system initialized successfully");
+}
+
+void Renderer::handlePhysicsInteraction() {
+    if (!mpm_initialized_ || !ray_caster_ || !drag_handler_) {
+        return;
+    }
+
+    auto keys = window->getKeys();
+    auto mouse_buttons = window->getMouseButton();
+    auto cursor_pos = window->getCursorPosition();
+
+    // 检测物理交互触发条件：P键 + 右键
+    bool p_key_held = keys[8];  // P键索引
+    bool right_mouse_down = mouse_buttons[2];
+
+    // 检测鼠标按下/释放事件（边沿检测）
+    mouse_pressed_this_frame_ = right_mouse_down && !prev_right_mouse_down_;
+    mouse_released_this_frame_ = !right_mouse_down && prev_right_mouse_down_;
+
+    // 保存当前鼠标位置
+    last_mouse_position_ = glm::ivec2(static_cast<int>(cursor_pos[0]), static_cast<int>(cursor_pos[1]));
+    prev_right_mouse_down_ = right_mouse_down;
+
+    // 处理鼠标按下事件（射线拾取需要命令缓冲区，延迟到 updatePhysicsSimulation）
+    if (p_key_held && mouse_pressed_this_frame_) {
+        mouse_pos_on_press_ = last_mouse_position_;
+        physics_interaction_mode_ = true;
+    }
+
+    // 处理鼠标释放事件
+    if (mouse_released_this_frame_ && physics_interaction_mode_) {
+        drag_handler_->OnMouseUp();
+        physics_interaction_mode_ = false;
+        is_dragging_ = false;
+    }
+
+    // 处理鼠标移动事件（在拖拽中）
+    if (physics_interaction_mode_ && right_mouse_down) {
+        drag_handler_->OnMouseMove(last_mouse_position_.x, last_mouse_position_.y);
+        is_dragging_ = drag_handler_->IsDragging();
+    }
+}
+
+void Renderer::updatePhysicsSimulation(VkCommandBuffer cmd) {
+    if (!mpm_initialized_ || !mpm_manager_ || !mpm_manager_->IsEnabled()) {
+        return;
+    }
+
+    // 处理鼠标按下时的射线拾取
+    if (mouse_pressed_this_frame_ && physics_interaction_mode_ && ray_caster_ && drag_handler_) {
+        auto [fb_width, fb_height] = window->getFramebufferSize();
+
+        // 计算视图投影矩阵（与 updateUniforms 相同）
+        auto rotation = glm::mat4_cast(camera.rotation);
+        auto translation = glm::translate(glm::mat4(1.0f), camera.position);
+        auto view = glm::inverse(translation * rotation);
+
+        float tan_fovx = std::tan(glm::radians(camera.fov) / 2.0);
+        float tan_fovy = tan_fovx * static_cast<float>(fb_height) / static_cast<float>(fb_width);
+        auto proj = glm::perspective(std::atan(tan_fovy) * 2.0f,
+                                     static_cast<float>(fb_width) / static_cast<float>(fb_height),
+                                     camera.nearPlane,
+                                     camera.farPlane);
+        glm::mat4 view_proj = proj * view;
+
+        drag_handler_->OnMouseDown(
+            mouse_pos_on_press_.x,
+            mouse_pos_on_press_.y,
+            *ray_caster_,
+            fb_width,
+            fb_height,
+            view_proj,
+            mpm_manager_->GetParticleBuffer(),
+            mpm_manager_->GetParticleCount(),
+            cmd
+        );
+    }
+
+    // 如果正在拖拽，应用拖拽力
+    if (drag_handler_ && drag_handler_->IsDragging()) {
+        float dt = 1.0f / 30.0f;  // 固定物理时间步
+        drag_handler_->ApplyForce(cmd, mpm_manager_->GetParticleBuffer(), dt);
+    }
+
+    // 执行MPM物理步进
+    mpm_manager_->Step(cmd, 1.0f / 30.0f);
 }
 
 Renderer::~Renderer() {

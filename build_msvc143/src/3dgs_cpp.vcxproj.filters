@@ -1,0 +1,118 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Project ToolsVersion="17.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <ItemGroup>
+    <ClCompile Include="D:\liuyue\physDreamerVulkanDemo\3dgs.cpp.opt\src\3dgs.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="D:\liuyue\physDreamerVulkanDemo\3dgs.cpp.opt\src\GSScene.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="D:\liuyue\physDreamerVulkanDemo\3dgs.cpp.opt\src\GUIManager.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="D:\liuyue\physDreamerVulkanDemo\3dgs.cpp.opt\src\GaussianModel.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="D:\liuyue\physDreamerVulkanDemo\3dgs.cpp.opt\src\Renderer.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="D:\liuyue\physDreamerVulkanDemo\3dgs.cpp.opt\src\SceneLoader.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="D:\liuyue\physDreamerVulkanDemo\3dgs.cpp.opt\src\coupling\DisplacementMapper.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="D:\liuyue\physDreamerVulkanDemo\3dgs.cpp.opt\src\coupling\GaussianParticleMapper.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="D:\liuyue\physDreamerVulkanDemo\3dgs.cpp.opt\src\interaction\DragHandler.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="D:\liuyue\physDreamerVulkanDemo\3dgs.cpp.opt\src\interaction\RayCaster.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="D:\liuyue\physDreamerVulkanDemo\3dgs.cpp.opt\src\mpm\MPMInitializer.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="D:\liuyue\physDreamerVulkanDemo\3dgs.cpp.opt\src\mpm\MPMManager.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="D:\liuyue\physDreamerVulkanDemo\3dgs.cpp.opt\src\mpm\ParticleGenerator.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="D:\liuyue\physDreamerVulkanDemo\3dgs.cpp.opt\src\vulkan\Buffer.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="D:\liuyue\physDreamerVulkanDemo\3dgs.cpp.opt\src\vulkan\DescriptorSet.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="D:\liuyue\physDreamerVulkanDemo\3dgs.cpp.opt\src\vulkan\ImguiManager.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="D:\liuyue\physDreamerVulkanDemo\3dgs.cpp.opt\src\vulkan\QueryManager.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="D:\liuyue\physDreamerVulkanDemo\3dgs.cpp.opt\src\vulkan\Shader.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="D:\liuyue\physDreamerVulkanDemo\3dgs.cpp.opt\src\vulkan\Swapchain.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="D:\liuyue\physDreamerVulkanDemo\3dgs.cpp.opt\src\vulkan\Utils.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="D:\liuyue\physDreamerVulkanDemo\3dgs.cpp.opt\src\vulkan\VMA.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="D:\liuyue\physDreamerVulkanDemo\3dgs.cpp.opt\src\vulkan\VulkanContext.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="D:\liuyue\physDreamerVulkanDemo\3dgs.cpp.opt\src\vulkan\pipelines\ComputePipeline.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="D:\liuyue\physDreamerVulkanDemo\3dgs.cpp.opt\src\vulkan\pipelines\Pipeline.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="D:\liuyue\physDreamerVulkanDemo\3dgs.cpp.opt\src\vulkan\windowing\GLFWWindow.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="D:\liuyue\physDreamerVulkanDemo\3dgs.cpp.opt\build_msvc143\_deps\imgui-src\backends\imgui_impl_glfw.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="D:\liuyue\physDreamerVulkanDemo\3dgs.cpp.opt\build_msvc143\_deps\imgui-src\backends\imgui_impl_vulkan.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="D:\liuyue\physDreamerVulkanDemo\3dgs.cpp.opt\build_msvc143\_deps\imgui-src\imgui.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="D:\liuyue\physDreamerVulkanDemo\3dgs.cpp.opt\build_msvc143\_deps\imgui-src\imgui_demo.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="D:\liuyue\physDreamerVulkanDemo\3dgs.cpp.opt\build_msvc143\_deps\imgui-src\imgui_draw.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="D:\liuyue\physDreamerVulkanDemo\3dgs.cpp.opt\build_msvc143\_deps\imgui-src\imgui_tables.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="D:\liuyue\physDreamerVulkanDemo\3dgs.cpp.opt\build_msvc143\_deps\imgui-src\imgui_widgets.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="D:\liuyue\physDreamerVulkanDemo\3dgs.cpp.opt\src\third_party\implot\implot.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="D:\liuyue\physDreamerVulkanDemo\3dgs.cpp.opt\src\third_party\implot\implot_demo.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="D:\liuyue\physDreamerVulkanDemo\3dgs.cpp.opt\src\third_party\implot\implot_items.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+  </ItemGroup>
+  <ItemGroup>
+    <CustomBuild Include="D:\liuyue\physDreamerVulkanDemo\3dgs.cpp.opt\src\CMakeLists.txt" />
+  </ItemGroup>
+  <ItemGroup>
+    <Filter Include="Source Files">
+      <UniqueIdentifier>{393B706D-1AE0-3413-BFD2-014B34E3618A}</UniqueIdentifier>
+    </Filter>
+  </ItemGroup>
+</Project>

@@ -1,0 +1,19 @@
+{
+	"InstallScripts" : 
+	[
+		"D:/liuyue/physDreamerVulkanDemo/3dgs.cpp.opt/build_msvc143/cmake_install.cmake",
+		"D:/liuyue/physDreamerVulkanDemo/3dgs.cpp.opt/build_msvc143/_deps/glfw-build/cmake_install.cmake",
+		"D:/liuyue/physDreamerVulkanDemo/3dgs.cpp.opt/build_msvc143/_deps/glfw-build/src/cmake_install.cmake",
+		"D:/liuyue/physDreamerVulkanDemo/3dgs.cpp.opt/build_msvc143/_deps/glm-build/cmake_install.cmake",
+		"D:/liuyue/physDreamerVulkanDemo/3dgs.cpp.opt/build_msvc143/_deps/glm-build/glm/cmake_install.cmake",
+		"D:/liuyue/physDreamerVulkanDemo/3dgs.cpp.opt/build_msvc143/_deps/libenvpp-build/cmake_install.cmake",
+		"D:/liuyue/physDreamerVulkanDemo/3dgs.cpp.opt/build_msvc143/_deps/fmt-build/cmake_install.cmake",
+		"D:/liuyue/physDreamerVulkanDemo/3dgs.cpp.opt/build_msvc143/_deps/spdlog-build/cmake_install.cmake",
+		"D:/liuyue/physDreamerVulkanDemo/3dgs.cpp.opt/build_msvc143/src/cmake_install.cmake",
+		"D:/liuyue/physDreamerVulkanDemo/3dgs.cpp.opt/build_msvc143/src/shaders/cmake_install.cmake",
+		"D:/liuyue/physDreamerVulkanDemo/3dgs.cpp.opt/build_msvc143/apps/cmake_install.cmake",
+		"D:/liuyue/physDreamerVulkanDemo/3dgs.cpp.opt/build_msvc143/apps/viewer/cmake_install.cmake",
+		"D:/liuyue/physDreamerVulkanDemo/3dgs.cpp.opt/build_msvc143/apps/apple/cmake_install.cmake"
+	],
+	"Parallel" : false
+}

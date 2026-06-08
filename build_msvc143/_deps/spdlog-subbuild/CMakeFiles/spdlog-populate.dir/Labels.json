@@ -1,0 +1,46 @@
+{
+	"sources" : 
+	[
+		{
+			"file" : "D:/liuyue/physDreamerVulkanDemo/3dgs.cpp.opt/build_msvc143/_deps/spdlog-subbuild/CMakeFiles/spdlog-populate"
+		},
+		{
+			"file" : "D:/liuyue/physDreamerVulkanDemo/3dgs.cpp.opt/build_msvc143/_deps/spdlog-subbuild/CMakeFiles/eaf0b6434f32643cd45cbeb32381c783/spdlog-populate.rule"
+		},
+		{
+			"file" : "D:/liuyue/physDreamerVulkanDemo/3dgs.cpp.opt/build_msvc143/_deps/spdlog-subbuild/CMakeFiles/0dad939a7646a876fe6ac3408ae9448c/spdlog-populate-complete.rule"
+		},
+		{
+			"file" : "D:/liuyue/physDreamerVulkanDemo/3dgs.cpp.opt/build_msvc143/_deps/spdlog-subbuild/CMakeFiles/2ae666000715be8a68e00731b8cf2383/spdlog-populate-build.rule"
+		},
+		{
+			"file" : "D:/liuyue/physDreamerVulkanDemo/3dgs.cpp.opt/build_msvc143/_deps/spdlog-subbuild/CMakeFiles/2ae666000715be8a68e00731b8cf2383/spdlog-populate-configure.rule"
+		},
+		{
+			"file" : "D:/liuyue/physDreamerVulkanDemo/3dgs.cpp.opt/build_msvc143/_deps/spdlog-subbuild/CMakeFiles/2ae666000715be8a68e00731b8cf2383/spdlog-populate-download.rule"
+		},
+		{
+			"file" : "D:/liuyue/physDreamerVulkanDemo/3dgs.cpp.opt/build_msvc143/_deps/spdlog-subbuild/CMakeFiles/2ae666000715be8a68e00731b8cf2383/spdlog-populate-install.rule"
+		},
+		{
+			"file" : "D:/liuyue/physDreamerVulkanDemo/3dgs.cpp.opt/build_msvc143/_deps/spdlog-subbuild/CMakeFiles/2ae666000715be8a68e00731b8cf2383/spdlog-populate-mkdir.rule"
+		},
+		{
+			"file" : "D:/liuyue/physDreamerVulkanDemo/3dgs.cpp.opt/build_msvc143/_deps/spdlog-subbuild/CMakeFiles/2ae666000715be8a68e00731b8cf2383/spdlog-populate-patch.rule"
+		},
+		{
+			"file" : "D:/liuyue/physDreamerVulkanDemo/3dgs.cpp.opt/build_msvc143/_deps/spdlog-subbuild/CMakeFiles/2ae666000715be8a68e00731b8cf2383/spdlog-populate-test.rule"
+		},
+		{
+			"file" : "D:/liuyue/physDreamerVulkanDemo/3dgs.cpp.opt/build_msvc143/_deps/spdlog-subbuild/CMakeFiles/2ae666000715be8a68e00731b8cf2383/spdlog-populate-update.rule"
+		}
+	],
+	"target" : 
+	{
+		"labels" : 
+		[
+			"spdlog-populate"
+		],
+		"name" : "spdlog-populate"
+	}
+}

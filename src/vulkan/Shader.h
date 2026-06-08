@@ -3,6 +3,7 @@
 #include <memory>
 #include <string>
 #include <utility>
+#include <vector>
 
 #include "VulkanContext.h"
 
@@ -36,6 +37,7 @@ private:
     std::shared_ptr<VulkanContext> context;
     const unsigned char* data = nullptr;
     size_t size;
+    std::vector<char> shader_code;  // Keep shader data alive
 };
 
 

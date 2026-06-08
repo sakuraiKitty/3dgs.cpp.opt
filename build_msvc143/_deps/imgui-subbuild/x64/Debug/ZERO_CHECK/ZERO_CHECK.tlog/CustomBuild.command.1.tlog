@@ -1,0 +1,10 @@
+^D:\LIUYUE\PHYSDREAMERVULKANDEMO\3DGS.CPP.OPT\BUILD_MSVC143\_DEPS\IMGUI-SUBBUILD\CMAKEFILES\94A7482C8910CDAC6A39A4727B8C6593\GENERATE.STAMP.RULE
+setlocal
+C:\Python314\Lib\site-packages\cmake\data\bin\cmake.exe -SD:/liuyue/physDreamerVulkanDemo/3dgs.cpp.opt/build_msvc143/_deps/imgui-subbuild -BD:/liuyue/physDreamerVulkanDemo/3dgs.cpp.opt/build_msvc143/_deps/imgui-subbuild --check-stamp-list CMakeFiles/generate.stamp.list --vs-solution-file D:/liuyue/physDreamerVulkanDemo/3dgs.cpp.opt/build_msvc143/_deps/imgui-subbuild/imgui-populate.sln
+if %errorlevel% neq 0 goto :cmEnd
+:cmEnd
+endlocal & call :cmErrorLevel %errorlevel% & goto :cmDone
+:cmErrorLevel
+exit /b %1
+:cmDone
+if %errorlevel% neq 0 goto :VCEnd

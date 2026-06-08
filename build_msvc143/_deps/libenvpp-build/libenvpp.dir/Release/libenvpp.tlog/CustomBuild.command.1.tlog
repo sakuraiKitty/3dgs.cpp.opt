@@ -1,0 +1,10 @@
+^D:\LIUYUE\PHYSDREAMERVULKANDEMO\3DGS.CPP.OPT\BUILD_MSVC143\_DEPS\LIBENVPP-SRC\CMAKELISTS.TXT
+setlocal
+C:\Python314\Lib\site-packages\cmake\data\bin\cmake.exe -SD:/liuyue/physDreamerVulkanDemo/3dgs.cpp.opt -BD:/liuyue/physDreamerVulkanDemo/3dgs.cpp.opt/build_msvc143 --check-stamp-file D:/liuyue/physDreamerVulkanDemo/3dgs.cpp.opt/build_msvc143/_deps/libenvpp-build/CMakeFiles/generate.stamp
+if %errorlevel% neq 0 goto :cmEnd
+:cmEnd
+endlocal & call :cmErrorLevel %errorlevel% & goto :cmDone
+:cmErrorLevel
+exit /b %1
+:cmDone
+if %errorlevel% neq 0 goto :VCEnd

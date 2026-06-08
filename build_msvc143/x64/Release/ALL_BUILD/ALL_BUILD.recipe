@@ -1,0 +1,23 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Project>
+  <ProjectOutputs>
+    <ProjectOutput>
+      <FullPath>D:\liuyue\physDreamerVulkanDemo\3dgs.cpp.opt\build_msvc143\x64\Release\ZERO_CHECK</FullPath>
+    </ProjectOutput>
+    <ProjectOutput>
+      <FullPath>D:\liuyue\physDreamerVulkanDemo\3dgs.cpp.opt\build_msvc143\src\shaders\Release\embedfile.exe</FullPath>
+    </ProjectOutput>
+    <ProjectOutput>
+      <FullPath>D:\liuyue\physDreamerVulkanDemo\3dgs.cpp.opt\build_msvc143\src\shaders\x64\Release\shaders</FullPath>
+    </ProjectOutput>
+    <ProjectOutput>
+      <FullPath>D:\liuyue\physDreamerVulkanDemo\3dgs.cpp.opt\build_msvc143\apps\viewer\Release\3dgs_viewer.exe</FullPath>
+    </ProjectOutput>
+    <ProjectOutput>
+      <FullPath>D:\liuyue\physDreamerVulkanDemo\3dgs.cpp.opt\build_msvc143\x64\Release\ALL_BUILD</FullPath>
+    </ProjectOutput>
+  </ProjectOutputs>
+  <ContentFiles />
+  <SatelliteDlls />
+  <NonRecipeFileRefs />
+</Project>

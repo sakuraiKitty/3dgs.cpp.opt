@@ -5,45 +5,44 @@
 
 /**
  * 网格到粒子传递 (G2P - Grid to Particle)
- * 从网格节点插值速度，更新粒子位置
+ * 从网格节点插值速度，更新粒子位置和变形梯度
  *
- * 使用与P2G相同的插值权重
- * 冻结粒子的位置和速度保持不变
+ * 升级到 3x3x3 三次B样条插值（与 PhysDreamer 一致）
+ *
+ * 对应: mpm_utils.py g2p_differentiable() 第503行
  */
 layout(local_size_x = 256) in;
 
-layout(std430, set = 0, binding = 0) buffer ParticleBuffer {
-    ParticleData particles[];
-};
-
-layout(std430, set = 0, binding = 1) readonly buffer GridBuffer {
+// 输入：网格节点（只读）
+layout(std430, set = 0, binding = 0) readonly buffer GridBuffer {
     GridNode nodes[];
 };
 
-layout(push_constant) uniform G2PParams {
-    float dt;             // 时间步长 [s]
-    uint grid_size;      // 网格分辨率
-    uint num_particles;   // 粒子数量
-    float grid_spacing;  // 网格间距 [m]
+// 输出：粒子数据
+layout(std430, set = 0, binding = 1) buffer ParticleBuffer {
+    ParticleData particles[];
 };
 
-void main() {
-    uint p_id = gl_GlobalInvocationID.x;
-    if (p_id >= num_particles) {
-        return;
-    }
+// Uniform 参数
+layout(push_constant) uniform G2PParams {
+    float dt;              // 时间步长 [s]
+    uint grid_size;        // 网格分辨率 (每维)
+    uint num_particles;    // 粒子数量
+    float inv_dx;          // 网格间距的倒数 (1/dx)
+    uint padding[2];
+};
 
-    // 从网格插值速度
-    vec3 grid_pos = particles[p_id].position / grid_spacing;
-    ivec3 base_node = ivec3(floor(grid_pos - 0.5));
+/**
+ * 从网格插值速度
+ * 使用 3x3x3 B 样条权重
+ */
+vec3 interpolate_velocity(vec3 grid_pos, ivec3 base_node, BSplineWeights weights) {
+    vec3 v = vec3(0.0);
 
-    vec3 new_velocity = vec3(0.0);
-
-    // 2x2x2邻居节点插值 (简化版本)
-    for (int i = 0; i < 2; i++) {
-        for (int j = 0; j < 2; j++) {
-            for (int k = 0; k < 2; k++) {
-                ivec3 node_idx = base_node + ivec3(i, j, k);
+    for (int i = 0; i < 3; i++) {
+        for (int j = 0; j < 3; j++) {
+            for (int k = 0; k < 3; k++) {
+                ivec3 node_idx = base_node + ivec3(i - 1, j - 1, k - 1);
 
                 // 边界检查
                 if (any(lessThan(node_idx, ivec3(0))) ||
@@ -51,28 +50,143 @@ void main() {
                     continue;
                 }
 
-                uint linear_idx = node_idx.x + node_idx.y * grid_size +
-                                 node_idx.z * grid_size * grid_size;
+                uint linear_idx = node_idx.x +
+                                  node_idx.y * grid_size +
+                                  node_idx.z * grid_size * grid_size;
 
-                vec3 offset = grid_pos - vec3(node_idx);
-
-                // 简化的线性权重
-                vec3 diff = 1.0 - abs(offset);
-                float w = diff.x * diff.y * diff.z;
+                // B 样条权重
+                float w = weights.w[i][j][k];
 
                 // 插值速度
-                new_velocity += nodes[linear_idx].velocity * w;
+                v += nodes[linear_idx].velocity * w;
             }
         }
     }
 
-    // 更新粒子（冻结粒子保持不变）
-    if (particles[p_id].freeze_flag == 0) {
-        particles[p_id].velocity = new_velocity;
-        particles[p_id].position += new_velocity * dt;
+    return v;
+}
 
-        // 边界限制（可选，防止粒子飞出）
-        // particles[p_id].position = clamp(particles[p_id].position,
-        //     vec3(0.0), vec3(grid_spacing * grid_size));
+/**
+ * 计算速度梯度 ∇v
+ * 用于更新变形梯度：F_new = (I + ∇v * dt) * F_old
+ */
+mat3 compute_velocity_gradient(
+    vec3 grid_pos,
+    ivec3 base_node,
+    BSplineWeights weights,
+    uint grid_size
+) {
+    mat3 dv = mat3(0.0); // ∇v (3x3 矩阵)
+
+    for (int i = 0; i < 3; i++) {
+        for (int j = 0; j < 3; j++) {
+            for (int k = 0; k < 3; k++) {
+                ivec3 node_idx = base_node + ivec3(i - 1, j - 1, k - 1);
+
+                // 边界检查
+                if (any(lessThan(node_idx, ivec3(0))) ||
+                    any(greaterThanEqual(node_idx, ivec3(int(grid_size))))) {
+                    continue;
+                }
+
+                uint linear_idx = node_idx.x +
+                                  node_idx.y * grid_size +
+                                  node_idx.z * grid_size * grid_size;
+
+                // 计算梯度权重
+                vec3 dw = compute_dweight(weights, i, j, k, inv_dx);
+
+                // 累加速度梯度：v_node ⊗ dw
+                // dv[a][b] += v_node[a] * dw[b]
+                vec3 v_node = nodes[linear_idx].velocity;
+                dv[0] += v_node.x * dw; // 第一行
+                dv[1] += v_node.y * dw; // 第二行
+                dv[2] += v_node.z * dw; // 第三行
+            }
+        }
     }
+
+    return dv;
+}
+
+void main() {
+    uint p_id = gl_GlobalInvocationID.x;
+    if (p_id >= num_particles) {
+        return;
+    }
+
+    ParticleData p = particles[p_id];
+
+    // 冻结粒子不更新
+    if (p.freeze_flag != 0) {
+        return;
+    }
+
+    // 计算网格位置
+    vec3 grid_pos = p.position * inv_dx;
+    ivec3 base_node = ivec3(floor(grid_pos - 0.5));
+
+    // 相对位置偏移
+    vec3 fx = grid_pos - vec3(base_node);
+
+    // 计算 3x3x3 B 样条权重和梯度
+    BSplineWeights weights;
+    compute_bspine_weights_3x3x3(fx, weights);
+
+    // 从网格插值速度
+    vec3 v_particle = interpolate_velocity(grid_pos, base_node, weights);
+
+    // 计算速度梯度 ∇v
+    mat3 dv = compute_velocity_gradient(grid_pos, base_node, weights, grid_size);
+
+    // 更新粒子速度
+    particles[p_id].velocity = v_particle;
+
+    // 更新APIC矩阵
+    // 公式: C_new = sum(outer(v_grid, dpos) * w * inv_dx * 4)
+    mat3 C_new = mat3(0.0);
+    for (int i = 0; i < 3; i++) {
+        for (int j = 0; j < 3; j++) {
+            for (int k = 0; k < 3; k++) {
+                ivec3 node_idx = base_node + ivec3(i - 1, j - 1, k - 1);
+
+                // 边界检查
+                if (any(lessThan(node_idx, ivec3(0))) ||
+                    any(greaterThanEqual(node_idx, ivec3(int(grid_size))))) {
+                    continue;
+                }
+
+                uint linear_idx = node_idx.x +
+                                  node_idx.y * grid_size +
+                                  node_idx.z * grid_size * grid_size;
+
+                // B样条权重
+                float w = weights.w[i][j][k];
+
+                // 相对位置 dpos
+                vec3 dpos = vec3(float(i), float(j), float(k)) - fx;
+
+                // 网格速度
+                vec3 v_grid = nodes[linear_idx].velocity;
+
+                // 外积: v_grid ⊗ dpos
+                // C_new += (v_grid ⊗ dpos) * w * inv_dx * 4
+                mat3 outer_prod = mat3(
+                    v_grid.x * dpos.x, v_grid.x * dpos.y, v_grid.x * dpos.z,
+                    v_grid.y * dpos.x, v_grid.y * dpos.y, v_grid.y * dpos.z,
+                    v_grid.z * dpos.x, v_grid.z * dpos.y, v_grid.z * dpos.z
+                );
+                C_new += outer_prod * w * inv_dx * 4.0;
+            }
+        }
+    }
+    particles[p_id].apic_matrix = C_new;
+
+    // 更新变形梯度：F_new = (I + ∇v * dt) * F_old
+    mat3 I = mat3(1.0, 0.0, 0.0,  0.0, 1.0, 0.0,  0.0, 0.0, 1.0);
+    mat3 F_new = (I + dv * dt) * p.deformation_gradient;
+    particles[p_id].deformation_gradient = F_new;
+
+    // 更新粒子位置
+    particles[p_id].position += v_particle * dt;
 }

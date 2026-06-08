@@ -1,0 +1,46 @@
+{
+	"sources" : 
+	[
+		{
+			"file" : "D:/liuyue/physDreamerVulkanDemo/3dgs.cpp.opt/build_msvc143/_deps/libenvpp-subbuild/CMakeFiles/libenvpp-populate"
+		},
+		{
+			"file" : "D:/liuyue/physDreamerVulkanDemo/3dgs.cpp.opt/build_msvc143/_deps/libenvpp-subbuild/CMakeFiles/9782f4747750a00e2768a6bf6d294af1/libenvpp-populate.rule"
+		},
+		{
+			"file" : "D:/liuyue/physDreamerVulkanDemo/3dgs.cpp.opt/build_msvc143/_deps/libenvpp-subbuild/CMakeFiles/0833bac9e73c31a0cc0620db26fbd346/libenvpp-populate-complete.rule"
+		},
+		{
+			"file" : "D:/liuyue/physDreamerVulkanDemo/3dgs.cpp.opt/build_msvc143/_deps/libenvpp-subbuild/CMakeFiles/daff3d65eb281df5674ac9804eb2b643/libenvpp-populate-build.rule"
+		},
+		{
+			"file" : "D:/liuyue/physDreamerVulkanDemo/3dgs.cpp.opt/build_msvc143/_deps/libenvpp-subbuild/CMakeFiles/daff3d65eb281df5674ac9804eb2b643/libenvpp-populate-configure.rule"
+		},
+		{
+			"file" : "D:/liuyue/physDreamerVulkanDemo/3dgs.cpp.opt/build_msvc143/_deps/libenvpp-subbuild/CMakeFiles/daff3d65eb281df5674ac9804eb2b643/libenvpp-populate-download.rule"
+		},
+		{
+			"file" : "D:/liuyue/physDreamerVulkanDemo/3dgs.cpp.opt/build_msvc143/_deps/libenvpp-subbuild/CMakeFiles/daff3d65eb281df5674ac9804eb2b643/libenvpp-populate-install.rule"
+		},
+		{
+			"file" : "D:/liuyue/physDreamerVulkanDemo/3dgs.cpp.opt/build_msvc143/_deps/libenvpp-subbuild/CMakeFiles/daff3d65eb281df5674ac9804eb2b643/libenvpp-populate-mkdir.rule"
+		},
+		{
+			"file" : "D:/liuyue/physDreamerVulkanDemo/3dgs.cpp.opt/build_msvc143/_deps/libenvpp-subbuild/CMakeFiles/daff3d65eb281df5674ac9804eb2b643/libenvpp-populate-patch.rule"
+		},
+		{
+			"file" : "D:/liuyue/physDreamerVulkanDemo/3dgs.cpp.opt/build_msvc143/_deps/libenvpp-subbuild/CMakeFiles/daff3d65eb281df5674ac9804eb2b643/libenvpp-populate-test.rule"
+		},
+		{
+			"file" : "D:/liuyue/physDreamerVulkanDemo/3dgs.cpp.opt/build_msvc143/_deps/libenvpp-subbuild/CMakeFiles/daff3d65eb281df5674ac9804eb2b643/libenvpp-populate-update.rule"
+		}
+	],
+	"target" : 
+	{
+		"labels" : 
+		[
+			"libenvpp-populate"
+		],
+		"name" : "libenvpp-populate"
+	}
+}

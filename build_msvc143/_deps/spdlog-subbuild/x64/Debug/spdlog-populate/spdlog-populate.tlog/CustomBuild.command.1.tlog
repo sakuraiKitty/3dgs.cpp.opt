@@ -1,0 +1,150 @@
+^D:\LIUYUE\PHYSDREAMERVULKANDEMO\3DGS.CPP.OPT\BUILD_MSVC143\_DEPS\SPDLOG-SUBBUILD\CMAKEFILES\2AE666000715BE8A68E00731B8CF2383\SPDLOG-POPULATE-MKDIR.RULE
+setlocal
+C:\Python314\Lib\site-packages\cmake\data\bin\cmake.exe -Dcfgdir=/Debug -P D:/liuyue/physDreamerVulkanDemo/3dgs.cpp.opt/build_msvc143/_deps/spdlog-subbuild/spdlog-populate-prefix/tmp/spdlog-populate-mkdirs.cmake
+if %errorlevel% neq 0 goto :cmEnd
+C:\Python314\Lib\site-packages\cmake\data\bin\cmake.exe -E touch D:/liuyue/physDreamerVulkanDemo/3dgs.cpp.opt/build_msvc143/_deps/spdlog-subbuild/spdlog-populate-prefix/src/spdlog-populate-stamp/Debug/spdlog-populate-mkdir
+if %errorlevel% neq 0 goto :cmEnd
+:cmEnd
+endlocal & call :cmErrorLevel %errorlevel% & goto :cmDone
+:cmErrorLevel
+exit /b %1
+:cmDone
+if %errorlevel% neq 0 goto :VCEnd
+^D:\LIUYUE\PHYSDREAMERVULKANDEMO\3DGS.CPP.OPT\BUILD_MSVC143\_DEPS\SPDLOG-SUBBUILD\CMAKEFILES\2AE666000715BE8A68E00731B8CF2383\SPDLOG-POPULATE-DOWNLOAD.RULE
+setlocal
+cd D:\liuyue\physDreamerVulkanDemo\3dgs.cpp.opt\build_msvc143\_deps
+if %errorlevel% neq 0 goto :cmEnd
+D:
+if %errorlevel% neq 0 goto :cmEnd
+C:\Python314\Lib\site-packages\cmake\data\bin\cmake.exe -DCMAKE_MESSAGE_LOG_LEVEL=VERBOSE -P D:/liuyue/physDreamerVulkanDemo/3dgs.cpp.opt/build_msvc143/_deps/spdlog-subbuild/spdlog-populate-prefix/tmp/spdlog-populate-gitclone.cmake
+if %errorlevel% neq 0 goto :cmEnd
+C:\Python314\Lib\site-packages\cmake\data\bin\cmake.exe -E touch D:/liuyue/physDreamerVulkanDemo/3dgs.cpp.opt/build_msvc143/_deps/spdlog-subbuild/spdlog-populate-prefix/src/spdlog-populate-stamp/Debug/spdlog-populate-download
+if %errorlevel% neq 0 goto :cmEnd
+:cmEnd
+endlocal & call :cmErrorLevel %errorlevel% & goto :cmDone
+:cmErrorLevel
+exit /b %1
+:cmDone
+if %errorlevel% neq 0 goto :VCEnd
+^D:\LIUYUE\PHYSDREAMERVULKANDEMO\3DGS.CPP.OPT\BUILD_MSVC143\_DEPS\SPDLOG-SUBBUILD\CMAKEFILES\2AE666000715BE8A68E00731B8CF2383\SPDLOG-POPULATE-UPDATE.RULE
+setlocal
+cd D:\liuyue\physDreamerVulkanDemo\3dgs.cpp.opt\build_msvc143\_deps\spdlog-src
+if %errorlevel% neq 0 goto :cmEnd
+D:
+if %errorlevel% neq 0 goto :cmEnd
+C:\Python314\Lib\site-packages\cmake\data\bin\cmake.exe -Dcan_fetch=YES -DCMAKE_MESSAGE_LOG_LEVEL=VERBOSE -P D:/liuyue/physDreamerVulkanDemo/3dgs.cpp.opt/build_msvc143/_deps/spdlog-subbuild/spdlog-populate-prefix/tmp/spdlog-populate-gitupdate.cmake
+if %errorlevel% neq 0 goto :cmEnd
+:cmEnd
+endlocal & call :cmErrorLevel %errorlevel% & goto :cmDone
+:cmErrorLevel
+exit /b %1
+:cmDone
+if %errorlevel% neq 0 goto :VCEnd
+^D:\LIUYUE\PHYSDREAMERVULKANDEMO\3DGS.CPP.OPT\BUILD_MSVC143\_DEPS\SPDLOG-SUBBUILD\CMAKEFILES\2AE666000715BE8A68E00731B8CF2383\SPDLOG-POPULATE-PATCH.RULE
+setlocal
+C:\Python314\Lib\site-packages\cmake\data\bin\cmake.exe -E echo_append
+if %errorlevel% neq 0 goto :cmEnd
+C:\Python314\Lib\site-packages\cmake\data\bin\cmake.exe -E touch D:/liuyue/physDreamerVulkanDemo/3dgs.cpp.opt/build_msvc143/_deps/spdlog-subbuild/spdlog-populate-prefix/src/spdlog-populate-stamp/Debug/spdlog-populate-patch
+if %errorlevel% neq 0 goto :cmEnd
+:cmEnd
+endlocal & call :cmErrorLevel %errorlevel% & goto :cmDone
+:cmErrorLevel
+exit /b %1
+:cmDone
+if %errorlevel% neq 0 goto :VCEnd
+^D:\LIUYUE\PHYSDREAMERVULKANDEMO\3DGS.CPP.OPT\BUILD_MSVC143\_DEPS\SPDLOG-SUBBUILD\CMAKEFILES\2AE666000715BE8A68E00731B8CF2383\SPDLOG-POPULATE-CONFIGURE.RULE
+setlocal
+cd D:\liuyue\physDreamerVulkanDemo\3dgs.cpp.opt\build_msvc143\_deps\spdlog-build
+if %errorlevel% neq 0 goto :cmEnd
+D:
+if %errorlevel% neq 0 goto :cmEnd
+C:\Python314\Lib\site-packages\cmake\data\bin\cmake.exe -E echo_append
+if %errorlevel% neq 0 goto :cmEnd
+C:\Python314\Lib\site-packages\cmake\data\bin\cmake.exe -E touch D:/liuyue/physDreamerVulkanDemo/3dgs.cpp.opt/build_msvc143/_deps/spdlog-subbuild/spdlog-populate-prefix/src/spdlog-populate-stamp/Debug/spdlog-populate-configure
+if %errorlevel% neq 0 goto :cmEnd
+:cmEnd
+endlocal & call :cmErrorLevel %errorlevel% & goto :cmDone
+:cmErrorLevel
+exit /b %1
+:cmDone
+if %errorlevel% neq 0 goto :VCEnd
+^D:\LIUYUE\PHYSDREAMERVULKANDEMO\3DGS.CPP.OPT\BUILD_MSVC143\_DEPS\SPDLOG-SUBBUILD\CMAKEFILES\2AE666000715BE8A68E00731B8CF2383\SPDLOG-POPULATE-BUILD.RULE
+setlocal
+cd D:\liuyue\physDreamerVulkanDemo\3dgs.cpp.opt\build_msvc143\_deps\spdlog-build
+if %errorlevel% neq 0 goto :cmEnd
+D:
+if %errorlevel% neq 0 goto :cmEnd
+C:\Python314\Lib\site-packages\cmake\data\bin\cmake.exe -E echo_append
+if %errorlevel% neq 0 goto :cmEnd
+C:\Python314\Lib\site-packages\cmake\data\bin\cmake.exe -E touch D:/liuyue/physDreamerVulkanDemo/3dgs.cpp.opt/build_msvc143/_deps/spdlog-subbuild/spdlog-populate-prefix/src/spdlog-populate-stamp/Debug/spdlog-populate-build
+if %errorlevel% neq 0 goto :cmEnd
+:cmEnd
+endlocal & call :cmErrorLevel %errorlevel% & goto :cmDone
+:cmErrorLevel
+exit /b %1
+:cmDone
+if %errorlevel% neq 0 goto :VCEnd
+^D:\LIUYUE\PHYSDREAMERVULKANDEMO\3DGS.CPP.OPT\BUILD_MSVC143\_DEPS\SPDLOG-SUBBUILD\CMAKEFILES\2AE666000715BE8A68E00731B8CF2383\SPDLOG-POPULATE-INSTALL.RULE
+setlocal
+cd D:\liuyue\physDreamerVulkanDemo\3dgs.cpp.opt\build_msvc143\_deps\spdlog-build
+if %errorlevel% neq 0 goto :cmEnd
+D:
+if %errorlevel% neq 0 goto :cmEnd
+C:\Python314\Lib\site-packages\cmake\data\bin\cmake.exe -E echo_append
+if %errorlevel% neq 0 goto :cmEnd
+C:\Python314\Lib\site-packages\cmake\data\bin\cmake.exe -E touch D:/liuyue/physDreamerVulkanDemo/3dgs.cpp.opt/build_msvc143/_deps/spdlog-subbuild/spdlog-populate-prefix/src/spdlog-populate-stamp/Debug/spdlog-populate-install
+if %errorlevel% neq 0 goto :cmEnd
+:cmEnd
+endlocal & call :cmErrorLevel %errorlevel% & goto :cmDone
+:cmErrorLevel
+exit /b %1
+:cmDone
+if %errorlevel% neq 0 goto :VCEnd
+^D:\LIUYUE\PHYSDREAMERVULKANDEMO\3DGS.CPP.OPT\BUILD_MSVC143\_DEPS\SPDLOG-SUBBUILD\CMAKEFILES\2AE666000715BE8A68E00731B8CF2383\SPDLOG-POPULATE-TEST.RULE
+setlocal
+cd D:\liuyue\physDreamerVulkanDemo\3dgs.cpp.opt\build_msvc143\_deps\spdlog-build
+if %errorlevel% neq 0 goto :cmEnd
+D:
+if %errorlevel% neq 0 goto :cmEnd
+C:\Python314\Lib\site-packages\cmake\data\bin\cmake.exe -E echo_append
+if %errorlevel% neq 0 goto :cmEnd
+C:\Python314\Lib\site-packages\cmake\data\bin\cmake.exe -E touch D:/liuyue/physDreamerVulkanDemo/3dgs.cpp.opt/build_msvc143/_deps/spdlog-subbuild/spdlog-populate-prefix/src/spdlog-populate-stamp/Debug/spdlog-populate-test
+if %errorlevel% neq 0 goto :cmEnd
+:cmEnd
+endlocal & call :cmErrorLevel %errorlevel% & goto :cmDone
+:cmErrorLevel
+exit /b %1
+:cmDone
+if %errorlevel% neq 0 goto :VCEnd
+^D:\LIUYUE\PHYSDREAMERVULKANDEMO\3DGS.CPP.OPT\BUILD_MSVC143\_DEPS\SPDLOG-SUBBUILD\CMAKEFILES\0DAD939A7646A876FE6AC3408AE9448C\SPDLOG-POPULATE-COMPLETE.RULE
+setlocal
+C:\Python314\Lib\site-packages\cmake\data\bin\cmake.exe -E make_directory D:/liuyue/physDreamerVulkanDemo/3dgs.cpp.opt/build_msvc143/_deps/spdlog-subbuild/CMakeFiles/Debug
+if %errorlevel% neq 0 goto :cmEnd
+C:\Python314\Lib\site-packages\cmake\data\bin\cmake.exe -E touch D:/liuyue/physDreamerVulkanDemo/3dgs.cpp.opt/build_msvc143/_deps/spdlog-subbuild/CMakeFiles/Debug/spdlog-populate-complete
+if %errorlevel% neq 0 goto :cmEnd
+C:\Python314\Lib\site-packages\cmake\data\bin\cmake.exe -E touch D:/liuyue/physDreamerVulkanDemo/3dgs.cpp.opt/build_msvc143/_deps/spdlog-subbuild/spdlog-populate-prefix/src/spdlog-populate-stamp/Debug/spdlog-populate-done
+if %errorlevel% neq 0 goto :cmEnd
+:cmEnd
+endlocal & call :cmErrorLevel %errorlevel% & goto :cmDone
+:cmErrorLevel
+exit /b %1
+:cmDone
+if %errorlevel% neq 0 goto :VCEnd
+^D:\LIUYUE\PHYSDREAMERVULKANDEMO\3DGS.CPP.OPT\BUILD_MSVC143\_DEPS\SPDLOG-SUBBUILD\CMAKEFILES\EAF0B6434F32643CD45CBEB32381C783\SPDLOG-POPULATE.RULE
+setlocal
+:cmEnd
+endlocal & call :cmErrorLevel %errorlevel% & goto :cmDone
+:cmErrorLevel
+exit /b %1
+:cmDone
+if %errorlevel% neq 0 goto :VCEnd
+^D:\LIUYUE\PHYSDREAMERVULKANDEMO\3DGS.CPP.OPT\BUILD_MSVC143\_DEPS\SPDLOG-SUBBUILD\CMAKELISTS.TXT
+setlocal
+C:\Python314\Lib\site-packages\cmake\data\bin\cmake.exe -SD:/liuyue/physDreamerVulkanDemo/3dgs.cpp.opt/build_msvc143/_deps/spdlog-subbuild -BD:/liuyue/physDreamerVulkanDemo/3dgs.cpp.opt/build_msvc143/_deps/spdlog-subbuild --check-stamp-file D:/liuyue/physDreamerVulkanDemo/3dgs.cpp.opt/build_msvc143/_deps/spdlog-subbuild/CMakeFiles/generate.stamp
+if %errorlevel% neq 0 goto :cmEnd
+:cmEnd
+endlocal & call :cmErrorLevel %errorlevel% & goto :cmDone
+:cmErrorLevel
+exit /b %1
+:cmDone
+if %errorlevel% neq 0 goto :VCEnd

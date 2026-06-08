@@ -1,0 +1,10 @@
+^D:\LIUYUE\PHYSDREAMERVULKANDEMO\3DGS.CPP.OPT\BUILD_MSVC143\_DEPS\GLFW-SUBBUILD\CMAKEFILES\F0BB8CA772F5AB7DB3F06A0DD964F8EE\GENERATE.STAMP.RULE
+setlocal
+C:\Python314\Lib\site-packages\cmake\data\bin\cmake.exe -SD:/liuyue/physDreamerVulkanDemo/3dgs.cpp.opt/build_msvc143/_deps/glfw-subbuild -BD:/liuyue/physDreamerVulkanDemo/3dgs.cpp.opt/build_msvc143/_deps/glfw-subbuild --check-stamp-list CMakeFiles/generate.stamp.list --vs-solution-file D:/liuyue/physDreamerVulkanDemo/3dgs.cpp.opt/build_msvc143/_deps/glfw-subbuild/glfw-populate.sln
+if %errorlevel% neq 0 goto :cmEnd
+:cmEnd
+endlocal & call :cmErrorLevel %errorlevel% & goto :cmDone
+:cmErrorLevel
+exit /b %1
+:cmDone
+if %errorlevel% neq 0 goto :VCEnd
