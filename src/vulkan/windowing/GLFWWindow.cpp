@@ -2,6 +2,16 @@
 #define GLFW_INCLUDE_VULKAN
 #include <GLFW/glfw3.h>
 #include <glm/ext/matrix_transform.hpp>
+#include <spdlog/spdlog.h>
+#include <cstring>
+
+#ifdef _WIN32
+#define WIN32_LEAN_AND_MEAN
+#include <windows.h>
+// 必须定义这个才能使用 glfwGetWin32Window
+#define GLFW_EXPOSE_NATIVE_WIN32
+#include <GLFW/glfw3native.h>
+#endif
 
 GLFWWindow::GLFWWindow(std::string name, int width, int height) {
     glfwInit();
@@ -10,6 +20,8 @@ GLFWWindow::GLFWWindow(std::string name, int width, int height) {
     glfwWindowHint(GLFW_RESIZABLE, GLFW_TRUE);
 
     window = glfwCreateWindow(width, height, name.c_str(), nullptr, nullptr);
+
+    spdlog::info("[GLFWWindow] Window created");
 }
 
 VkSurfaceKHR GLFWWindow::createSurface(std::shared_ptr<VulkanContext> context) {
@@ -84,4 +96,108 @@ void GLFWWindow::mouseCapture(bool capture) {
 bool GLFWWindow::tick() {
     glfwPollEvents();
     return !glfwWindowShouldClose(static_cast<GLFWwindow *>(window));
+}
+
+void GLFWWindow::setCursor(int cursorType) {
+    static int last_cursor_type = -1;
+    static bool log_once = true;
+
+    if (log_once) {
+        spdlog::info("[GLFWWindow] setCursor method active");
+        log_once = false;
+    }
+
+    if (cursorType == last_cursor_type && last_cursor_type != -1) {
+        return;
+    }
+
+#ifdef _WIN32
+    // 使用 Windows API 直接设置光标
+    HCURSOR hCursor = NULL;
+
+    switch (cursorType) {
+        case 0: // 默认箭头
+            hCursor = LoadCursor(NULL, IDC_ARROW);
+            break;
+        case 1: // 手形 - 可变形区域
+            hCursor = LoadCursor(NULL, IDC_HAND);
+            break;
+        case 2: // 十字 - 非可变形区域
+            hCursor = LoadCursor(NULL, IDC_CROSS);
+            break;
+    }
+
+    if (hCursor) {
+        // 获取 GLFW 窗口的 HWND
+        HWND hwnd = glfwGetWin32Window(static_cast<GLFWwindow*>(window));
+        if (hwnd) {
+            // 设置窗口类的光标（更持久）
+            SetClassLongPtr(hwnd, GCLP_HCURSOR, (LONG_PTR)hCursor);
+            // 立即设置当前光标
+            SetCursor(hCursor);
+            spdlog::info("[GLFWWindow] Set cursor type {} (HWND={})", cursorType, (void*)hwnd);
+        } else {
+            spdlog::error("[GLFWWindow] Failed to get HWND");
+        }
+    } else {
+        spdlog::error("[GLFWWindow] Failed to load cursor for type {}", cursorType);
+    }
+#endif
+
+    last_cursor_type = cursorType;
+}
+
+void* GLFWWindow::createColorCursor(int r, int g, int b) {
+    // 创建一个 16x16 的光标图像
+    const int cursorSize = 16;
+    // 为每个像素分配内存
+    unsigned char* pixels = new unsigned char[cursorSize * cursorSize * 4]; // RGBA
+
+    // 绘制箭头形状
+    for (int y = 0; y < cursorSize; y++) {
+        for (int x = 0; x < cursorSize; x++) {
+            int idx = (y * cursorSize + x) * 4;
+            bool isArrow = false;
+
+            // 简单的箭头形状
+            if (y < cursorSize / 2) {
+                if (x <= y) {
+                    isArrow = true;
+                }
+            } else {
+                if (x < cursorSize / 2) {
+                    isArrow = true;
+                }
+            }
+
+            if (isArrow) {
+                pixels[idx + 0] = r;
+                pixels[idx + 1] = g;
+                pixels[idx + 2] = b;
+                pixels[idx + 3] = 255; // Alpha
+            } else {
+                pixels[idx + 0] = 0;
+                pixels[idx + 1] = 0;
+                pixels[idx + 2] = 0;
+                pixels[idx + 3] = 0; // 透明
+            }
+        }
+    }
+
+    GLFWimage image;
+    image.width = cursorSize;
+    image.height = cursorSize;
+    image.pixels = pixels;
+
+    GLFWcursor* cursor = glfwCreateCursor(&image, 0, 0);
+
+    // glfwCreateCursor 会复制图像数据，所以现在可以删除我们的临时数组
+    delete[] pixels;
+
+    if (!cursor) {
+        spdlog::error("[GLFWWindow] Failed to create cursor with color RGB({}, {}, {})", r, g, b);
+    } else {
+        spdlog::info("[GLFWWindow] Created cursor RGB({}, {}, {})", r, g, b);
+    }
+    return cursor;
 }

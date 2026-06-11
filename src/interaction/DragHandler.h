@@ -166,6 +166,7 @@ private:
     std::shared_ptr<DescriptorSet> descriptor_set_;
 
     bool initialized_ = false;
+    bool descriptor_set_built_ = false;
 };
 
 } // namespace Interaction

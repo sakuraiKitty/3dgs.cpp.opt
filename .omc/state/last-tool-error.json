@@ -1,7 +1,0 @@
-{
-  "tool_name": "Bash",
-  "tool_input_preview": "{\"command\":\"cd /d d:\\\\liuyue\\\\physDreamerVulkanDemo\\\\3dgs.cpp.opt && cmake --build ./build_msvc143 --config Release --target 3dgs_viewer -j4 2>&1 | head -30\",\"description\":\"Build viewer to verify chan...",
-  "error": "Exit code 2\n/usr/bin/bash: line 1: cd: too many arguments",
-  "timestamp": "2026-06-08T03:05:58.723Z",
-  "retry_count": 1
-}

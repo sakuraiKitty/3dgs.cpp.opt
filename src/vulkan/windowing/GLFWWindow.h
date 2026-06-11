@@ -2,6 +2,7 @@
 #define GLFWWINDOW_H
 
 #include "../Window.h"
+#include <array>
 
 class GLFWWindow final : public Window {
 public:
@@ -25,6 +26,12 @@ public:
 
     bool tick() override;
 
+    /**
+     * 设置光标样式
+     * @param cursorType 0=默认, 1=绿色(可变形区域), 2=红色(非可变形区域)
+     */
+    void setCursor(int cursorType);
+
     void* window;
 
 private:
@@ -32,6 +39,19 @@ private:
 
     double lastX = 0.0;
     double lastY = 0.0;
+
+    // 自定义光标
+    void* defaultCursor = nullptr;
+    void* greenCursor = nullptr;
+    void* redCursor = nullptr;
+
+    /**
+     * 创建彩色光标
+     * @param r 红色分量 (0-255)
+     * @param g 绿色分量 (0-255)
+     * @param b 蓝色分量 (0-255)
+     */
+    void* createColorCursor(int r, int g, int b);
 };
 
 

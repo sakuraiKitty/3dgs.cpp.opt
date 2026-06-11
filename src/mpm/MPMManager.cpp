@@ -251,6 +251,11 @@ void MPMManager::CreateParticleBuffer() {
     );
 
     spdlog::debug("[MPMManager] Particle buffer created: {} MB", buffer_size / 1024 / 1024);
+
+    // 如果所有缓冲区都已创建，则绑定到 descriptor sets
+    if (particle_buffer_ && grid_buffer_ && !descriptor_sets_built_) {
+        BuildDescriptorSets();
+    }
 }
 
 void MPMManager::CreateGridBuffer() {
@@ -271,6 +276,11 @@ void MPMManager::CreateGridBuffer() {
     );
 
     spdlog::debug("[MPMManager] Grid buffer created: {} MB", buffer_size / 1024 / 1024);
+
+    // 如果所有缓冲区都已创建，则绑定到 descriptor sets
+    if (particle_buffer_ && grid_buffer_ && !descriptor_sets_built_) {
+        BuildDescriptorSets();
+    }
 }
 
 void MPMManager::CreateDisplacementBuffer() {
@@ -294,12 +304,10 @@ void MPMManager::CreateDisplacementBuffer() {
     spdlog::debug("[MPMManager] Displacement buffer created: {} KB", buffer_size / 1024);
 }
 
-void MPMManager::CreateDescriptorSets() {
-    spdlog::info("[MPMManager] Creating descriptor sets...");
+void MPMManager::BuildDescriptorSets() {
+    spdlog::info("[MPMManager] Building descriptor sets...");
 
-    // Descriptor set 0: 粒子 + 网格绑定（用于 P2G, G2P, Compute Stress）
-    particle_grid_descriptor_ = std::make_shared<DescriptorSet>(context_, FRAMES_IN_FLIGHT);
-
+    // Bind particle and grid to particle_grid_descriptor_
     particle_grid_descriptor_->bindBufferToDescriptorSet(
         0, // binding 0: ParticleBuffer
         vk::DescriptorType::eStorageBuffer,
@@ -316,9 +324,7 @@ void MPMManager::CreateDescriptorSets() {
 
     particle_grid_descriptor_->build();
 
-    // Descriptor set 1: 仅网格绑定（用于 Zero Grid, Grid Update）
-    grid_only_descriptor_ = std::make_shared<DescriptorSet>(context_, FRAMES_IN_FLIGHT);
-
+    // Bind grid to grid_only_descriptor_
     grid_only_descriptor_->bindBufferToDescriptorSet(
         0, // binding 0: GridBuffer
         vk::DescriptorType::eStorageBuffer,
@@ -327,6 +333,23 @@ void MPMManager::CreateDescriptorSets() {
     );
 
     grid_only_descriptor_->build();
+
+    descriptor_sets_built_ = true;
+
+    spdlog::info("[MPMManager] Descriptor sets built successfully");
+}
+
+void MPMManager::CreateDescriptorSets() {
+    spdlog::info("[MPMManager] Creating descriptor sets...");
+
+    // Descriptor set 0: 粒子 + 网格绑定（用于 P2G, G2P, Compute Stress）
+    particle_grid_descriptor_ = std::make_shared<DescriptorSet>(context_, FRAMES_IN_FLIGHT);
+
+    // Descriptor set 1: 仅网格绑定（用于 Zero Grid, Grid Update）
+    grid_only_descriptor_ = std::make_shared<DescriptorSet>(context_, FRAMES_IN_FLIGHT);
+
+    // 注意：缓冲区绑定将在 CreateParticleBuffer() 和 CreateGridBuffer() 中完成
+    // 因为此时缓冲区还未创建
 
     spdlog::info("[MPMManager] Descriptor sets created successfully");
 }
@@ -381,7 +404,7 @@ void MPMManager::CreatePipelines() {
         );
 
         zero_grid_pipeline_ = CreateMPMPipeline(
-            "src/shaders/mpm/zero_grid.comp",
+            "zero_grid",
             bindings,
             pushConstantRange
         );
@@ -408,7 +431,7 @@ void MPMManager::CreatePipelines() {
         );
 
         compute_stress_pipeline_ = CreateMPMPipeline(
-            "src/shaders/mpm/compute_stress.comp",
+            "compute_stress",
             bindings,
             pushConstantRange
         );
@@ -440,7 +463,7 @@ void MPMManager::CreatePipelines() {
         );
 
         p2g_pipeline_ = CreateMPMPipeline(
-            "src/shaders/mpm/p2g.comp",
+            "p2g",
             bindings,
             pushConstantRange
         );
@@ -466,7 +489,7 @@ void MPMManager::CreatePipelines() {
         );
 
         grid_update_pipeline_ = CreateMPMPipeline(
-            "src/shaders/mpm/grid_update.comp",
+            "grid_update",
             bindings,
             pushConstantRange
         );
@@ -498,7 +521,7 @@ void MPMManager::CreatePipelines() {
         );
 
         g2p_pipeline_ = CreateMPMPipeline(
-            "src/shaders/mpm/g2p.comp",
+            "g2p",
             bindings,
             pushConstantRange
         );

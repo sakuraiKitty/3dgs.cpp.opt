@@ -121,12 +121,14 @@ private:
 
     // Compute pipeline
     std::shared_ptr<ComputePipeline> ray_cast_pipeline_;
-    std::shared_ptr<DescriptorSet> descriptor_set_;
+    std::shared_ptr<DescriptorSet> descriptor_set_;           // Layout descriptor set（未使用）
+    std::shared_ptr<DescriptorSet> runtime_descriptor_set_;    // Runtime descriptor set（实际使用）
 
     // 距离缓冲区（GPU -> CPU）
     std::shared_ptr<Buffer> distance_buffer_;
 
     bool initialized_ = false;
+    bool runtime_descriptor_set_created_ = false;
 };
 
 } // namespace Interaction

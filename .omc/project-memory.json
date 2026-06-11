@@ -1,6 +1,6 @@
 {
   "version": "1.0.0",
-  "lastScanned": 1780887905694,
+  "lastScanned": 1781073084179,
   "projectRoot": "d:\\liuyue\\physDreamerVulkanDemo\\3dgs.cpp.opt",
   "techStack": {
     "languages": [
@@ -48,7 +48,7 @@
       "path": "apps",
       "purpose": null,
       "fileCount": 1,
-      "lastAccessed": 1780887905679,
+      "lastAccessed": 1781073084162,
       "keyFiles": [
         "CMakeLists.txt"
       ]
@@ -57,7 +57,7 @@
       "path": "build",
       "purpose": "Build output",
       "fileCount": 7,
-      "lastAccessed": 1780887905679,
+      "lastAccessed": 1781073084162,
       "keyFiles": [
         "3dgs_cpp_root.sln",
         "ALL_BUILD.vcxproj",
@@ -70,7 +70,7 @@
       "path": "build_msvc143",
       "purpose": null,
       "fileCount": 7,
-      "lastAccessed": 1780887905679,
+      "lastAccessed": 1781073084162,
       "keyFiles": [
         "3dgs_cpp_root.sln",
         "ALL_BUILD.vcxproj",
@@ -83,7 +83,7 @@
       "path": "cmake",
       "purpose": null,
       "fileCount": 1,
-      "lastAccessed": 1780887905679,
+      "lastAccessed": 1781073084163,
       "keyFiles": [
         "embedfile.c"
       ]
@@ -92,7 +92,7 @@
       "path": "docs",
       "purpose": "Documentation",
       "fileCount": 4,
-      "lastAccessed": 1780887905679,
+      "lastAccessed": 1781073084163,
       "keyFiles": [
         "FILE_LOADING_GUIDE.md",
         "GAUSSIAN_RENDER_INITIALIZATION_PLAN.md",
@@ -104,14 +104,14 @@
       "path": "include",
       "purpose": null,
       "fileCount": 0,
-      "lastAccessed": 1780887905680,
+      "lastAccessed": 1781073084164,
       "keyFiles": []
     },
     "scripts": {
       "path": "scripts",
       "purpose": "Build/utility scripts",
       "fileCount": 3,
-      "lastAccessed": 1780887905680,
+      "lastAccessed": 1781073084164,
       "keyFiles": [
         "benchmark.py",
         "compare_stages.py",
@@ -122,7 +122,7 @@
       "path": "shaders",
       "purpose": null,
       "fileCount": 18,
-      "lastAccessed": 1780887905680,
+      "lastAccessed": 1781073084165,
       "keyFiles": [
         "apply_mouse_force.spv",
         "calibrate.spv",
@@ -135,7 +135,7 @@
       "path": "src",
       "purpose": "Source code",
       "fileCount": 13,
-      "lastAccessed": 1780887905680,
+      "lastAccessed": 1781073084165,
       "keyFiles": [
         "3dgs.cpp",
         "CMakeLists.txt",
@@ -148,14 +148,14 @@
       "path": "verification",
       "purpose": null,
       "fileCount": 0,
-      "lastAccessed": 1780887905681,
+      "lastAccessed": 1781073084165,
       "keyFiles": []
     },
     "build\\src": {
       "path": "build\\src",
       "purpose": "Source code",
       "fileCount": 6,
-      "lastAccessed": 1780887905682,
+      "lastAccessed": 1781073084166,
       "keyFiles": [
         "3dgs_cpp.sln",
         "3dgs_cpp.vcxproj",

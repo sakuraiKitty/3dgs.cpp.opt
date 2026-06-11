@@ -25,6 +25,12 @@ public:
 
     virtual void mouseCapture(bool capture) { }
 
+    /**
+     * 设置光标样式
+     * @param cursorType 0=默认, 1=绿色(可变形区域), 2=红色(非可变形区域)
+     */
+    virtual void setCursor(int cursorType) { }
+
     virtual bool tick() { return false; };
 
     virtual void logTranslation(float x, float y) { };

@@ -94,6 +94,12 @@ public:
      */
     void setDeformableIndices(const std::vector<uint32_t>& indices);
 
+    /**
+     * 更新鼠标悬停检测
+     * 根据鼠标位置是否在可变形区域来切换光标颜色
+     */
+    void updateHoverDetection();
+
     ~Renderer();
 
     Camera camera {
@@ -140,6 +146,7 @@ private:
     bool renderForegroundOnly_ = false;
     SceneLoader sceneLoader_;
     std::vector<uint32_t> pendingDeformableIndices_;  // Stored indices, uploaded after pipeline creation
+    std::vector<bool> sim_mask_;                      // 前景掩码（可变形区域）true=可变形, false=背景
 
     // MPM Physics Simulation
     std::shared_ptr<MPM::MPMManager> mpm_manager_;                     // MPM管理器
@@ -161,11 +168,14 @@ private:
     bool mouse_pressed_this_frame_ = false;                          // 本帧鼠标按下
     bool mouse_released_this_frame_ = false;                          // 本帧鼠标释放
 
+    // Mouse hover cursor state
+    int current_cursor_type_ = 0;                                    // 当前光标类型
+
     // Interaction System
     std::shared_ptr<Interaction::RayCaster> ray_caster_;              // 射线拾取器
     std::shared_ptr<Interaction::DragHandler> drag_handler_;          // 拖拽处理器
     glm::ivec2 last_mouse_position_;                                  // 上一帧鼠标位置
-    bool prev_right_mouse_down_ = false;                              // 上一帧右键状态
+    bool prev_left_mouse_down_ = false;                               // 上一帧左键状态
 
     std::shared_ptr<DescriptorSet> inputSet;
 

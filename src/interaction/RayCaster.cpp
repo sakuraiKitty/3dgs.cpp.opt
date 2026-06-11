@@ -27,7 +27,7 @@ void RayCaster::Initialize() {
         sizeof(float) * 1000000,  // 初始大小1M粒子
         usageFlags,
         VMA_MEMORY_USAGE_GPU_TO_CPU,
-        static_cast<VmaAllocationCreateFlags>(0)
+        VMA_ALLOCATION_CREATE_MAPPED_BIT  // 添加MAPPED标志以便CPU访问
     );
 
     // 创建pipeline
@@ -71,22 +71,43 @@ RayCastResult RayCaster::CastFromRayGPU(
     const std::shared_ptr<Buffer>& particle_buffer,
     uint32_t num_particles
 ) {
-    // 绑定资源
-    descriptor_set_->bindBufferToDescriptorSet(
-        0, // binding 0: ParticleBuffer
-        vk::DescriptorType::eStorageBuffer,
-        vk::ShaderStageFlagBits::eCompute,
-        particle_buffer
-    );
+    spdlog::debug("[RayCaster] CastFromRayGPU called with num_particles={}", num_particles);
 
-    descriptor_set_->bindBufferToDescriptorSet(
-        1, // binding 1: DistanceBuffer
-        vk::DescriptorType::eStorageBuffer,
-        vk::ShaderStageFlagBits::eCompute,
-        distance_buffer_
-    );
+    // 只在第一次调用时绑定particle buffer并build descriptor set
+    if (!runtime_descriptor_set_created_) {
+        spdlog::info("[RayCaster] First call - creating runtime descriptor set");
+        try {
+            // 创建新的descriptor set用于runtime绑定
+            runtime_descriptor_set_ = std::make_shared<DescriptorSet>(context_, 1);
 
-    descriptor_set_->build();
+            // 绑定distance_buffer（固定）
+            spdlog::debug("[RayCaster] Binding distance_buffer");
+            runtime_descriptor_set_->bindBufferToDescriptorSet(
+                1, // binding 1: DistanceBuffer
+                vk::DescriptorType::eStorageBuffer,
+                vk::ShaderStageFlagBits::eCompute,
+                distance_buffer_
+            );
+
+            // 绑定particle_buffer（运行时传入）
+            spdlog::debug("[RayCaster] Binding particle_buffer");
+            runtime_descriptor_set_->bindBufferToDescriptorSet(
+                0, // binding 0: ParticleBuffer
+                vk::DescriptorType::eStorageBuffer,
+                vk::ShaderStageFlagBits::eCompute,
+                particle_buffer
+            );
+
+            // 一次性build
+            spdlog::debug("[RayCaster] Building runtime descriptor set");
+            runtime_descriptor_set_->build();
+            spdlog::info("[RayCaster] Runtime descriptor set created and built successfully");
+            runtime_descriptor_set_created_ = true;
+        } catch (const std::exception& e) {
+            spdlog::error("[RayCaster] Failed to create runtime descriptor set: {}", e.what());
+            throw;
+        }
+    }
 
     // Push constants
     struct RayCastParams {
@@ -102,47 +123,64 @@ RayCastResult RayCaster::CastFromRayGPU(
         num_particles
     };
 
-    // 绑定pipeline和descriptor set
-    ray_cast_pipeline_->bind(cmd, 0, Pipeline::DescriptorOption(0));
-    vkCmdPushConstants(cmd, ray_cast_pipeline_->pipelineLayout.get(),
-                      VK_SHADER_STAGE_COMPUTE_BIT, 0, sizeof(params), &params);
+    try {
+        // 绑定pipeline
+        spdlog::debug("[RayCaster] Binding pipeline");
+        ray_cast_pipeline_->bind(cmd, 0, Pipeline::DescriptorOption(0));
 
-    // Dispatch（256个线程一组）
-    uint32_t groups = (num_particles + 255) / 256;
-    vkCmdDispatch(cmd, groups, 1, 1);
+        // 手动绑定descriptor set（使用runtime的）
+        spdlog::debug("[RayCaster] Binding runtime descriptor set");
+        VkDescriptorSet descriptor_sets[] = { runtime_descriptor_set_->getDescriptorSet(0, 0) };
+        vkCmdBindDescriptorSets(cmd, VK_PIPELINE_BIND_POINT_COMPUTE,
+                              ray_cast_pipeline_->pipelineLayout.get(), 0, 1, descriptor_sets, 0, nullptr);
 
-    // Memory barrier
-    VkMemoryBarrier barrier = {VK_STRUCTURE_TYPE_MEMORY_BARRIER};
-    barrier.srcAccessMask = VK_ACCESS_SHADER_WRITE_BIT;
-    barrier.dstAccessMask = VK_ACCESS_TRANSFER_READ_BIT;
-    vkCmdPipelineBarrier(cmd,
-                       VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT,
-                       VK_PIPELINE_STAGE_TRANSFER_BIT,
-                       0, 1, &barrier, 0, nullptr, 0, nullptr);
+        vkCmdPushConstants(cmd, ray_cast_pipeline_->pipelineLayout.get(),
+                          VK_SHADER_STAGE_COMPUTE_BIT, 0, sizeof(params), &params);
 
-    // 读取所有距离（CPU端找到最小值）
-    std::vector<char> distance_data = distance_buffer_->download();
+        // Dispatch（256个线程一组）
+        uint32_t groups = (num_particles + 255) / 256;
+        spdlog::debug("[RayCaster] Dispatching {} groups", groups);
+        vkCmdDispatch(cmd, groups, 1, 1);
 
-    RayCastResult result;
-    result.particle_index = UINT32_MAX;
-    result.distance_sq = config_.max_distance * config_.max_distance;
-    result.success = false;
+        // Memory barrier
+        VkMemoryBarrier barrier = {VK_STRUCTURE_TYPE_MEMORY_BARRIER};
+        barrier.srcAccessMask = VK_ACCESS_SHADER_WRITE_BIT;
+        barrier.dstAccessMask = VK_ACCESS_TRANSFER_READ_BIT;
+        vkCmdPipelineBarrier(cmd,
+                           VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT,
+                           VK_PIPELINE_STAGE_TRANSFER_BIT,
+                           0, 1, &barrier, 0, nullptr, 0, nullptr);
 
-    // 在CPU端找到最小距离
-    float* distances = reinterpret_cast<float*>(distance_data.data());
-    for (uint32_t i = 0; i < num_particles; i++) {
-        if (distances[i] < result.distance_sq) {
-            result.distance_sq = distances[i];
-            result.particle_index = i;
-            result.success = true;
+        spdlog::debug("[RayCaster] Dispatch complete, downloading results");
+
+        // 读取所有距离（CPU端找到最小值）
+        std::vector<char> distance_data = distance_buffer_->download();
+
+        RayCastResult result;
+        result.particle_index = UINT32_MAX;
+        result.distance_sq = config_.max_distance * config_.max_distance;
+        result.success = false;
+
+        // 在CPU端找到最小距离
+        float* distances = reinterpret_cast<float*>(distance_data.data());
+        for (uint32_t i = 0; i < num_particles; i++) {
+            if (distances[i] < result.distance_sq) {
+                result.distance_sq = distances[i];
+                result.particle_index = i;
+                result.success = true;
+            }
         }
-    }
 
-    if (result.success) {
-        result.hit_point = ray_origin + ray_direction * sqrt(result.distance_sq);
-    }
+        if (result.success) {
+            result.hit_point = ray_origin + ray_direction * sqrt(result.distance_sq);
+        }
 
-    return result;
+        spdlog::debug("[RayCaster] Result: success={}, particle={}", result.success, result.particle_index);
+        return result;
+    } catch (const std::exception& e) {
+        spdlog::error("[RayCaster] Exception during ray cast: {}", e.what());
+        throw;
+    }
 }
 
 RayCastResult RayCaster::CastFromRayCPU(
@@ -218,8 +256,8 @@ void RayCaster::CreatePipeline() {
         pushConstantRange.size
     );
 
-    // 创建descriptor set
-    descriptor_set_ = std::make_shared<DescriptorSet>(context_, 1);
+    // 不在这里创建descriptor set（将在运行时创建）
+    // descriptor_set_ = std::make_shared<DescriptorSet>(context_, 1);
 
     // 构建 pipeline
     ray_cast_pipeline_->build();

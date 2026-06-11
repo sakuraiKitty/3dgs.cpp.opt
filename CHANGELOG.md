@@ -1,5 +1,84 @@
 # 更新日志 (CHANGELOG)
 
+## 2026年6月11日 - 物理交互崩溃修复 + P+左键拖拽功能 ✅
+
+### 🎯 实施成果
+
+成功修复物理交互系统的崩溃问题，实现P+左键拖拽功能，交互检测正常工作。
+
+#### 1. MPMManager DescriptorSet 初始化顺序修复
+
+**问题**: `CreateDescriptorSets()` 中尝试绑定未创建的缓冲区（`particle_buffer_`、`grid_buffer_`），导致空指针访问崩溃
+
+**解决方案**:
+- 将descriptor set创建分为两个阶段
+- `CreateDescriptorSets()` - 只创建descriptor set对象
+- 添加 `BuildDescriptorSets()` - 在缓冲区创建后绑定并build
+- 在 `CreateParticleBuffer()` 和 `CreateGridBuffer()` 中调用build
+
+**修改位置**:
+- `src/mpm/MPMManager.cpp` - 延迟descriptor set绑定到缓冲区创建后
+- `src/mpm/MPMManager.h` - 添加 `BuildDescriptorSets()` 声明和 `descriptor_sets_built_` 标志
+
+#### 2. RayCaster Buffer映射问题修复
+
+**问题**: `distance_buffer_` 虽然使用 `VMA_MEMORY_USAGE_GPU_TO_CPU` 创建，但缺少 `VMA_ALLOCATION_CREATE_MAPPED_BIT` 标志，导致 `download()` 时抛出 "Buffer is not mappable" 异常
+
+**解决方案**:
+```cpp
+distance_buffer_ = std::make_shared<Buffer>(
+    context_,
+    sizeof(float) * 1000000,
+    usageFlags,
+    VMA_MEMORY_USAGE_GPU_TO_CPU,
+    VMA_ALLOCATION_CREATE_MAPPED_BIT  // ✅ 添加MAPPED标志
+);
+```
+
+**修改位置**:
+- `src/interaction/RayCaster.cpp` - 添加MAPPED标志
+
+#### 3. RayCaster DescriptorSet 重复build修复
+
+**问题**: `CastFromRayGPU()` 中每次调用都执行 `bindBufferToDescriptorSet()` (追加bindings) 和 `build()`，导致descriptor set状态错误
+
+**解决方案**:
+- 使用成员变量 `runtime_descriptor_set_` 和 `runtime_descriptor_set_created_` 代替静态变量
+- 只在第一次调用时绑定particle buffer并build
+- 避免静态变量的析构顺序问题
+
+**修改位置**:
+- `src/interaction/RayCaster.h` - 添加成员变量
+- `src/interaction/RayCaster.cpp` - 使用成员变量，只在第一次时build
+
+#### 4. DragHandler DescriptorSet 重复build修复
+
+**问题**: `ApplyForce()` 中每次调用都执行 `bindBufferToDescriptorSet()` 和 `build()`
+
+**解决方案**:
+- 添加 `descriptor_set_built_` 标志
+- 只在第一次调用时绑定particle buffer并build
+
+**修改位置**:
+- `src/interaction/DragHandler.h` - 添加 `descriptor_set_built_` 标志
+- `src/interaction/DragHandler.cpp` - 只在第一次时build
+
+### 📊 功能验证
+
+- ✅ 程序启动不再崩溃
+- ✅ P+左键点击成功拾取粒子
+- ✅ 拖拽过程中交互检测正常
+- ✅ 鼠标释放正常结束交互
+- ✅ 程序正常退出
+
+### ⚠️ 已知问题
+
+- **物理模拟未生效**: 花朵拖拽后没有视觉变形效果
+- **根因**: 缺少高斯-物理耦合 - MPM粒子位移未传递回高斯渲染系统
+- **待实现**: 阶段1.3 - 高斯位置更新功能
+
+---
+
 ## 2026年6月2日 - MPM物理模拟初始化完成 + 性能优化 ✅
 
 ### 🎯 实施成果

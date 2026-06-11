@@ -161,6 +161,11 @@ private:
     void CreateDescriptorSets();
 
     /**
+     * 构建Descriptor Sets（在缓冲区创建后调用）
+     */
+    void BuildDescriptorSets();
+
+    /**
      * 创建单个MPM阶段的Pipeline
      */
     std::shared_ptr<ComputePipeline> CreateMPMPipeline(
@@ -189,6 +194,7 @@ private:
     // 状态标志
     bool enabled_ = false;
     bool initialized_ = false;
+    bool descriptor_sets_built_ = false;
 
     // 粒子数据
     std::vector<ParticleData> cpu_particles_;          // CPU端粒子数据

@@ -24,10 +24,6 @@ void Renderer::initialize() {
     initializeVulkan();
     createGui();
 
-    // MPM Manager will be initialized later when VkCommandBuffer compatibility is resolved
-    // mpm_manager_ = std::make_shared<MPM::MPMManager>(context);
-    spdlog::info("[Renderer] MPM Manager initialization deferred (pending type compatibility fix)");
-
     loadSceneToGPU();
     createPreprocessPipeline();
     createPrefixSumPipeline();
@@ -48,23 +44,11 @@ void Renderer::handleInput() {
     auto translation = window->getCursorTranslation();
     auto keys = window->getKeys(); // W, A, S, D
 
-    if ((!configuration.enableGui || (!guiManager.wantCaptureMouse() && !guiManager.mouseCapture)) && window->
-        getMouseButton()[0]) {
-        window->mouseCapture(true);
-        guiManager.mouseCapture = true;
-    }
+    // 移除鼠标移动控制相机旋转的功能
+    // 鼠标仅用于：光标悬停检测 + 物理交互（P + 左键）
+    // 相机只能通过键盘控制
 
-    // rotate camera
-    if (!configuration.enableGui || guiManager.mouseCapture) {
-        if (translation[0] != 0.0 || translation[1] != 0.0) {
-            camera.rotation = glm::rotate(camera.rotation, static_cast<float>(translation[0]) * 0.005f,
-                                          glm::vec3(0.0f, -1.0f, 0.0f));
-            camera.rotation = glm::rotate(camera.rotation, static_cast<float>(translation[1]) * 0.005f,
-                                          glm::vec3(-1.0f, 0.0f, 0.0f));
-        }
-    }
-
-    // move camera
+    // move camera (键盘控制)
     if (!configuration.enableGui || !guiManager.wantCaptureKeyboard()) {
         glm::vec3 direction = glm::vec3(0.0f, 0.0f, 0.0f);
         if (keys[0]) {
@@ -214,6 +198,7 @@ void Renderer::loadSceneToGPU() {
                     0.01f // Threshold consistent with Python
                 );
                 gaussianModel.sim_mask_ = sim_mask;
+                sim_mask_ = sim_mask;  // 保存用于鼠标悬停检测
 
                 size_t foreground_count = std::count(sim_mask.begin(), sim_mask.end(), true);
                 spdlog::info("[Renderer] ✓ Simulation mask computed: {} foreground / {} total",
@@ -257,6 +242,21 @@ void Renderer::loadSceneToGPU() {
                         spdlog::info("[Renderer]   - Render particles: {}", mpm_num_render_particles_);
                         spdlog::info("[Renderer]   - Active particles: {}", mpm_result.stats.active_count);
                         spdlog::info("[Renderer]   - Frozen particles: {}", mpm_result.stats.frozen_count);
+
+                        // 创建并初始化 MPMManager
+                        mpm_manager_ = std::make_shared<MPM::MPMManager>(context);
+
+                        // 配置MPM参数
+                        MPM::MPMManager::Config mpm_config;
+                        mpm_config.grid_size = 64;
+                        mpm_config.dt = 1.0f / 30.0f;
+                        mpm_config.substeps = 128;
+                        mpm_config.gravity = {0, -9.8f, 0};
+
+                        mpm_manager_->Initialize(mpm_config);
+                        mpm_manager_->LoadParticles(mpm_particles_);
+                        mpm_manager_->Enable();  // 启用物理仿真
+                        spdlog::info("[Renderer] MPMManager created, initialized and enabled");
                     } else {
                         spdlog::warn("[Renderer] MPM initialization failed, physics disabled");
                     }
@@ -525,6 +525,9 @@ void Renderer::draw() {
 
 startOfRenderLoop:
     handleInput();
+
+    // 更新鼠标悬停检测（光标颜色切换）
+    updateHoverDetection();
 
     // 处理物理交互输入
     handlePhysicsInteraction();
@@ -1196,49 +1199,80 @@ void Renderer::initializeInteractionSystem() {
 }
 
 void Renderer::handlePhysicsInteraction() {
+    static bool logged_init = false;
+    if (!logged_init) {
+        spdlog::warn("[Physics] STATE CHECK: mpm_initialized={}, ray_caster={}, drag_handler={}",
+                     mpm_initialized_,
+                     ray_caster_ != nullptr ? "OK" : "NULL",
+                     drag_handler_ != nullptr ? "OK" : "NULL");
+        logged_init = true;
+    }
+
     if (!mpm_initialized_ || !ray_caster_ || !drag_handler_) {
-        return;
+        return;  // 早期返回，不处理物理交互
     }
 
     auto keys = window->getKeys();
     auto mouse_buttons = window->getMouseButton();
     auto cursor_pos = window->getCursorPosition();
 
-    // 检测物理交互触发条件：P键 + 右键
+    // 检测物理交互触发条件：P键 + 左键
     bool p_key_held = keys[8];  // P键索引
-    bool right_mouse_down = mouse_buttons[2];
+
+    // 添加日志来检测按键状态
+    static int log_counter = 0;
+    if (p_key_held && log_counter++ % 10 == 0) { // P键按下时每秒输出6次
+        spdlog::info("[Physics] P key held: {}, Left mouse: {}, Right mouse: {}",
+                     p_key_held, mouse_buttons[0], mouse_buttons[2]);
+    }
+
+    bool left_mouse_down = mouse_buttons[0];  // 左键
 
     // 检测鼠标按下/释放事件（边沿检测）
-    mouse_pressed_this_frame_ = right_mouse_down && !prev_right_mouse_down_;
-    mouse_released_this_frame_ = !right_mouse_down && prev_right_mouse_down_;
+    mouse_pressed_this_frame_ = left_mouse_down && !prev_left_mouse_down_;
+    mouse_released_this_frame_ = !left_mouse_down && prev_left_mouse_down_;
 
     // 保存当前鼠标位置
     last_mouse_position_ = glm::ivec2(static_cast<int>(cursor_pos[0]), static_cast<int>(cursor_pos[1]));
-    prev_right_mouse_down_ = right_mouse_down;
+    prev_left_mouse_down_ = left_mouse_down;
 
     // 处理鼠标按下事件（射线拾取需要命令缓冲区，延迟到 updatePhysicsSimulation）
     if (p_key_held && mouse_pressed_this_frame_) {
+        spdlog::info("[Physics] P+Left Click detected at ({}, {})", last_mouse_position_.x, last_mouse_position_.y);
         mouse_pos_on_press_ = last_mouse_position_;
         physics_interaction_mode_ = true;
     }
 
     // 处理鼠标释放事件
     if (mouse_released_this_frame_ && physics_interaction_mode_) {
+        spdlog::info("[Physics] Mouse released, ending interaction");
         drag_handler_->OnMouseUp();
         physics_interaction_mode_ = false;
         is_dragging_ = false;
     }
 
     // 处理鼠标移动事件（在拖拽中）
-    if (physics_interaction_mode_ && right_mouse_down) {
+    if (physics_interaction_mode_ && left_mouse_down) {
         drag_handler_->OnMouseMove(last_mouse_position_.x, last_mouse_position_.y);
         is_dragging_ = drag_handler_->IsDragging();
+        if (is_dragging_) {
+            spdlog::info("[Physics] Dragging at ({}, {})", last_mouse_position_.x, last_mouse_position_.y);
+        }
     }
 }
 
 void Renderer::updatePhysicsSimulation(VkCommandBuffer cmd) {
+    static bool logged_once = false;
+    if (!logged_once) {
+        spdlog::info("[PhysicsSim] STATE: mpm_initialized={}, mpm_manager={}, enabled={}",
+                     mpm_initialized_,
+                     mpm_manager_ != nullptr ? "OK" : "NULL",
+                     mpm_manager_ ? (mpm_manager_->IsEnabled() ? "YES" : "NO") : "N/A");
+        logged_once = true;
+    }
+
     if (!mpm_initialized_ || !mpm_manager_ || !mpm_manager_->IsEnabled()) {
-        return;
+        return;  // MPM未初始化或未启用
     }
 
     // 处理鼠标按下时的射线拾取
@@ -1279,6 +1313,147 @@ void Renderer::updatePhysicsSimulation(VkCommandBuffer cmd) {
 
     // 执行MPM物理步进
     mpm_manager_->Step(cmd, 1.0f / 30.0f);
+}
+
+void Renderer::updateHoverDetection() {
+    // 如果 GUI 捕获了鼠标，不进行检测
+    bool gui_wants_mouse = configuration.enableGui && guiManager.wantCaptureMouse();
+    bool mouse_captured = guiManager.mouseCapture;
+
+    // 静态变量记录日志（只输出一次）
+    static bool logged_state = false;
+    if (!logged_state) {
+        spdlog::info("[Renderer] updateHoverDetection state: enableGui={}, gui_wants_mouse={}, mouse_captured={}",
+                     configuration.enableGui, gui_wants_mouse, mouse_captured);
+        logged_state = true;
+    }
+
+    if (gui_wants_mouse) {
+        return; // ImGui 捕获了鼠标
+    }
+
+    if (mouse_captured) {
+        return; // 鼠标被捕获（拖拽模式）
+    }
+
+    // 如果没有 sim_mask_ 或场景未加载，不进行检测
+    if (sim_mask_.empty() || !scene) {
+        static bool logged_empty = false;
+        if (!logged_empty) {
+            spdlog::warn("[Renderer] updateHoverDetection: sim_mask_ empty={} or scene null={}",
+                         sim_mask_.empty(), !scene);
+            logged_empty = true;
+        }
+        window->setCursor(0); // 默认光标
+        return;
+    }
+
+    static int last_cursor_type = -1;
+    static bool log_once = true;
+
+    if (log_once) {
+        spdlog::info("[Renderer] updateHoverDetection ACTIVE: sim_mask_ size={}, scene positions={}",
+                     sim_mask_.size(), scene->cpuPositions.size());
+        log_once = false;
+    }
+
+    // 获取鼠标位置
+    auto cursorPos = window->getCursorPosition();
+    int mouse_x = static_cast<int>(cursorPos[0]);
+    int mouse_y = static_cast<int>(cursorPos[1]);
+
+    // 获取窗口大小
+    auto [fb_width, fb_height] = window->getFramebufferSize();
+
+    // 检查鼠标是否在窗口内
+    if (mouse_x < 0 || mouse_x >= static_cast<int>(fb_width) ||
+        mouse_y < 0 || mouse_y >= static_cast<int>(fb_height)) {
+        window->setCursor(0); // 默认光标
+        return;
+    }
+
+    // 计算视图投影矩阵
+    auto rotation = glm::mat4_cast(camera.rotation);
+    auto translation = glm::translate(glm::mat4(1.0f), camera.position);
+    auto view = glm::inverse(translation * rotation);
+
+    float tan_fovx = std::tan(glm::radians(camera.fov) / 2.0);
+    float tan_fovy = tan_fovx * static_cast<float>(fb_height) / static_cast<float>(fb_width);
+    auto proj = glm::perspective(std::atan(tan_fovy) * 2.0f,
+                                 static_cast<float>(fb_width) / static_cast<float>(fb_height),
+                                 camera.nearPlane,
+                                 camera.farPlane);
+    glm::mat4 view_proj = proj * view;
+    glm::mat4 inverse_view_proj = glm::inverse(view_proj);
+
+    // 屏幕坐标转NDC
+    float ndc_x = (2.0f * mouse_x) / fb_width - 1.0f;
+    float ndc_y = 1.0f - (2.0f * mouse_y) / fb_height; // Y轴翻转
+
+    // NDC转世界射线
+    glm::vec4 near_point_ndc(ndc_x, ndc_y, 0.0f, 1.0f);
+    glm::vec4 near_point_world = inverse_view_proj * near_point_ndc;
+
+    glm::vec4 far_point_ndc(ndc_x, ndc_y, 1.0f, 1.0f);
+    glm::vec4 far_point_world = inverse_view_proj * far_point_ndc;
+
+    // Perspective divide
+    if (near_point_world.w != 0.0f) {
+        near_point_world /= near_point_world.w;
+    }
+    if (far_point_world.w != 0.0f) {
+        far_point_world /= far_point_world.w;
+    }
+
+    glm::vec3 ray_origin = glm::vec3(near_point_world);
+    glm::vec3 ray_direction = glm::normalize(glm::vec3(far_point_world) - ray_origin);
+
+    // 查找最近的高斯（简化版本：只检查距离）
+    float min_distance_sq = 0.05f * 0.05f; // 5cm 阈值
+    uint32_t closest_gaussian = UINT32_MAX;
+
+    for (size_t i = 0; i < scene->cpuPositions.size(); i++) {
+        const glm::vec3& pos = scene->cpuPositions[i];
+
+        // 计算点到射线的距离
+        glm::vec3 v = pos - ray_origin;
+        float projection = glm::dot(v, ray_direction);
+
+        // 只考虑射线前方的点
+        if (projection < 0) continue;
+
+        glm::vec3 closest_point = ray_origin + ray_direction * projection;
+        glm::vec3 diff = pos - closest_point;
+        float distance_sq = glm::dot(diff, diff);
+
+        if (distance_sq < min_distance_sq) {
+            min_distance_sq = distance_sq;
+            closest_gaussian = static_cast<uint32_t>(i);
+        }
+    }
+
+    int cursor_type = 0;
+
+    // 根据找到的高斯是否在可变形区域来设置光标
+    if (closest_gaussian != UINT32_MAX && closest_gaussian < sim_mask_.size()) {
+        if (sim_mask_[closest_gaussian]) {
+            cursor_type = 1; // 手形 - 可变形区域
+        } else {
+            cursor_type = 2; // 十字 - 非可变形区域
+        }
+    }
+
+    if (cursor_type != last_cursor_type) {
+        spdlog::info("[Renderer] Cursor CHANGE: {} -> type {} (gaussian={}, sim_mask={})",
+                     last_cursor_type, cursor_type,
+                     closest_gaussian != UINT32_MAX ? std::to_string(closest_gaussian) : "NONE",
+                     closest_gaussian != UINT32_MAX && closest_gaussian < sim_mask_.size()
+                        ? (sim_mask_[closest_gaussian] ? "DEF" : "STATIC") : "N/A");
+        last_cursor_type = cursor_type;
+    }
+
+    current_cursor_type_ = cursor_type;  // 保存当前光标类型
+    window->setCursor(cursor_type);
 }
 
 Renderer::~Renderer() {

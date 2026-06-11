@@ -179,14 +179,18 @@ void DragHandler::ApplyForce(
 
     current_force_ = force_direction * force_magnitude;
 
-    // 绑定particle buffer
-    descriptor_set_->bindBufferToDescriptorSet(
-        0,
-        vk::DescriptorType::eStorageBuffer,
-        vk::ShaderStageFlagBits::eCompute,
-        particle_buffer
-    );
-    descriptor_set_->build();
+    // 只在第一次时绑定particle buffer并build descriptor set
+    if (!descriptor_set_built_) {
+        spdlog::debug("[DragHandler] Building descriptor set for apply force");
+        descriptor_set_->bindBufferToDescriptorSet(
+            0,
+            vk::DescriptorType::eStorageBuffer,
+            vk::ShaderStageFlagBits::eCompute,
+            particle_buffer
+        );
+        descriptor_set_->build();
+        descriptor_set_built_ = true;
+    }
 
     // Push constants
     struct ApplyForceParams {
