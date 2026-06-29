@@ -204,33 +204,35 @@ void main() {
     mat3 I = mat3(1.0, 0.0, 0.0,  0.0, 1.0, 0.0,  0.0, 0.0, 1.0);
     mat3 F_new = (I + dv * dt) * p.deformation_gradient;
 
-    // ── F 投影（软 clamp，保留弹性记忆）──
-    // 旧实现：det(F) 越界 → 直接重置 I → 边界粒子弹性记忆永久丢失
-    //   → 花头/花茎冻结边界应力爆炸时 F 被重置 → 弹性链断裂 → 花头自由平移无回弹 → 永久错位
-    // 新实现：仅 NaN/inf（真正数值爆炸）才重置 I；
-    //   det(F) 越界时按 pow(J_ratio, 1/3) 等向缩放 F，把 det 拉回 [J_min, J_max]，
-    //   保留变形方向（粒子仍记得自己被拉伸/压缩 → 仍有回弹应力），边界可愈合。
-    //   det<=0（单元内翻）无法用缩放修复 → 重置 I。
+    // ── F 软界（保方向，与 PhysDreamer 一致：不 reset、不破坏弹性记忆）──
+    // PhysDreamer 完全不 clamp F（靠真 SVD R + 应力对称化保证稳定）。
+    // 旧实现 `J<=0 → reset I` 是非保守的：
+    //   - 弹性能量 μ‖F−R‖² 瞬间归零但动能保留 → 形成极限环维持永动振荡
+    //   - 体积项 λJ(J−1) 在 J=1 时为 0 → 失去体积恢复力 → 花朵坍缩
+    // 新实现：仅 NaN/inf（真正数值爆炸）才 reset I；
+    //   det 越界时按 pow(|J_target/J|, 1/3) 等向缩放 F，把 |det| 拉回 [J_min, J_max]，
+    //   保留变形方向与符号（粒子仍记得被拉伸/压缩 → 仍有回弹应力），可愈合。
+    //   用 |J| 而非 J：J<0（单元内翻）也能安全缩放，不会对负底取 1/3 次幂产生 NaN；
+    //   对称化后的 FCR 应力对有界负 J 是有限的（J(J-1) 在 |J| 有界时有限）。
     float J_new = mat3_determinant(F_new);
     float f_norm = length(F_new[0]) + length(F_new[1]) + length(F_new[2]);
 
     if (isnan(f_norm) || isnan(J_new) || isinf(f_norm) || isinf(J_new)) {
         // 真正的数值爆炸 → 重置单位阵，防 NaN 传播
         F_new = I;
-    } else if (J_new <= 0.0) {
-        // 单元内翻（det<=0）→ 缩放无法修复，重置 I
-        F_new = I;
     } else {
-        // det 越界 → 等向缩放：det(s·F) = s³·det(F)，故 s = (J_target/J)^(1/3)
+        // |det| 软界：等向缩放，det(s·F) = s³·det(F)，故 s = (|J_target|/|J|)^(1/3)
         const float J_min = 1e-4;
         const float J_max = 1e4;
-        if (J_new > J_max) {
-            float s = pow(J_max / J_new, 1.0 / 3.0);
+        float J_abs = abs(J_new);
+        if (J_abs > J_max) {
+            float s = pow(J_max / J_abs, 1.0 / 3.0);
             F_new = F_new * s;
-        } else if (J_new < J_min) {
-            float s = pow(J_min / J_new, 1.0 / 3.0);
+        } else if (J_abs < J_min) {
+            float s = pow(J_min / J_abs, 1.0 / 3.0);
             F_new = F_new * s;
         }
+        // 注：J<0（内翻）不再 reset，靠应力对称化保证有界恢复力
     }
     particles[p_id].deformation_gradient = F_new;
 

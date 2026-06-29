@@ -273,7 +273,14 @@ void Renderer::loadSceneToGPU() {
                         mpm_config.dt = 1.0f / 30.0f;
                         mpm_config.substeps = 128;     // 原版carnation.py substep=768(离线)；实时折中128
                                                       // CFL: E=2.14MPa→c_p≈38, dx=1/64, sub_dt=(1/30)/128=0.00026 < dx/c_p=0.00041 ✓
-                        mpm_config.damping = 0.999f;    // 0.999^128≈0.88 阻尼合理
+                        mpm_config.damping = 1.0f;      // 纯 PhysDreamer: grid_v_damping_scale=1.1>1 → 阻尼kernel被跳过(无显式阻尼)
+                                                      // 原版靠纯弹性+APIC数值耗散自然弹振荡。
+                                                      // ── 关键：damping 是【每子步】乘一次(grid_update: velocity*=damping)，不是每帧 ──
+                                                      // 0.9999^128=0.987/帧 → 0.681/秒(每秒损32%速度)。从 max_disp 衰减率反推
+                                                      // 花朵弯曲模式 ω~0.1rad/s，阻尼 c=0.385/s → ζ=c/(2ω)≈1.9 过阻尼 → 单调爬行无振荡。
+                                                      // 且子步越多每帧阻尼越重(阻尼按子步累加)，故提 substeps 必须同时去阻尼。
+                                                      // damping=1.0 → c=0 → ζ=0 → 弹振(仅APIC数值耗散衰减，与PhysDreamer一致)。
+                                                      // 稳定性靠 Fix A(应力对称化)消除能量注入，无阻尼亦稳。若仍发散回退0.99999。
                         // 原版carnation.py无gravity字段——花由冻结茎支撑处于静止平衡，变形只来自交互力
                         // 之前-2是调试值，驱动冻结边界应力反馈爆炸→粒子甩飞→花头散点
                         mpm_config.gravity = {0.0f, 0.0f, 0.0f};
@@ -1559,6 +1566,10 @@ void Renderer::updatePhysicsSimulation(VkCommandBuffer cmd) {
     // ── 2. 执行 MPM 物理模拟 ──
     // MPM持续运行（无pin，自然动力学处理回弹）
     mpm_manager_->Step(cmd, frame_dt);
+
+    // 轻量诊断：每60帧回读粒子缓冲，打印 max|disp|/max|vel|/max|F-I|/moved
+    // 读的是上一帧已提交的状态（当前cmd尚未提交），一帧滞后可接受
+    mpm_manager_->Diagnose();
 
     // ── 3. GPU计算粒子位移 + 耦合映射 ──
     if (coupling_initialized_ && coupling_manager_) {

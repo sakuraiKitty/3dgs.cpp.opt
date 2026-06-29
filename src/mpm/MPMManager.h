@@ -100,6 +100,13 @@ public:
     void Reset();
 
     /**
+     * 轻量按需诊断：同步回读粒子缓冲(2.3MB)，扫描 max|disp|/max|vel|/max|F-I|/moved 计数
+     * 每 diag_interval_ 帧执行一次（默认60帧≈2x/sec@30fps），用于定位"不回弹/不衰减"类问题
+     * 关键指标 max_strain=max|F-I|：若≈0 → F未偏离I → 应力≈0 → 无弹性恢复力
+     */
+    void Diagnose();
+
+    /**
      * 启用/禁用物理模拟
      */
     void Enable() { enabled_ = true; }
@@ -210,6 +217,10 @@ private:
     bool enabled_ = false;
     bool initialized_ = false;
     bool descriptor_sets_built_ = false;
+
+    // 诊断节流
+    uint32_t diag_frame_counter_ = 0;
+    uint32_t diag_interval_ = 60;  // 每60帧回读一次粒子缓冲(2.3MB)做诊断
 
     // 粒子数据
     std::vector<ParticleData> cpu_particles_;          // CPU端粒子数据

@@ -133,6 +133,138 @@ void MPMManager::Step(VkCommandBuffer cmd, float dt, uint32_t override_substeps)
     frame_count++;
 }
 
+void MPMManager::Diagnose() {
+    if (!enabled_ || !initialized_ || num_particles_ == 0 || !particle_buffer_) {
+        return;
+    }
+
+    // 节流：每 diag_interval_ 帧回读一次
+    if (++diag_frame_counter_ < diag_interval_) {
+        return;
+    }
+    diag_frame_counter_ = 0;
+
+    // 同步回读粒子缓冲（2.3MB，one-time cmd buffer 阻塞 compute queue，~1ms）
+    auto raw = particle_buffer_->download();
+    if (raw.size() < sizeof(ParticleData) * num_particles_) {
+        spdlog::warn("[MPM-Diag] download size {} < expected {}", raw.size(),
+                     sizeof(ParticleData) * num_particles_);
+        return;
+    }
+
+    const ParticleData* parts = reinterpret_cast<const ParticleData*>(raw.data());
+
+    float max_disp = 0.0f, max_vel = 0.0f, max_strain = 0.0f;
+    float sum_strain = 0.0f;
+    uint32_t moved = 0, frozen = 0, nan_count = 0;
+    uint32_t strain_high = 0, strain_mid = 0;  // >0.1, >0.01
+    const float disp_thresh = 1e-4f;
+
+    // ── 旋转 vs 拉伸诊断 ──
+    // FCR 应力 τ=2μ(F−R)Fᵀ+λJ(J−1)I：纯旋转 F≈R → τ≈0（无恢复力）。
+    // 追踪 max|F−R|(拉伸) vs max|F−I|(应变)，比值≈0 → F 是旋转主导 → 应力≈0 → 花头刚体旋转无回弹。
+    float max_stretch = 0.0f, max_tau = 0.0f;
+    uint32_t stretch_low = 0;  // |F−R|/|F−I| < 0.1（旋转主导）的粒子数
+
+    auto safe_norm = [](const glm::vec3& v) -> glm::vec3 {
+        float l = glm::length(v);
+        return l < 1e-8f ? glm::vec3(0.0f) : v / l;
+    };
+    auto frob = [](const glm::mat3& m) -> float {
+        return std::sqrt(m[0][0]*m[0][0]+m[0][1]*m[0][1]+m[0][2]*m[0][2]+
+                         m[1][0]*m[1][0]+m[1][1]*m[1][1]+m[1][2]*m[1][2]+
+                         m[2][0]*m[2][0]+m[2][1]*m[2][1]+m[2][2]*m[2][2]);
+    };
+
+    for (uint32_t i = 0; i < num_particles_; i++) {
+        const auto& p = parts[i];
+
+        if (p.freeze_flag != 0u) { frozen++; continue; }
+
+        // NaN 检测（标量检查，避免 glm::isnan 跨版本兼容问题）
+        if (std::isnan(p.position.x) || std::isnan(p.position.y) || std::isnan(p.position.z) ||
+            std::isnan(p.velocity.x) || std::isnan(p.velocity.y) || std::isnan(p.velocity.z)) {
+            nan_count++;
+            continue;
+        }
+
+        glm::vec3 disp = p.position - cpu_particle_initial_pos_[i];
+        float d = glm::length(disp);
+        float v = glm::length(p.velocity);
+
+        if (d > max_disp) max_disp = d;
+        if (v > max_vel) max_vel = v;
+        if (d > disp_thresh) moved++;
+
+        // 应变指标：max|F - I|（F 偏离单位阵的程度，决定应力大小）
+        glm::mat3 F = GetDeformationGradient(p);
+        glm::mat3 I(1.0f);
+        glm::mat3 diff = F - I;
+        float strain = std::sqrt(diff[0][0]*diff[0][0] + diff[0][1]*diff[0][1] + diff[0][2]*diff[0][2] +
+                                 diff[1][0]*diff[1][0] + diff[1][1]*diff[1][1] + diff[1][2]*diff[1][2] +
+                                 diff[2][0]*diff[2][0] + diff[2][1]*diff[2][1] + diff[2][2]*diff[2][2]);
+        if (strain > max_strain) max_strain = strain;
+        sum_strain += strain;
+        if (strain > 0.1f) strain_high++;
+        else if (strain > 0.01f) strain_mid++;
+
+        // Gram-Schmidt 极分解 R（与 shader extract_rotation_gram_schmidt 一致）
+        glm::vec3 c0 = F[0], c1 = F[1], c2 = F[2];
+        glm::vec3 r0 = safe_norm(c0);
+        glm::vec3 r1 = safe_norm(c1 - glm::dot(c1, r0) * r0);
+        glm::vec3 r2 = safe_norm(c2 - glm::dot(c2, r0) * r0 - glm::dot(c2, r1) * r1);
+        glm::mat3 R(r0, r1, r2);
+        glm::mat3 FmR = F - R;
+        float stretch = frob(FmR);
+        if (stretch > max_stretch) max_stretch = stretch;
+        if (strain > 0.01f && stretch < 0.1f * strain) stretch_low++;
+
+        // FCR Kirchhoff 应力 τ=2μ(F−R)Fᵀ+λJ(J−1)I，对称化（与 mpm_stress.glsl 一致）
+        float E = p.youngs_modulus;
+        float nu = p.poisson_ratio;
+        float mu = E / (2.0f * (1.0f + nu));
+        float lam = E * nu / ((1.0f + nu) * (1.0f - 2.0f * nu));
+        // F 的行列式 J
+        float J = F[0][0]*(F[1][1]*F[2][2]-F[1][2]*F[2][1])
+                - F[0][1]*(F[1][0]*F[2][2]-F[1][2]*F[2][0])
+                + F[0][2]*(F[1][0]*F[2][1]-F[1][1]*F[2][0]);
+        glm::mat3 Ft(F[0][0], F[1][0], F[2][0],
+                     F[0][1], F[1][1], F[2][1],
+                     F[0][2], F[1][2], F[2][2]);
+        glm::mat3 tau = 2.0f * mu * FmR * Ft + lam * J * (J - 1.0f) * glm::mat3(1.0f);
+        tau = (tau + glm::transpose(tau)) * 0.5f;
+        float tau_mag = frob(tau);
+        if (tau_mag > max_tau) max_tau = tau_mag;
+    }
+
+    // 采样第一个非冻结粒子的材料参数（诊断 units/scale 失配）
+    float sample_E = 0, sample_vol = 0, sample_mass = 0, sample_rho = 0;
+    for (uint32_t i = 0; i < num_particles_; i++) {
+        if (parts[i].freeze_flag == 0u) {
+            sample_E = parts[i].youngs_modulus;
+            sample_vol = parts[i].volume;
+            sample_mass = parts[i].mass;
+            sample_rho = parts[i].density;
+            break;
+        }
+    }
+    uint32_t n_active = num_particles_ - frozen;
+    float avg_strain = n_active > 0 ? sum_strain / n_active : 0.0f;
+    float stretch_ratio = max_strain > 1e-6f ? max_stretch / max_strain : 0.0f;
+
+    spdlog::info("[MPM-Diag] moved={}/{} frozen={} nan={} | max_disp={:.6f} max_vel={:.6f} "
+                 "max_strain={:.4f} avg_strain={:.5f} (high>0.1:{}, mid>0.01:{})",
+                 moved, num_particles_, frozen, nan_count, max_disp, max_vel,
+                 max_strain, avg_strain, strain_high, strain_mid);
+    spdlog::info("[MPM-Diag]   ROTvsSTRETCH: max|F-R|={:.4f} max|tau|={:.2f} | ratio={:.3f} "
+                 "stretch<10%strain:{} | 若ratio≈0且tau≈0→F旋转主导→无恢复力(花头刚体旋转)",
+                 max_stretch, max_tau, stretch_ratio, stretch_low);
+    spdlog::info("[MPM-Diag]   sample: E={:.1f} vol={:.3e} mass={:.3e} rho={:.1f} | "
+                 "expect dv/substep = tau*gradw*dt/rho ≈ {:.3f}",
+                 sample_E, sample_vol, sample_mass, sample_rho,
+                 (sample_E / (2.0f*(1.0f+0.3f))) * 64.0f * 0.00026f / sample_rho);
+}
+
 void MPMManager::Reset() {
     spdlog::info("[MPMManager] Resetting simulation...");
 
