@@ -15,11 +15,11 @@ struct ParticleData {
     float density;              // 96-100 - 密度 [kg/m^3]
 
     // 新增字段（用于高级物理特性）
-    mat3 apic_matrix;           // 100-148 - APIC动量矩阵C（或临时存储应力）
-    uint is_filled_point;       // 148-152 - 是否为内部填充点 (0=原始高斯, 1=填充点)
-    float padding;              // 152-156 - 对齐填充
+    mat3 apic_matrix;           // 104-152 - APIC动量矩阵C（或临时存储应力）(std430: offset 104, not 100, due to 16-byte alignment)
+    uint is_filled_point;       // 152-156 - 是否为内部填充点 (0=原始高斯, 1=填充点)
+    float padding;              // 156-160 - 对齐填充
 
-    // 总计156字节 (需要对齐到160字节)
+    // 总计160字节 (std430 stride = 160, 与C++ sizeof(ParticleData) 完全匹配)
 };
 
 // MPM网格节点数据结构 (32 bytes, 与C++端一致)

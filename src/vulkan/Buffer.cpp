@@ -105,11 +105,14 @@ void Buffer::downloadTo(std::shared_ptr<Buffer> buffer, vk::DeviceSize srcOffset
     if (vmaUsage == VMA_MEMORY_USAGE_GPU_ONLY || vmaUsage == VMA_MEMORY_USAGE_AUTO_PREFER_DEVICE) {
         auto commandBuffer = context->beginOneTimeCommandBuffer();
         vk::BufferCopy copyRegion = {};
+        copyRegion.setSrcOffset(srcOffset);
+        copyRegion.setDstOffset(dstOffset);
         copyRegion.setSize(buffer->size);
         commandBuffer->copyBuffer(this->buffer, buffer->buffer, 1, &copyRegion);
         context->endOneTimeCommandBuffer(std::move(commandBuffer), VulkanContext::Queue::COMPUTE);
     } else if (flags & VMA_ALLOCATION_CREATE_MAPPED_BIT) {
-        memcpy(buffer->allocation_info.pMappedData, allocation_info.pMappedData, buffer->size);
+        memcpy((char*)buffer->allocation_info.pMappedData + dstOffset,
+               (char*)allocation_info.pMappedData + srcOffset, buffer->size);
     } else {
         throw std::runtime_error("Buffer is not mappable");
     }

@@ -1,0 +1,29 @@
+#version 460
+#extension GL_GOOGLE_include_directive : enable
+#include "../mpm/mpm_structs.glsl"
+
+/**
+ * 粒子字段提取 Shader — Extract Pass
+ *
+ * 从 ParticleData 结构体 buffer 提取 position 和 velocity 字段
+ * 写入独立的 vec3[] buffer，供 drag_particle.comp 使用
+ *
+ * Buffer 绑定:
+ *   binding 0: ParticleData particles[] — 源数据（只读）
+ *   binding 1: vec3 dragPos[] — 位置提取输出
+ *   binding 2: vec3 dragVel[] — 速度提取输出
+ */
+
+layout(local_size_x = 256) in;
+
+layout(std430, set = 0, binding = 0) buffer ParticleBuffer { ParticleData particles[]; };
+layout(std430, set = 0, binding = 1) buffer DragPosBuffer { vec3 dragPos[]; };
+layout(std430, set = 0, binding = 2) buffer DragVelBuffer { vec3 dragVel[]; };
+
+void main() {
+    uint idx = gl_GlobalInvocationID.x;
+    if (idx >= particles.length()) return;
+
+    dragPos[idx] = particles[idx].position;
+    dragVel[idx] = particles[idx].velocity;
+}

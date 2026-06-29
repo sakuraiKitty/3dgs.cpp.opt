@@ -98,6 +98,33 @@ void Pipeline::bind(VkCommandBuffer commandBuffer, uint8_t currentFrame, Descrip
     }
 }
 
+void Pipeline::rebuildPipelineLayout() {
+    spdlog::info("[Pipeline] Rebuilding pipeline layout with {} actual descriptor sets (replacing TEMP layout)",
+                descriptorSets.size());
+
+    // Destroy TEMP layout (no longer needed — actual descriptor set layouts exist now)
+    tempDescriptorSetLayout.reset();
+
+    // Destroy old pipeline layout (was built with TEMP layout)
+    pipelineLayout.reset();
+
+    // Build new pipeline layout using ACTUAL descriptor set layouts
+    std::vector<vk::DescriptorSetLayout> layouts;
+    layouts.reserve(descriptorSets.size());
+    for (auto &descriptorSet: descriptorSets) {
+        layouts.push_back(descriptorSet.second->descriptorSetLayout.get());
+    }
+
+    vk::PipelineLayoutCreateInfo pipelineLayoutCreateInfo({}, layouts.size(), layouts.data());
+    if (!pushConstantRanges.empty()) {
+        pipelineLayoutCreateInfo.setPushConstantRangeCount(pushConstantRanges.size());
+        pipelineLayoutCreateInfo.setPPushConstantRanges(pushConstantRanges.data());
+    }
+
+    pipelineLayout = context->device->createPipelineLayoutUnique(pipelineLayoutCreateInfo);
+    spdlog::info("[Pipeline] Pipeline layout rebuilt successfully with actual descriptor set layouts");
+}
+
 void Pipeline::addPushConstant(vk::ShaderStageFlags stageFlags, uint32_t offset, uint32_t size) {
     pushConstantRanges.emplace_back(stageFlags, offset, size);
 }

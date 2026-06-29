@@ -45,6 +45,7 @@ VulkanContext::VulkanContext(const std::vector<std::string>& instance_extensions
     #endif
 #endif
     deviceExtensions.push_back(VK_KHR_DYNAMIC_RENDERING_EXTENSION_NAME);
+    deviceExtensions.push_back(VK_EXT_SHADER_ATOMIC_FLOAT_EXTENSION_NAME);  // MPM P2G/GridFreeze 需要 float atomicAdd/atomicExchange
 
     if (validation_layers_enabled) {
         deviceExtensions.push_back(VK_KHR_SHADER_NON_SEMANTIC_INFO_EXTENSION_NAME);
@@ -240,6 +241,14 @@ void VulkanContext::createLogicalDevice(vk::PhysicalDeviceFeatures deviceFeature
 
     vk::PhysicalDeviceDynamicRenderingFeaturesKHR dynamicRenderingFeatures {true};
     deviceFeatures12.pNext = &dynamicRenderingFeatures;
+
+    // ── Float atomic operations (MPM P2G/GridFreeze 需要) ──
+    // ROOT CAUSE: P2G shader 使用 atomicAdd(float) scatter mass/momentum/force 到 grid,
+    //             但 VK_EXT_shader_atomic_float 未启用 → atomicAdd 静默失败 → grid mass=0 → 仿真冻结!
+    vk::PhysicalDeviceShaderAtomicFloatFeaturesEXT atomicFloatFeatures{};
+    atomicFloatFeatures.shaderBufferFloat32Atomics = VK_TRUE;     // atomicExchange(float) on SSBO (grid_freeze)
+    atomicFloatFeatures.shaderBufferFloat32AtomicAdd = VK_TRUE;   // atomicAdd(float) on SSBO (P2G)
+    dynamicRenderingFeatures.pNext = &atomicFloatFeatures;
 
     device = physicalDevice.createDeviceUnique(createInfo);
 

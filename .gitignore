@@ -56,3 +56,7 @@ imgui.ini
 *.tmp
 *.log
 
+
+# Temporary diagnostic scripts (local only, do not commit)
+check_*.py
+diag_*.py

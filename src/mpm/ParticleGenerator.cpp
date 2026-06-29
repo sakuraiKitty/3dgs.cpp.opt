@@ -271,7 +271,7 @@ std::vector<ParticleData> ParticleGenerator::CreateParticleData(
         p.mass = config.base_mass * p.volume; // m = density * volume
 
         // 变形梯度初始化为单位矩阵
-        p.deformation_gradient = glm::mat3(1.0f);
+        SetDeformationGradient(p, glm::mat3(1.0f));
 
         // 材料属性
         p.material_id = 0; // 默认jelly

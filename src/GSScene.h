@@ -41,6 +41,10 @@ public:
     // CPU-side position data (populated during load, used for deformable region matching)
     std::vector<glm::vec3> cpuPositions;
 
+    // CPU-side rotation data (populated during load, used for coupling original rotations)
+    // Quaternion format: (w, x, y, z) — matches PLY and shader conventions
+    std::vector<glm::vec4> cpuRotations;
+
     struct Vertex {
         glm::vec4 position;
         glm::vec4 scale_opacity;

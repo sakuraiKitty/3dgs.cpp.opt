@@ -589,7 +589,7 @@ std::vector<ParticleData> MPMInitializer::AssembleParticles(
         p.position = positions[i];
         p.velocity = glm::vec3(0.0f);
         p.freeze_flag = freeze_mask[i] ? 1u : 0u;
-        p.deformation_gradient = glm::mat3(1.0f); // 单位矩阵 = 无变形
+        SetDeformationGradient(p, glm::mat3(1.0f)); // 单位矩阵 = 无变形
         p.volume = volumes[i];
         p.material_id = material.material_type;
         p.youngs_modulus = material.E;
@@ -600,7 +600,7 @@ std::vector<ParticleData> MPMInitializer::AssembleParticles(
         p.mass = material.density * volumes[i];
 
         // APIC矩阵初始化为零
-        p.apic_matrix = glm::mat3(0.0f);
+        SetApicMatrix(p, glm::mat3(0.0f));
 
         // 假设这些都是原始高斯（非填充点）
         // 实际使用时可以根据需要设置

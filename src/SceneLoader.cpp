@@ -73,19 +73,27 @@ SceneLoader::PLYData SceneLoader::LoadPLY(const std::string& ply_path) {
     std::string line;
     int vertex_count = 0;
     bool binary = false;
-    int property_count = 0;  // count vertex properties to compute stride
+    int property_count = 0;  // count VERTEX properties to compute stride
+    std::string current_element;  // 当前所在的 element 块（"vertex N" / "face N" ...）
 
     while (std::getline(file, line)) {
         if (line.find("format binary") != std::string::npos) {
             binary = true;
         }
-        if (line.find("element vertex") != std::string::npos) {
-            size_t pos = line.rfind(' ');
-            if (pos != std::string::npos) {
-                vertex_count = std::stoi(line.substr(pos + 1));
+        // 检测进入新的 element 块（行首 "element "）
+        if (line.find("element ") == 0) {
+            current_element = line.substr(8);  // 例: "vertex 121981" / "face 0"
+            // 仅 vertex 块解析顶点数
+            if (current_element.rfind("vertex", 0) == 0) {
+                size_t pos = line.rfind(' ');
+                if (pos != std::string::npos) {
+                    vertex_count = std::stoi(line.substr(pos + 1));
+                }
             }
         }
-        if (line.find("property ") == 0 && line.find("element") == std::string::npos) {
+        // 只计数 vertex 块下声明的 property，避免 face 块的 "property list"
+        // 污染 property_count（曾导致 stride=16 而非 12，位置串扰）
+        if (line.find("property ") == 0 && current_element.rfind("vertex", 0) == 0) {
             property_count++;
         }
         if (line.find("end_header") != std::string::npos) {
@@ -144,8 +152,9 @@ SceneLoader::PLYData SceneLoader::LoadPLY(const std::string& ply_path) {
     }
 
     file.close();
-    spdlog::debug("[SceneLoader] Loaded {} positions from PLY ({} format)",
-                data.positions.size(), binary ? "binary" : "ascii");
+    spdlog::info("[SceneLoader] Loaded {} positions from PLY {} (format={}, vertex_count={}, property_count={}, stride={})",
+                data.positions.size(), ply_path, binary ? "binary" : "ascii",
+                vertex_count, property_count, binary ? (property_count * sizeof(float)) : 0);
     return data;
 }
 
@@ -417,6 +426,42 @@ std::vector<bool> SceneLoader::ComputeSimMask(
 
     spdlog::info("[ComputeSimMask] Result: {} foreground (simulable), {} background (static)",
                  foreground_count, background_count);
+
+    // ── 诊断：前景/参考点的 Y 范围，用于定位“前景只显示上一半”类问题 ──
+    // 若 clean 参考点只覆盖花头上半，或 threshold 过紧导致下半高斯落选，
+    // 这里会清晰呈现：foreground_y_min 会明显高于 clean_y_min。
+    auto y_range = [](const std::vector<glm::vec3>& pts) -> std::pair<float, float> {
+        if (pts.empty()) return {0.0f, 0.0f};
+        float lo = pts[0].y, hi = pts[0].y;
+        for (const auto& p : pts) {
+            lo = std::min(lo, p.y);
+            hi = std::max(hi, p.y);
+        }
+        return {lo, hi};
+    };
+    auto [clean_lo, clean_hi] = y_range(clean_positions);
+
+    std::vector<glm::vec3> fg_pts;
+    fg_pts.reserve(foreground_count);
+    for (size_t i = 0; i < all_positions.size(); ++i) {
+        if (sim_mask[i]) fg_pts.push_back(all_positions[i]);
+    }
+    auto [fg_lo, fg_hi] = y_range(fg_pts);
+
+    // clean 参考点 Y 区间四等分，统计每个区间内前景高斯数量
+    float span = std::max(1e-6f, clean_hi - clean_lo);
+    int buckets[4] = {0, 0, 0, 0};
+    for (const auto& p : fg_pts) {
+        int b = static_cast<int>((p.y - clean_lo) / span * 4.0f);
+        if (b < 0) b = 0;
+        if (b > 3) b = 3;
+        buckets[b]++;
+    }
+
+    spdlog::info("[ComputeSimMask] Y-range: clean=[{:.4f},{:.4f}] foreground=[{:.4f},{:.4f}] threshold={:.4f}",
+                 clean_lo, clean_hi, fg_lo, fg_hi, threshold);
+    spdlog::info("[ComputeSimMask] Foreground Y-distribution (low→high): [{},{},{},{}]",
+                 buckets[0], buckets[1], buckets[2], buckets[3]);
 
     return sim_mask;
 }

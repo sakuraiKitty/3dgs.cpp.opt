@@ -1,0 +1,46 @@
+#version 460
+#extension GL_GOOGLE_include_directive : enable
+#include "../mpm/mpm_structs.glsl"
+
+/**
+ * 计算MPM粒子位移（GPU端）
+ * displacement = current_position - initial_position
+ *
+ * 避免 CPU round-trip：直接从 GPU 缓冲区计算位移
+ *
+ * 关键修复：使用完整ParticleData结构（stride=160）而非最小结构（stride=32）
+ * 初始位置使用vec4数组（stride=16）匹配std430对齐规则
+ */
+
+layout(local_size_x = 256) in;
+
+// 输入：当前粒子位置（MPM仿真后的位置）— 使用完整ParticleData结构
+layout(std430, set = 0, binding = 0) readonly buffer CurrentParticles {
+    ParticleData particles[];
+};
+
+// 输入：初始粒子位置（vec4格式，stride=16匹配std430规则）
+layout(std430, set = 0, binding = 1) readonly buffer InitialPositions {
+    vec4 initial_positions[];
+};
+
+// 输出：粒子位移 = current - initial（vec4格式，stride=16匹配std430规则）
+layout(std430, set = 0, binding = 2) buffer Displacements {
+    vec4 displacements[];
+};
+
+layout(push_constant) uniform ComputeDisplacementUniforms {
+    uint num_particles;
+};
+
+void main() {
+    uint p_id = gl_GlobalInvocationID.x;
+    if (p_id >= num_particles) {
+        return;
+    }
+
+    vec3 current_pos = particles[p_id].position;
+    vec3 initial_pos = initial_positions[p_id].xyz;
+    vec3 disp = current_pos - initial_pos;
+    displacements[p_id] = vec4(disp, 0.0);
+}

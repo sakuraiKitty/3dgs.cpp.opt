@@ -39,6 +39,13 @@ public:
 
     virtual void build() = 0;
 
+    /**
+     * Rebuild pipeline layout using actual descriptor set layouts.
+     * Called after descriptor sets are built (which happens after buffers are created).
+     * This replaces the TEMP layout used during initial build() with the real layouts.
+     */
+    virtual void rebuild() { rebuildPipelineLayout(); }
+
     // C++ style API (for vk::UniqueCommandBuffer)
     virtual void bind(const vk::UniqueCommandBuffer &commandBuffer, uint8_t currentFrame, DescriptorOption option);
 
@@ -49,6 +56,7 @@ public:
     vk::UniquePipeline pipeline;
 protected:
     void buildPipelineLayout();
+    void rebuildPipelineLayout();  // Rebuild layout using actual descriptor set layouts (not TEMP)
 
     std::shared_ptr<VulkanContext> context;
     std::vector<vk::DescriptorSetLayoutBinding> descriptorSetLayoutBindings;

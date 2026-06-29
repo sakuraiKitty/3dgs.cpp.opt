@@ -50,6 +50,13 @@ public:
     }
 
     /**
+     * 获取KNN映射（包含inverse-distance权重）
+     */
+    const std::vector<MPM::KNNMapping>& GetKNNMappings() const {
+        return knn_mappings_;
+    }
+
+    /**
      * 设置可变形区域
      */
     void SetDeformableIndices(const std::vector<uint32_t>& indices) {

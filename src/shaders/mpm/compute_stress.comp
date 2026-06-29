@@ -142,12 +142,12 @@ float compute_von_mises_stress(mat3 stress) {
 }
 
 /**
- * 计算 FCR (Fixed Corotated) 应力 - 弹性材料
+ * 计算 FCR (Fixed Corotated) Kirchhoff 应力 - 弹性材料
  *
  * @param F 变形梯度
  * @param E 杨氏模量 [Pa]
  * @param nu 泊松比
- * @return 第一 Piola-Kirchhoff 应力 P
+ * @return Kirchhoff 应力 τ (= P·Fᵀ)，与世界梯度 ∇ₓw 搭配使用以能量守恒
  */
 mat3 compute_fcr_stress(mat3 F, float E, float nu) {
     // 计算 Lame 参数
@@ -160,14 +160,13 @@ mat3 compute_fcr_stress(mat3 F, float E, float nu) {
     // 计算体积变化 J = det(F)
     float J = mat3_determinant(F);
 
-    // FCR 应力公式
-    // P = 2*mu*(F - R) + lam*(J - 1)*J*F^(-T)
-    mat3 elastic_part = 2.0 * mu * (F - R);
-    mat3 volumetric_part = lam * (J - 1.0) * J * mat3_transpose(mat3_inverse(F));
+    // FCR Kirchhoff 应力（与 CUDA mpm_utils.py kirchoff_stress_FCR 一致）
+    // τ = 2*mu*(F - R)*F^T + lam*J*(J - 1)*I
+    // 体积项不含 F^(-T)，det(F)→0 时不发散
+    mat3 Ft = mat3_transpose(F);
+    mat3 tau = 2.0 * mu * (F - R) * Ft + lam * J * (J - 1.0) * mat3(1.0);
 
-    mat3 P = elastic_part + volumetric_part;
-
-    return P;
+    return tau;
 }
 
 /**

@@ -1,0 +1,75 @@
+#version 460
+#extension GL_GOOGLE_include_directive : enable
+#extension GL_EXT_shader_atomic_float : enable
+#include "mpm_structs.glsl"
+
+/**
+ * Grid Freeze: 将冻结粒子所在的网格节点速度归零
+ *
+ * 对应 PhysDreamer: apply_grid_bc_w_freeze_pts() (local_utils.py:654)
+ *   freeze_pts = (freeze_pts * inv_dx).long()   # floor(grid_pos)，单节点
+ *   freeze_grid_mask = grid_pts_cnt >= 1
+ *   enforce_grid_velocity_by_mask(freeze_grid_mask)   # 该节点 vel=0
+ *
+ * 在 Grid Update 之后、G2P 之前执行。
+ * 每个冻结粒子只冻结其所在的【单个】网格节点 floor(grid_pos)，与 CUDA 完全一致。
+ *
+ * 为什么不是 3x3x3（旧实现的 bug）：
+ *   旧实现冻结 3x3x3 = 27 节点/粒子，形成巨大刚性墙，切断冻结区与可动区的应力传递。
+ *   carnation 花冠顶冻结仅 6% 粒子，但 27× 墙让整个花冠上半截不动 + 中间切断
+ *   （"上半截花冠完全没动" 现象的根因）。
+ *   CUDA 只冻 1 节点/粒子，墙有"漏洞"，应力能绕过，花仍可摆动。
+ *
+ * 流程: Zero Grid → P2G → Grid Update → Grid Freeze → G2P
+ */
+layout(local_size_x = 256) in;
+
+layout(std430, set = 0, binding = 0) readonly buffer ParticleBuffer {
+    ParticleData particles[];
+};
+
+layout(std430, set = 0, binding = 1) buffer GridBuffer {
+    GridNode nodes[];
+};
+
+layout(push_constant) uniform GridFreezeParams {
+    uint num_particles;    // offset 0  - 粒子数量
+    float inv_dx;          // offset 4  - 1/dx
+    uint grid_size;        // offset 8  - 网格分辨率
+    uint padding;          // offset 12 - 对齐填充
+    // Total: 16 bytes — all scalar fields, std430 alignment=4
+};
+
+void main() {
+    uint p_id = gl_GlobalInvocationID.x;
+    if (p_id >= num_particles) {
+        return;
+    }
+
+    ParticleData p = particles[p_id];
+
+    // 只处理冻结粒子
+    if (p.freeze_flag == 0u) {
+        return;
+    }
+
+    // CUDA: node = floor(pt * inv_dx) = floor(grid_pos) — 单个节点
+    vec3 grid_pos = p.position * inv_dx;
+    ivec3 node_idx = ivec3(floor(grid_pos));
+
+    // 边界检查
+    if (any(lessThan(node_idx, ivec3(0))) ||
+        any(greaterThanEqual(node_idx, ivec3(int(grid_size))))) {
+        return;
+    }
+
+    // 线性化索引（与 zero_grid / grid_update 一致）
+    uint linear_idx = node_idx.x +
+                      node_idx.y * grid_size +
+                      node_idx.z * grid_size * grid_size;
+
+    // 归零该节点速度（与 CUDA enforce_grid_velocity_by_mask 一致）
+    atomicExchange(nodes[linear_idx].velocity.x, 0.0);
+    atomicExchange(nodes[linear_idx].velocity.y, 0.0);
+    atomicExchange(nodes[linear_idx].velocity.z, 0.0);
+}

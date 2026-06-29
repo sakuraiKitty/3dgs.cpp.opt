@@ -4,6 +4,8 @@
 #define GLM_SWIZZLE
 
 #include <atomic>
+#include <unordered_map>
+#include <cmath>
 #include "3dgs.h"
 
 #include "vulkan/Window.h"
@@ -21,6 +23,7 @@
 #include "mpm/MPMManager.h"
 #include "interaction/RayCaster.h"
 #include "interaction/DragHandler.h"
+#include "coupling/CouplingManager.h"
 
 class Renderer {
 public:
@@ -100,6 +103,11 @@ public:
      */
     void updateHoverDetection();
 
+    /**
+     * 绘制物理交互可视化（绿色射线、力的方向）
+     */
+    void drawPhysicsOverlay();
+
     ~Renderer();
 
     Camera camera {
@@ -143,13 +151,17 @@ private:
     // Physics rendering filter
     std::shared_ptr<Buffer> deformableIndexBuffer_;  // Buffer containing indices of deformable Gaussians
     std::shared_ptr<Buffer> visibilityMaskBuffer_;   // Dense mask: 1 uint per Gaussian (1=deformable, 0=background)
+    std::shared_ptr<Buffer> overridePositionBuffer_; // Physics position override (vec4 per Gaussian)
+    std::shared_ptr<Buffer> overrideRotationBuffer_; // Physics rotation override (vec4 quaternion per Gaussian)
     bool renderForegroundOnly_ = false;
+    bool physics_override_active_ = false;  // true when coupling output should override positions
     SceneLoader sceneLoader_;
     std::vector<uint32_t> pendingDeformableIndices_;  // Stored indices, uploaded after pipeline creation
     std::vector<bool> sim_mask_;                      // 前景掩码（可变形区域）true=可变形, false=背景
 
     // MPM Physics Simulation
     std::shared_ptr<MPM::MPMManager> mpm_manager_;                     // MPM管理器
+    std::shared_ptr<CouplingManager> coupling_manager_;                // 耦合管理器
     std::vector<MPM::ParticleData> mpm_particles_;                    // MPM粒子数据
     MPM::CoordinateTransform mpm_coord_transform_;                    // 坐标变换
     std::vector<MPM::TopKMapping> mpm_top_k_mappings_;                 // Top-K映射
@@ -158,12 +170,11 @@ private:
     size_t mpm_num_drive_particles_ = 0;                              // 驱动粒子数
     size_t mpm_num_render_particles_ = 0;                             // 渲染粒子数
     bool mpm_initialized_ = false;                                    // MPM是否已初始化
+    bool coupling_initialized_ = false;                               // 耦合是否已初始化
 
-    // Mouse interaction for physics
-    bool physics_interaction_mode_ = false;                           // 物理交互模式
-    bool is_dragging_ = false;                                        // 是否正在拖拽
+    // Mouse interaction for physics (速度插值模式)
+    bool physics_interaction_mode_ = false;                           // P+click交互模式
     std::vector<uint32_t> selected_particles_;                        // 选中的粒子索引
-    glm::vec3 drag_start_pos_;                                        // 拖拽起始位置
     glm::ivec2 mouse_pos_on_press_;                                   // 鼠标按下位置
     bool mouse_pressed_this_frame_ = false;                          // 本帧鼠标按下
     bool mouse_released_this_frame_ = false;                          // 本帧鼠标释放
@@ -171,17 +182,61 @@ private:
     // Mouse hover cursor state
     int current_cursor_type_ = 0;                                    // 当前光标类型
 
+    // Spatial hash grid for fast hover detection (replaces O(N) loop)
+    struct HoverSpatialHash {
+        float cell_size = 0.05f;  // Cell size in world space (5cm)
+        glm::vec3 grid_min = glm::vec3(0.0f);
+        glm::vec3 grid_max = glm::vec3(0.0f);  // Scene AABB
+        std::unordered_map<int64_t, std::vector<uint32_t>> cells;
+
+        int64_t cellKey(int32_t cx, int32_t cy, int32_t cz) const {
+            // Spatial hash using large primes for good distribution
+            return ((int64_t)cx * 73856093) ^ ((int64_t)cy * 19349669) ^ ((int64_t)cz * 83492791);
+        }
+
+        void getCellCoords(const glm::vec3& pos, int32_t& cx, int32_t& cy, int32_t& cz) const {
+            cx = static_cast<int32_t>(std::floor((pos.x - grid_min.x) / cell_size));
+            cy = static_cast<int32_t>(std::floor((pos.y - grid_min.y) / cell_size));
+            cz = static_cast<int32_t>(std::floor((pos.z - grid_min.z) / cell_size));
+        }
+
+        // Ray-AABB intersection test (returns t_min, t_max; -1 if no hit)
+        bool rayAABB(const glm::vec3& ray_origin, const glm::vec3& ray_dir,
+                     float& t_min, float& t_max) const {
+            t_min = -1e30f; t_max = 1e30f;
+            for (int i = 0; i < 3; i++) {
+                if (std::abs(ray_dir[i]) < 1e-8f) {
+                    if (ray_origin[i] < grid_min[i] || ray_origin[i] > grid_max[i])
+                        return false;
+                } else {
+                    float t1 = (grid_min[i] - ray_origin[i]) / ray_dir[i];
+                    float t2 = (grid_max[i] - ray_origin[i]) / ray_dir[i];
+                    if (t1 > t2) std::swap(t1, t2);
+                    t_min = std::max(t_min, t1);
+                    t_max = std::min(t_max, t2);
+                    if (t_min > t_max) return false;
+                }
+            }
+            t_min = std::max(t_min, 0.0f);
+            return t_min <= t_max;
+        }
+    };
+    HoverSpatialHash hover_grid_;
+
     // Interaction System
     std::shared_ptr<Interaction::RayCaster> ray_caster_;              // 射线拾取器
     std::shared_ptr<Interaction::DragHandler> drag_handler_;          // 拖拽处理器
     glm::ivec2 last_mouse_position_;                                  // 上一帧鼠标位置
     bool prev_left_mouse_down_ = false;                               // 上一帧左键状态
 
+    
     std::shared_ptr<DescriptorSet> inputSet;
 
     std::atomic<bool> running = true;
 
     std::vector<vk::UniqueFence> inflightFences;
+    vk::UniqueFence preprocessFence;  // Dedicated fence for preprocess completion (within-frame sync)
+    vk::UniqueFence physicsFence;     // Dedicated fence for physics GPU commands
 
     // 时间线信号量用于帧同步
     std::vector<std::unique_ptr<TimelineSemaphore>> frameTimelineSemaphores;
@@ -197,6 +252,7 @@ private:
     // 三缓冲：每帧一个命令缓冲区
     std::vector<vk::UniqueCommandBuffer> preprocessCommandBuffers;
     std::vector<vk::UniqueCommandBuffer> renderCommandBuffers;
+    std::vector<vk::UniqueCommandBuffer> physicsCommandBuffers;  // 物理GPU命令（耦合、位移映射）
 
     uint32_t currentImageIndex;
 
@@ -248,6 +304,7 @@ private:
     void updateUniforms();
 
     void uploadVisibilityMask();
+    void buildHoverGrid();
 
     // 物理交互处理
     void initializeInteractionSystem();

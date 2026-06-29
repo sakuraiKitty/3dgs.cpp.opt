@@ -1,5 +1,50 @@
 # 更新日志 (CHANGELOG)
 
+## 2026年6月29日 - PLY解析stride修复 + KNN映射修复 + 诊断清理 ✅
+
+### 🎯 实施成果
+
+修复两个导致物理交互"前景高斯一半能动一半不能"的根因 bug，并清理临时诊断代码。
+
+#### 1. PLY解析 stride bug 修复（SceneLoader）
+
+**问题**: `SceneLoader::LoadPLY` 解析 header 时用 `line.find("property ")==0 && line.find("element")==npos` 计数顶点属性，但 `element face` 块下的 `property list uchar int vertex_indices` 也以 "property " 开头且不含 "element"，被误算成顶点属性。
+
+**影响**: 含 `element face` 的 PLY（`clean_object_points.ply`、`moving_part_points.ply`）`property_count=4`（应3），stride=16 字节（应12）。每顶点多读4字节 → 位置串扰（每3顶点才1个正确），顶点数从 121981/130812 错读成 91486/98109。污染冻结输入和 sim_mask 输入坐标。`point_cloud.ply` 不受影响（无 face element）。
+
+**修复**: header 解析跟踪 `current_element` 块，只数 `element vertex` 下的 property。修复后 stride=12，顶点数 121981/130812 正确。
+
+**修改位置**: `src/SceneLoader.cpp` - `LoadPLY` header 解析 + info 级日志（property_count/stride）
+
+#### 2. KNN 映射"返回最远粒子"bug 修复（GaussianParticleMapper）
+
+**问题**: `PrecomputeMapping` 的 KNN 优先队列比较器写反——用 `std::greater`（最小堆，top=最小距离），`pop()` 弹最小 → 队列留下 **K 个最大距离（最远）**粒子。
+
+**影响**: 每个前景高斯映射到 8 个**最远**粒子（对角端，多数落在冻结区），位移为0 → 拖拽时只有 ~17% (22351/133564) 高斯更新，表现"从中间被切断，一半能动一半不能"。MPM 粒子全动、位移 buffer 全非零、KNN 索引全有效，但高斯拿不到位移。
+
+**修复**: 改 `std::less`（默认最大堆，top=最大，pop弹最大 → 留 K 个最近）。修复后 KNN 邻居距离从 0.43 降到 0.004，紧贴高斯位置。
+
+**修改位置**: `src/coupling/GaussianParticleMapper.cpp` - `PrecomputeMapping` 优先队列比较器
+
+#### 3. 临时诊断代码清理
+
+- 移除 `Renderer.cpp` 中每60帧的 GPU 全量回读诊断（MPM-Stability 全量扫描、Coupling-Stability、CouplingDiag、KNN-Check、fill_diag_counter 用1.0f填充grid的ZeroGrid测试、grid/P2G诊断）——这些每60帧下载16MB+ buffer导致卡顿，fill_diag 还会往 grid 灌 1.0f 干扰仿真（可能是震荡问题诱因之一）。
+- 移除 `MPMInitializer.cpp` 的 freeze Y 分布诊断。
+- 移除 `CouplingManager.h` 的临时 getter（GetDriveDisplacementBuffer/GetTopKIndexBuffer）。
+- `.gitignore` 增加 `check_*.py`/`diag_*.py`，临时 Python 诊断脚本不纳入版本控制。
+
+### ⚠️ 遗留问题
+
+冻结边界与 KNN 映射已正确，但**交互后的变形与震荡仍有问题**（拖拽后花头形变/震荡行为与 PhysDreamer 参考不一致）。下一步需排查 MPM 应力/APIC/G2P 在拖拽边界的行为（参见记忆 drag-stem-explosion-root-cause、mpm-gravity-cfl-explosion、apic-first-moment-stencil-bug、stress-tau-vs-p-fcr）。
+
+### 📌 验证
+
+- PLY: `[SceneLoader] Loaded 121981 positions ... (property_count=3, stride=12)`
+- KNN: KNN-Check 显示 max_d≈0.004（修复前 0.43），邻居紧贴高斯
+- 编译 0 错 0 警
+
+---
+
 ## 2026年6月11日 - 物理交互崩溃修复 + P+左键拖拽功能 ✅
 
 ### 🎯 实施成果

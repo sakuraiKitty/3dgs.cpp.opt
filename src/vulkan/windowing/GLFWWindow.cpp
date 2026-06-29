@@ -57,18 +57,48 @@ std::pair<uint32_t, uint32_t> GLFWWindow::getFramebufferSize() const {
 }
 
 std::array<double, 2> GLFWWindow::getCursorTranslation() {
-    double x, y;
-    glfwGetCursorPos(static_cast<GLFWwindow *>(window), &x, &y);
-    const auto translation = std::array<double, 2>{x - lastX, y - lastY};
-    lastX = x;
-    lastY = y;
+    // 使用回调存储的位置计算增量（替代 glfwGetCursorPos 轮询）
+    const auto translation = std::array<double, 2>{callbackCursorX_ - lastX, callbackCursorY_ - lastY};
+    lastX = callbackCursorX_;
+    lastY = callbackCursorY_;
     return translation;
 }
 
 std::array<double, 2> GLFWWindow::getCursorPosition() {
-    double x, y;
-    glfwGetCursorPos(static_cast<GLFWwindow *>(window), &x, &y);
-    return {x, y};
+    // 使用回调存储的位置（替代 glfwGetCursorPos 轮询）
+    // glfwGetCursorPos 在 ImGui 回调拦截下会返回冻结坐标
+    return {callbackCursorX_, callbackCursorY_};
+}
+
+void GLFWWindow::cursorPositionCallback(GLFWwindow* window, double x, double y) {
+    GLFWWindow* self = static_cast<GLFWWindow*>(glfwGetWindowUserPointer(window));
+    if (self) {
+        self->callbackCursorX_ = x;
+        self->callbackCursorY_ = y;
+    }
+    // 链式转发给 ImGui 的回调（确保 ImGui 也能收到光标事件）
+    if (self && self->prevCursorPosCallback_) {
+        self->prevCursorPosCallback_(window, x, y);
+    }
+}
+
+void GLFWWindow::installCursorCallback() {
+    auto* glfw_win = static_cast<GLFWwindow*>(window);
+    // 设置窗口用户指针，以便回调能找到 GLFWWindow 实例
+    glfwSetWindowUserPointer(glfw_win, this);
+    // 保存 ImGui 的回调，并在其之上安装我们的回调
+    // glfwSetCursorPosCallback 返回之前安装的回调（ImGui 的）
+    prevCursorPosCallback_ = glfwSetCursorPosCallback(glfw_win, cursorPositionCallback);
+    // 用 glfwGetCursorPos 初始化回调位置（仅用于首次初始化）
+    double init_x, init_y;
+    glfwGetCursorPos(glfw_win, &init_x, &init_y);
+    callbackCursorX_ = init_x;
+    callbackCursorY_ = init_y;
+    lastX = init_x;
+    lastY = init_y;
+    spdlog::info("[GLFWWindow] Cursor position callback installed "
+                 "(prevCallback={}, initPos=({:.1f},{:.1f}))",
+                 prevCursorPosCallback_ ? "ImGui" : "null", init_x, init_y);
 }
 
 std::array<bool, 9> GLFWWindow::getKeys() {
@@ -103,7 +133,7 @@ void GLFWWindow::setCursor(int cursorType) {
     static bool log_once = true;
 
     if (log_once) {
-        spdlog::info("[GLFWWindow] setCursor method active");
+        spdlog::debug("[GLFWWindow] setCursor method active");
         log_once = false;
     }
 
@@ -135,7 +165,7 @@ void GLFWWindow::setCursor(int cursorType) {
             SetClassLongPtr(hwnd, GCLP_HCURSOR, (LONG_PTR)hCursor);
             // 立即设置当前光标
             SetCursor(hCursor);
-            spdlog::info("[GLFWWindow] Set cursor type {} (HWND={})", cursorType, (void*)hwnd);
+            spdlog::debug("[GLFWWindow] Set cursor type {} (HWND={})", cursorType, (void*)hwnd);
         } else {
             spdlog::error("[GLFWWindow] Failed to get HWND");
         }

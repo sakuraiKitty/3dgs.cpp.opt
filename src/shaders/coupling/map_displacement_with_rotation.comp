@@ -1,0 +1,213 @@
+#version 460
+#extension GL_GOOGLE_include_directive : enable
+#extension GL_EXT_shader_explicit_arithmetic_types_int64 : enable
+
+/**
+ * 高斯位移映射 Shader（匹配PhysDreamer Python实现）
+ * 将 MPM 粒子的位移通过刚性变换传递给 3D 高斯
+ *
+ * 对应 physDreamer: local_utils.py interpolate_points_w_R()
+ *
+ * 关键修复（与Python一致）：
+ * 1. 位置更新使用K近邻粒子的**平均位移**（而非R*x+t刚性变换）
+ *    Python: ret_points = query_points + avg_offsets
+ * 2. 旋转更新使用刚性变换的旋转部分R
+ *    Python: new_rotation = quaternion_multiply(matrix_to_quaternion(R), query_rotation)
+ * 3. vec4数组匹配std430 stride=16规则（修复之前的stride mismatch）
+ * 4. KNN坐标空间一致：高斯和粒子都在归一化空间计算KNN
+ *
+ * 算法流程：
+ * 1. 对每个高斯，读取 K=8 个最近邻粒子
+ * 2. 计算平均位移 = mean(K近邻粒子的displacement)
+ * 3. 拟合刚性变换 R（仅用于旋转）
+ * 4. 新位置 = original_position + avg_displacement（归一化空间）
+ * 5. 新旋转 = R_quat * original_rotation
+ * 6. 转换回世界空间输出
+ */
+
+#include "rigid_transform.glsl"
+
+// 定义 UINT_MAX (GLSL 中没有内置)
+#define UINT_MAX 0xFFFFFFFFU
+
+layout(local_size_x = 256) in;
+
+// ============================================================================
+// 输入缓冲区
+// ============================================================================
+
+// 可变形高斯索引列表
+layout(std430, set = 0, binding = 0) readonly buffer DeformableIndices {
+    uint deformable_indices[];  // 可变形高斯的全局索引
+};
+
+// 粒子原始位置（vec4格式，归一化空间，stride=16匹配std430规则）
+layout(std430, set = 0, binding = 1) readonly buffer DriveParticlePositions {
+    vec4 drive_positions[];
+};
+
+// 粒子位移数据（vec4格式，归一化空间，stride=16匹配std430规则）
+// displacement = current_pos_norm - initial_pos_norm
+layout(std430, set = 0, binding = 2) readonly buffer DriveParticleDisplacements {
+    vec4 drive_displacements[];
+};
+
+// Top-K 映射（每个高斯 2 个 uvec4 存储 8 个索引）
+layout(std430, set = 0, binding = 3) readonly buffer TopKMapping {
+    uvec4 top_k_indices[];  // [num_deformable * 2]
+};
+
+// Top-K 权重（每个高斯 2 个 vec4 存储 8 个权重）
+layout(std430, set = 0, binding = 4) readonly buffer TopKWeights {
+    vec4 top_k_weights[];  // [num_deformable * 2]
+};
+
+// 高斯原始位置（vec4格式，**世界空间**，stride=16匹配std430规则）
+layout(std430, set = 0, binding = 5) readonly buffer OriginalGaussianPositions {
+    vec4 original_positions[];
+};
+
+// 高斯原始旋转（用于旋转更新）
+layout(std430, set = 0, binding = 6) readonly buffer OriginalGaussianRotations {
+    vec4 original_rotations[];  // 四元数 (w, x, y, z)
+};
+
+// ============================================================================
+// 输出缓冲区
+// ============================================================================
+
+// 高斯新位置（世界空间）
+layout(std430, set = 0, binding = 7) buffer GaussianPositions {
+    vec4 positions[];  // xyz=位置, w=1.0
+};
+
+// 高斯新旋转
+layout(std430, set = 0, binding = 8) buffer GaussianRotations {
+    vec4 rotations[];  // 四元数 (w, x, y, z)
+};
+
+// ============================================================================
+// Push Constants
+// ============================================================================
+// vec3 必须放在开头确保std430 16字节对齐一致（C++和GLSL布局匹配）
+
+layout(push_constant) uniform MappingUniforms {
+    vec3 coord_shift;        // MPM坐标变换的shift向量（offset 0, alignment 16）
+    float coord_scale;       // MPM坐标变换的scale因子（offset 12, 占vec3尾部4字节）
+    uint num_gaussians;      // 可变形高斯数量（offset 16）
+    uint k;                   // K 值（固定为 8）（offset 20）
+    uint num_particles;      // 粒子总数（offset 24）
+    uint padding1;            // （offset 28）
+};
+
+// ============================================================================
+// 主函数
+// ============================================================================
+
+void main() {
+    uint g_id = gl_GlobalInvocationID.x;
+    if (g_id >= num_gaussians) {
+        return;
+    }
+
+    // 读取 Top-K 索引和权重
+    uvec4 idx_part1 = top_k_indices[g_id * 2];
+    uvec4 idx_part2 = top_k_indices[g_id * 2 + 1];
+    uint indices[8] = uint[](
+        idx_part1.x, idx_part1.y, idx_part1.z, idx_part1.w,
+        idx_part2.x, idx_part2.y, idx_part2.z, idx_part2.w
+    );
+
+    vec4 weight_part1 = top_k_weights[g_id * 2];
+    vec4 weight_part2 = top_k_weights[g_id * 2 + 1];
+    float weights[8] = float[](
+        weight_part1.x, weight_part1.y, weight_part1.z, weight_part1.w,
+        weight_part2.x, weight_part2.y, weight_part2.z, weight_part2.w
+    );
+
+    // ====================================================================
+    // Step 1: 计算K近邻粒子的平均位移（归一化空间）
+    // 对应Python: avg_offsets = top_k_disp.mean(dim=1)
+    // ====================================================================
+    vec3 avg_displacement = vec3(0.0);
+    float weight_sum = 0.0;
+    int valid_count = 0;
+
+    // 同时准备source/target点对（用于旋转计算）
+    vec3 source_points[8];
+    vec3 target_points[8];
+
+    for (int i = 0; i < 8; i++) {
+        if (indices[i] != UINT_MAX && indices[i] < num_particles) {
+            vec3 disp = drive_displacements[indices[i]].xyz;  // 归一化空间位移
+            avg_displacement += disp * weights[i];  // 加权平均位移
+            weight_sum += weights[i];
+
+            // source = initial position (归一化空间)
+            source_points[valid_count] = drive_positions[indices[i]].xyz;
+            // target = initial + displacement = current position (归一化空间)
+            target_points[valid_count] = drive_positions[indices[i]].xyz + disp;
+            valid_count++;
+        }
+    }
+
+    // 如果没有有效点，保持原状
+    if (valid_count == 0) {
+        return;
+    }
+
+    // 归一化权重，计算最终平均位移
+    if (weight_sum > 0.0) {
+        avg_displacement /= weight_sum;
+    }
+
+    // ====================================================================
+    // Step 2: 拟合刚性变换 R（仅用于旋转更新）
+    // 对应Python: R, t = get_rigid_transform(source_points, source_points + top_k_disp)
+    // ====================================================================
+    // 归一化权重用于SVD
+    for (int i = 0; i < valid_count; i++) {
+        if (weight_sum > 0.0) {
+            weights[i] /= weight_sum;
+        }
+    }
+
+    // 填充无效点（使用第一个有效点，权重=0）
+    for (int i = valid_count; i < 8; i++) {
+        source_points[i] = source_points[0];
+        target_points[i] = target_points[0];
+        weights[i] = 0.0;
+    }
+
+    // 拟合刚性变换获取旋转矩阵 R
+    RigidTransform transform = fit_rigid_transform(source_points, target_points, weights);
+
+    // ====================================================================
+    // Step 3: 计算新位置（匹配Python: query_points + avg_offsets）
+    // ====================================================================
+    uint global_idx = deformable_indices[g_id];
+    vec3 original_pos_world = original_positions[global_idx].xyz;  // 世界空间
+
+    // 世界→归一化: normalized = (world + shift) / scale
+    vec3 original_pos_norm = (original_pos_world + coord_shift) / coord_scale;
+
+    // 新位置（归一化空间）= 原始位置 + 平均位移
+    // 对应Python: ret_points = query_points + avg_offsets
+    vec3 new_pos_norm = original_pos_norm + avg_displacement;
+
+    // 归一化→世界: world = normalized * scale - shift
+    vec3 new_pos_world = new_pos_norm * coord_scale - coord_shift;
+
+    // ====================================================================
+    // Step 4: 计算新旋转（匹配Python: R_quat * original_rotation）
+    // ====================================================================
+    vec4 original_rot = original_rotations[global_idx];
+    vec4 R_quat = matrix_to_quaternion(transform.R);
+    vec4 new_rot = quaternion_multiply(R_quat, original_rot);
+
+    // ====================================================================
+    // 写入结果
+    // ====================================================================
+    positions[global_idx] = vec4(new_pos_world, 1.0);
+    rotations[global_idx] = new_rot;
+}

@@ -56,6 +56,18 @@ endforeach (GLSL)
 
 add_custom_target(shaders DEPENDS ${SHADER_HEADER} ${SPIRV_BINARY_FILES})
 
+# Copy compiled .spv files to source shaders/ directory so runtime filesystem
+# loading (Shader::load() reads "shaders/<name>.spv") always gets the latest binary.
+# Without this, MPM/coupling/drag shaders would load stale .spv files while
+# renderer shaders use embedded shaders.h (always current).
+add_custom_target(copy_spv_to_source ALL
+        COMMAND ${CMAKE_COMMAND} -E copy_directory
+            "${CMAKE_BINARY_DIR}/shaders/"
+            "${CMAKE_SOURCE_DIR}/shaders/"
+        DEPENDS shaders
+        COMMENT "Copying compiled .spv shaders to source shaders/ directory"
+)
+
 add_custom_target(xcode_shaders
         DEPENDS
         ${XCODE_SHADER}

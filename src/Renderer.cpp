@@ -1,4 +1,5 @@
 #include "Renderer.h"
+#include "imgui.h"
 
 #include <fstream>
 
@@ -7,12 +8,15 @@
 #include <memory>
 #include "shaders.h"
 #include <utility>
+#include <cmath>
+#include <algorithm>
 
 #include <glm/glm.hpp>
 #include <glm/gtc/matrix_transform.hpp>
 #include <glm/gtc/quaternion.hpp>
 
 #include "vulkan/Utils.h"
+#include "vulkan/windowing/GLFWWindow.h"
 #include "GaussianModel.h"
 
 #include <spdlog/spdlog.h>
@@ -33,6 +37,9 @@ void Renderer::initialize() {
     createRenderPipeline();
     createCommandPool();
     recordPreprocessCommandBuffer();
+
+    // Build spatial hash grid for fast hover detection
+    buildHoverGrid();
 
     // 初始化交互系统（如果MPM已初始化）
     if (mpm_initialized_) {
@@ -146,16 +153,30 @@ void Renderer::initializeVulkan() {
     // 启用时间线信号量支持
     pdf12.timelineSemaphore = true;
 
+    // 注意: VK_EXT_shader_atomic_float 扩展和 shaderBufferFloat32AtomicAdd 特性
+    // 在 VulkanContext::createLogicalDevice 中启用（pNext 链末尾）
+    // ROOT CAUSE: MPM P2G 的 atomicAdd(float) 需要 shaderBufferFloat32AtomicAdd,
+    //             未启用时 atomicAdd 静默失败 → grid mass=0 → 仿真冻结!
+
     context->createLogicalDevice(pdf, pdf11, pdf12);
     context->createDescriptorPool(FRAMES_IN_FLIGHT);  // 更新为3帧
 
     swapchain = std::make_shared<Swapchain>(context, window, configuration.immediateSwapchain);
 
-    // 创建帧inflight fences
+    // 创建帧inflight fences (for cross-frame render sync)
     for (int i = 0; i < FRAMES_IN_FLIGHT; i++) {
         inflightFences.emplace_back(
             context->device->createFenceUnique(vk::FenceCreateInfo(vk::FenceCreateFlagBits::eSignaled)));
     }
+
+    // 创建专用preprocess fence (for within-frame preprocess sync)
+    // 必须初始为 UNSIGNaled，因为draw()总是在等待fence之前提交preprocess命令
+    // 如果初始signaled，waitForFences会在GPU实际完成前就返回 → 读到垃圾数据 → 崩溃
+    preprocessFence = context->device->createFenceUnique(vk::FenceCreateInfo());
+
+    // 创建专用physics fence (for within-frame physics GPU sync)
+    // 同样初始unsignaled - physics命令用null fence提交，同一队列保序
+    physicsFence = context->device->createFenceUnique(vk::FenceCreateInfo());
 
     // 创建时间线信号量（每帧一个）
     frameTimelineSemaphores.reserve(FRAMES_IN_FLIGHT);
@@ -216,7 +237,7 @@ void Renderer::loadSceneToGPU() {
                     mpm_config.grid_size = 64;
                     mpm_config.downsample_scale = 0.1f;
                     mpm_config.use_internal_fill = true;
-                    mpm_config.material.E = 2140628.25f;   // carnation默认值
+                    mpm_config.material.E = 2140628.25f;   // carnation原版值 (carnation.py init_young)
                     mpm_config.material.nu = 0.3f;
                     mpm_config.material.density = 2000.0f;
 
@@ -250,12 +271,38 @@ void Renderer::loadSceneToGPU() {
                         MPM::MPMManager::Config mpm_config;
                         mpm_config.grid_size = 64;
                         mpm_config.dt = 1.0f / 30.0f;
-                        mpm_config.substeps = 128;
-                        mpm_config.gravity = {0, -9.8f, 0};
+                        mpm_config.substeps = 128;     // 原版carnation.py substep=768(离线)；实时折中128
+                                                      // CFL: E=2.14MPa→c_p≈38, dx=1/64, sub_dt=(1/30)/128=0.00026 < dx/c_p=0.00041 ✓
+                        mpm_config.damping = 0.999f;    // 0.999^128≈0.88 阻尼合理
+                        // 原版carnation.py无gravity字段——花由冻结茎支撑处于静止平衡，变形只来自交互力
+                        // 之前-2是调试值，驱动冻结边界应力反馈爆炸→粒子甩飞→花头散点
+                        mpm_config.gravity = {0.0f, 0.0f, 0.0f};
 
                         mpm_manager_->Initialize(mpm_config);
                         mpm_manager_->LoadParticles(mpm_particles_);
                         mpm_manager_->Enable();  // 启用物理仿真
+
+                        // 设置可变形区域（将前景高斯索引传入MPMManager）
+                        MPM::DeformableRegion region;
+                        region.deformable_indices = pendingDeformableIndices_;
+                        for (uint32_t idx : pendingDeformableIndices_) {
+                            if (idx < gaussianModel.xyz_.size()) {
+                                region.deformable_original_pos.push_back(gaussianModel.xyz_[idx]);
+                            }
+                        }
+                        // 设置静态区域
+                        for (size_t i = 0; i < sim_mask.size(); i++) {
+                            if (!sim_mask[i]) {
+                                region.static_indices.push_back(static_cast<uint32_t>(i));
+                                if (i < gaussianModel.xyz_.size()) {
+                                    region.static_original_pos.push_back(gaussianModel.xyz_[i]);
+                                }
+                            }
+                        }
+                        mpm_manager_->SetRegion(region);
+                        spdlog::info("[Renderer] ✓ Deformable region set: {} deformable, {} static",
+                                     region.GetDeformableCount(), region.GetStaticCount());
+
                         spdlog::info("[Renderer] MPMManager created, initialized and enabled");
                     } else {
                         spdlog::warn("[Renderer] MPM initialization failed, physics disabled");
@@ -274,12 +321,32 @@ void Renderer::loadSceneToGPU() {
     scene = std::make_shared<GSScene>(configuration.scene);
     scene->load(context);
 
+    // Step 6.5: Initialize CouplingManager (after scene and MPM are ready)
+    if (mpm_initialized_ && mpm_manager_ && scene) {
+        spdlog::info("[Renderer] ===== Initializing CouplingManager =====");
+        coupling_manager_ = std::make_shared<CouplingManager>(context);
+
+        CouplingManager::Config coupling_config;
+        coupling_config.enable_coupling = true;
+        coupling_config.displacement_scale = 1.0f;
+        coupling_config.use_rigid_transform = true;
+
+        // CRITICAL: SetCoordTransform BEFORE Initialize, so PrecomputeTopKMapping
+        // uses correct coordinate transformation (not default scale=1, shift=0)
+        coupling_manager_->SetCoordTransform(mpm_coord_transform_.scale, mpm_coord_transform_.shift);
+        coupling_manager_->Initialize(scene, mpm_manager_, coupling_config);
+        coupling_initialized_ = true;
+        spdlog::info("[Renderer] ✓ CouplingManager initialized");
+    }
+
     // Step 7: Create visibility mask buffer
     // This is done in createPreprocessPipeline(), but we log here for clarity
     spdlog::info("[Renderer] ===== Gaussian Model Initialization Complete =====");
 
-    // reset descriptor pool
-    context->device->resetDescriptorPool(context->descriptorPool.get());
+    // NOTE: 不能在这里 resetDescriptorPool —— MPM(Step 5.5) 和 CouplingManager(Step 6.5)
+    // 的 persistent descriptor set 都从 context->descriptorPool 分配，reset 会把它们全废掉，
+    // 导致 vkCmdBindDescriptorSets 报 "Couldn't find VkDescriptorSet"、compute dispatch 写不到
+    // grid_buffer → MPM 冻结。pool 用 eFreeDescriptorSet + UniqueDescriptorSet 已能自动回收。
 }
 
 void Renderer::createPreprocessPipeline() {
@@ -298,8 +365,45 @@ void Renderer::createPreprocessPipeline() {
                                         scene->vertexBuffer);
     inputSet->bindBufferToDescriptorSet(1, vk::DescriptorType::eStorageBuffer, vk::ShaderStageFlagBits::eCompute,
                                         scene->cov3DBuffer);
+    // Override positions buffer (binding 2): initially filled with original positions,
+    // updated by coupling system when physics is active
+    overridePositionBuffer_ = Buffer::storage(context, scene->getNumVertices() * sizeof(glm::vec4), false);
+    // Fill with original positions as default (vec4 with w=1.0)
+    {
+        std::vector<glm::vec4> default_positions(scene->getNumVertices());
+        for (size_t i = 0; i < scene->getNumVertices() && i < scene->cpuPositions.size(); i++) {
+            default_positions[i] = glm::vec4(scene->cpuPositions[i], 1.0f);
+        }
+        overridePositionBuffer_->upload(reinterpret_cast<const char*>(default_positions.data()),
+                                         static_cast<uint32_t>(default_positions.size() * sizeof(glm::vec4)), 0);
+    }
+    inputSet->bindBufferToDescriptorSet(2, vk::DescriptorType::eStorageBuffer, vk::ShaderStageFlagBits::eCompute,
+                                        overridePositionBuffer_);
+    // Override rotations buffer (binding 3): initially filled with PLY original rotations,
+    // updated by coupling system when physics is active
+    overrideRotationBuffer_ = Buffer::storage(context, scene->getNumVertices() * sizeof(glm::vec4), false);
+    // Fill with PLY original rotations (w,x,y,z quaternion format)
+    {
+        std::vector<glm::vec4> default_rotations(scene->getNumVertices());
+        for (size_t i = 0; i < scene->getNumVertices() && i < scene->cpuRotations.size(); i++) {
+            default_rotations[i] = scene->cpuRotations[i];
+        }
+        for (size_t i = scene->cpuRotations.size(); i < scene->getNumVertices(); i++) {
+            default_rotations[i] = glm::vec4(1.0f, 0.0f, 0.0f, 0.0f);  // fallback: identity quaternion
+        }
+        overrideRotationBuffer_->upload(reinterpret_cast<const char*>(default_rotations.data()),
+                                         static_cast<uint32_t>(default_rotations.size() * sizeof(glm::vec4)), 0);
+    }
+    inputSet->bindBufferToDescriptorSet(3, vk::DescriptorType::eStorageBuffer, vk::ShaderStageFlagBits::eCompute,
+                                        overrideRotationBuffer_);
     inputSet->build();
     preprocessPipeline->addDescriptorSet(0, inputSet);
+
+    // Add push constant for physics override flag
+    vk::PushConstantRange preprocessPushConstant(
+        vk::ShaderStageFlagBits::eCompute, 0, sizeof(uint32_t));
+    preprocessPipeline->addPushConstant(
+        preprocessPushConstant.stageFlags, preprocessPushConstant.offset, preprocessPushConstant.size);
 
     auto uniformOutputSet = std::make_shared<DescriptorSet>(context, FRAMES_IN_FLIGHT);
     uniformOutputSet->bindBufferToDescriptorSet(0, vk::DescriptorType::eUniformBuffer,
@@ -339,6 +443,12 @@ void Renderer::createGui() {
     imguiManager = std::make_shared<ImguiManager>(context, swapchain, window);
     imguiManager->init();
     guiManager.init();
+
+    // 在 ImGui 初始化之后安装光标位置回调
+    // ImGui_ImplGlfw_InitForVulkan(install_callbacks=true) 会替换 GLFW 回调
+    // 我们的回调覆盖在 ImGui 之上，链式转发给 ImGui，确保光标位置始终更新
+    auto glfwWindow = std::reinterpret_pointer_cast<GLFWWindow>(window);
+    glfwWindow->installCursorCallback();
 }
 
 void Renderer::createPrefixSumPipeline() {
@@ -501,9 +611,9 @@ void Renderer::createRenderPipeline() {
 
 void Renderer::draw() {
     const uint32_t frameIdx = currentFrameIndex;
-    const uint64_t expectedValue = getExpectedFrameValue();
 
-    // 1. 等待该索引处的上一帧完成（CPU-GPU同步）
+    // 1. 等待该索引处的上一帧完成（CPU-GPU跨帧同步）
+    // inflightFences[frameIdx] 仅用于渲染提交的跨帧同步
     auto ret = context->device->waitForFences(inflightFences[frameIdx].get(), VK_TRUE, UINT64_MAX);
     if (ret != vk::Result::eSuccess) {
         throw std::runtime_error("Failed to wait for fence");
@@ -511,10 +621,12 @@ void Renderer::draw() {
     context->device->resetFences(inflightFences[frameIdx].get());
 
     // 2. 获取下一个交换链图像
-    // 注意：使用 fence 而非信号量来同步，避免信号量索引与图像索引的对应问题
-    // 当前的 fence 已经在前面等待过了，所以可以重用
+    // 关键修复：不再使用 inflightFences 作为 acquire 的信号fence
+    // 原来的 bug: acquireNextImageKHR 用 inflightFences 信号化后,
+    // preprocess submit 无法再次信号化同一fence → preprocess 等待无效 → 读取垃圾数据
+    // 修复: 使用 null fence（UINT64_MAX timeout 已经阻塞等待直到图像可用）
     auto res = context->device->acquireNextImageKHR(swapchain->swapchain.get(), UINT64_MAX,
-                                                    vk::Semaphore(), inflightFences[frameIdx].get(),
+                                                    vk::Semaphore(), vk::Fence(),
                                                     &currentImageIndex);
     if (res == vk::Result::eErrorOutOfDateKHR) {
         recreateSwapchain();
@@ -523,58 +635,75 @@ void Renderer::draw() {
         throw std::runtime_error("Failed to acquire swapchain image");
     }
 
-startOfRenderLoop:
     handleInput();
-
-    // 更新鼠标悬停检测（光标颜色切换）
     updateHoverDetection();
-
-    // 处理物理交互输入
     handlePhysicsInteraction();
-
     updateUniforms();
 
     // Sync render mode from GUI
     renderForegroundOnly_ = guiManager.renderBackgroundOnly;
 
-    // 3. 提交预处理工作（使用第一个命令缓冲区，所有帧共用）
+    // 3a. Execute physics GPU commands BEFORE preprocess (if MPM simulation is active)
+    // Physics updates: ApplyDrag(if dragging) → MPM Step → displacement → coupling → override buffers
+    // MPM持续运行（拖拽时 + 非拖拽时都运行，自然回弹靠弹性力+阻尼）
+    if (mpm_initialized_ && mpm_manager_ && mpm_manager_->IsEnabled() &&
+        coupling_initialized_ && coupling_manager_) {
+        auto& physicsCmd = physicsCommandBuffers[frameIdx];
+        physicsCmd->reset({});
+        physicsCmd->begin(vk::CommandBufferBeginInfo{});
+
+        updatePhysicsSimulation(physicsCmd.get());
+
+        physicsCmd->end();
+
+        // Submit physics to same queue (no fence needed - same-queue ordering guarantees
+        // physics completes before subsequent preprocess submission)
+        vk::SubmitInfo physicsSubmit{};
+        physicsSubmit.commandBufferCount = 1;
+        physicsSubmit.pCommandBuffers = &physicsCmd.get();
+        context->queues[VulkanContext::Queue::COMPUTE].queue.submit(physicsSubmit, vk::Fence());
+    }
+
+    // 3b. 提交预处理工作（使用专用preprocessFence，而非inflightFences）
     auto preprocessCmd = preprocessCommandBuffers[0].get();
     auto preprocessSubmit = vk::SubmitInfo{}.setCommandBuffers(preprocessCmd);
-    context->queues[VulkanContext::Queue::COMPUTE].queue.submit(preprocessSubmit, inflightFences[frameIdx].get());
+    context->queues[VulkanContext::Queue::COMPUTE].queue.submit(preprocessSubmit, preprocessFence.get());
 
-    // 注意：这里仍然需要等待预处理完成，因为后续渲染需要预处理结果
-    // 这是架构限制，真正的并行需要阶段2的graphics管线
-    ret = context->device->waitForFences(inflightFences[frameIdx].get(), VK_TRUE, UINT64_MAX);
+    // 等待预处理完成（使用专用fence，确保totalSumBufferHost数据有效）
+    ret = context->device->waitForFences(preprocessFence.get(), VK_TRUE, UINT64_MAX);
     if (ret != vk::Result::eSuccess) {
         throw std::runtime_error("Failed to wait for preprocess fence");
     }
-    context->device->resetFences(inflightFences[frameIdx].get());
+    context->device->resetFences(preprocessFence.get());
 
-    // 执行物理仿真（在渲染之前）
-    if (mpm_initialized_ && mpm_manager_ && mpm_manager_->IsEnabled()) {
-        auto& renderCmd = renderCommandBuffers[frameIdx];
-        VkCommandBufferBeginInfo beginInfo = {VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO};
-        beginInfo.flags = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT;
-        vkBeginCommandBuffer(renderCmd.get(), &beginInfo);
-        updatePhysicsSimulation(renderCmd.get());
-        vkEndCommandBuffer(renderCmd.get());
-    }
-
-    // 4. 记录并提交渲染命令
+    // 4. 记录并提交渲染命令（可能需要sort buffer reallocation）
     if (!recordRenderCommandBuffer(frameIdx)) {
-        goto startOfRenderLoop;
+        // Sort buffer reallocation occurred:
+        // recordPreprocessCommandBuffer() 已在 recordRenderCommandBuffer 内被调用,
+        // preprocessFence 已被正确等待并reset, 所以重置命令缓冲区是安全的
+        // 重新提交预处理并等待
+        context->queues[VulkanContext::Queue::COMPUTE].queue.submit(preprocessSubmit, preprocessFence.get());
+        ret = context->device->waitForFences(preprocessFence.get(), VK_TRUE, UINT64_MAX);
+        if (ret != vk::Result::eSuccess) {
+            throw std::runtime_error("Failed to wait for preprocess fence (retry)");
+        }
+        context->device->resetFences(preprocessFence.get());
+
+        // 重试渲染命令缓冲区
+        if (!recordRenderCommandBuffer(frameIdx)) {
+            // 不应发生，安全返回等待下一帧
+            spdlog::warn("Sort buffer reallocation failed twice, skipping frame");
+            advanceFrame();
+            return;
+        }
     }
 
     auto renderCmd = renderCommandBuffers[frameIdx].get();
 
-    // 不再等待图像可用信号量（改用 fence 同步）
-    // 只需要等待渲染完成的时间线信号量用于 present
+    // 6. 提交渲染命令（使用inflightFences进行跨帧同步）
     vk::Semaphore renderSemaphore = frameTimelineSemaphores[frameIdx]->getHandle();
 
     vk::SubmitInfo renderSubmit{};
-    renderSubmit.waitSemaphoreCount = 0;  // 不等待信号量，fence 已经保证了同步
-    renderSubmit.pWaitSemaphores = nullptr;
-    renderSubmit.pWaitDstStageMask = nullptr;
     renderSubmit.commandBufferCount = 1;
     renderSubmit.pCommandBuffers = &renderCmd;
     renderSubmit.signalSemaphoreCount = 1;
@@ -585,14 +714,14 @@ startOfRenderLoop:
     // 处理截图请求
     if (screenshotRequested && !screenshotSaving) {
         screenshotRequested = false;
-        screenshotSaving = true;  // 设置保存标志，阻塞新的截图请求
-        context->device->waitForFences(inflightFences[frameIdx].get(), VK_TRUE, UINT64_MAX);
+        screenshotSaving = true;
+        (void)context->device->waitForFences(inflightFences[frameIdx].get(), VK_TRUE, UINT64_MAX);
         screenshotCounter++;
         std::string screenshotPath = "screenshot_" + std::to_string(screenshotCounter) + ".png";
         saveScreenshot(screenshotPath);
     }
 
-    // 5. 呈现（等待渲染完成）
+    // 7. 呈现（等待渲染完成）
     vk::Semaphore timelineHandle = frameTimelineSemaphores[frameIdx]->getHandle();
     vk::PresentInfoKHR presentInfo{};
     presentInfo.waitSemaphoreCount = 1;
@@ -614,7 +743,7 @@ startOfRenderLoop:
         throw std::runtime_error("Failed to present swapchain image");
     }
 
-    // 6. 推进帧索引
+    // 8. 推进帧索引
     advanceFrame();
 }
 
@@ -669,6 +798,10 @@ void Renderer::createCommandPool() {
 
     auto renderBuffers = context->device->allocateCommandBuffersUnique(allocInfo);
     renderCommandBuffers = std::move(renderBuffers);
+
+    // 分配三缓冲物理命令缓冲区
+    auto physicsBuffers = context->device->allocateCommandBuffersUnique(allocInfo);
+    physicsCommandBuffers = std::move(physicsBuffers);
 }
 
 void Renderer::advanceFrame() {
@@ -693,6 +826,14 @@ void Renderer::recordPreprocessCommandBuffer() {
     cmdBuffer->resetQueryPool(context->queryPool.get(), 0, 12);
 
     preprocessPipeline->bind(cmdBuffer, 0, 0);
+
+    // Push constant: use physics override positions (override buffer always has valid data,
+    // defaulting to original positions when physics is not active)
+    uint32_t use_physics_override = 1;
+    cmdBuffer->pushConstants(preprocessPipeline->pipelineLayout.get(),
+                             vk::ShaderStageFlagBits::eCompute, 0,
+                             sizeof(uint32_t), &use_physics_override);
+
     cmdBuffer->writeTimestamp(vk::PipelineStageFlagBits::eComputeShader, context->queryPool.get(),
                                 queryManager->registerQuery("preprocess_start"));
     cmdBuffer->dispatch(numGroups, 1, 1);
@@ -987,7 +1128,10 @@ bool Renderer::recordRenderCommandBuffer(uint32_t currentFrame) {
                                                  vk::DependencyFlagBits{}, nullptr, nullptr, copyBarrier);
         }
 
-        imguiManager->draw(cmdBuffer.get(), currentImageIndex, std::bind(&GUIManager::buildGui, &guiManager));
+        imguiManager->draw(cmdBuffer.get(), currentImageIndex, [this]() {
+            guiManager.buildGui();
+            drawPhysicsOverlay();
+        });
 
         imageMemoryBarrier.oldLayout = vk::ImageLayout::eColorAttachmentOptimal;
         imageMemoryBarrier.srcAccessMask = vk::AccessFlagBits::eColorAttachmentWrite;
@@ -1188,10 +1332,13 @@ void Renderer::initializeInteractionSystem() {
     ray_caster_ = std::make_shared<Interaction::RayCaster>(context, ray_caster_config);
     ray_caster_->Initialize();
 
-    // 创建拖拽处理器
+    // 创建拖拽处理器（力驱动MPM模式 — force作为加速度）
     Interaction::DragHandler::Config drag_config;
-    drag_config.stiffness = 50.0f;
-    drag_config.max_force = 100.0f;
+    // dragRadius=0.2: 拖拽作用域覆盖更大花头区域，降低速度梯度 ∇v=dragVel/radius → F 不再越界
+    //   (0.15 + 16 norm/s → ∇v=110/s → 1帧 J×e^10 爆炸 → 拖拽区与主体断裂 → “上下分离”)
+    drag_config.dragRadius = 0.2f;   // 拖拽作用半径（世界空间单位）
+    // alpha=0.2: 速度跟随系数，粒子只跟随 20% 鼠标速度，弹性应力有空间拉回（防飞出网格）
+    drag_config.alpha = 0.2f;         // 速度跟随系数
     drag_handler_ = std::make_shared<Interaction::DragHandler>(context, drag_config);
     drag_handler_->Initialize();
 
@@ -1216,13 +1363,13 @@ void Renderer::handlePhysicsInteraction() {
     auto mouse_buttons = window->getMouseButton();
     auto cursor_pos = window->getCursorPosition();
 
-    // 检测物理交互触发条件：P键 + 左键
+    // 处理物理交互触发条件：P键 + 左键
     bool p_key_held = keys[8];  // P键索引
 
     // 添加日志来检测按键状态
     static int log_counter = 0;
     if (p_key_held && log_counter++ % 10 == 0) { // P键按下时每秒输出6次
-        spdlog::info("[Physics] P key held: {}, Left mouse: {}, Right mouse: {}",
+        spdlog::debug("[Physics] P key held: {}, Left mouse: {}, Right mouse: {}",
                      p_key_held, mouse_buttons[0], mouse_buttons[2]);
     }
 
@@ -1243,26 +1390,26 @@ void Renderer::handlePhysicsInteraction() {
         physics_interaction_mode_ = true;
     }
 
-    // 处理鼠标释放事件
+    // 处理鼠标释放事件 — 保留动量，靠MPM阻尼自然衰减
     if (mouse_released_this_frame_ && physics_interaction_mode_) {
-        spdlog::info("[Physics] Mouse released, ending interaction");
+        spdlog::info("[Physics] Mouse released — momentum preserved, MPM damping will decay naturally");
         drag_handler_->OnMouseUp();
         physics_interaction_mode_ = false;
-        is_dragging_ = false;
     }
 
     // 处理鼠标移动事件（在拖拽中）
+    // 只在拖拽状态下输出日志，避免泛滥
     if (physics_interaction_mode_ && left_mouse_down) {
+        spdlog::debug("[Physics] OnMouseMove: cursor=({},{}), isDragging={}",
+                     last_mouse_position_.x, last_mouse_position_.y,
+                     drag_handler_->IsDragging());
         drag_handler_->OnMouseMove(last_mouse_position_.x, last_mouse_position_.y);
-        is_dragging_ = drag_handler_->IsDragging();
-        if (is_dragging_) {
-            spdlog::info("[Physics] Dragging at ({}, {})", last_mouse_position_.x, last_mouse_position_.y);
-        }
     }
 }
 
 void Renderer::updatePhysicsSimulation(VkCommandBuffer cmd) {
     static bool logged_once = false;
+    static bool logged_pipeline_state = false;
     if (!logged_once) {
         spdlog::info("[PhysicsSim] STATE: mpm_initialized={}, mpm_manager={}, enabled={}",
                      mpm_initialized_,
@@ -1271,48 +1418,268 @@ void Renderer::updatePhysicsSimulation(VkCommandBuffer cmd) {
         logged_once = true;
     }
 
-    if (!mpm_initialized_ || !mpm_manager_ || !mpm_manager_->IsEnabled()) {
-        return;  // MPM未初始化或未启用
+    // ── First-step pipeline diagnostic: verify pipelines and buffers are valid ──
+    if (!logged_pipeline_state && mpm_manager_) {
+        auto& cfg = mpm_manager_->GetConfig();
+        auto grid_buf = mpm_manager_->GetGridBuffer();
+        auto particle_buf = mpm_manager_->GetParticleBuffer();
+        spdlog::info("[PipelineDiag] First physics step — verifying pipeline/descriptor state:");
+        spdlog::info("[PipelineDiag]   num_particles={}, grid_size={}, grid_buffer={}, particle_buffer={}",
+                     mpm_manager_->GetParticleCount(), cfg.grid_size,
+                     grid_buf ? "OK" : "NULL", particle_buf ? "OK" : "NULL");
+        spdlog::info("[PipelineDiag]   grid_buffer handle={}, size={}",
+                     grid_buf ? (void*)grid_buf->buffer : nullptr,
+                     grid_buf ? grid_buf->size : 0);
+        spdlog::info("[PipelineDiag]   particle_buffer handle={}, size={}",
+                     particle_buf ? (void*)particle_buf->buffer : nullptr,
+                     particle_buf ? particle_buf->size : 0);
+        logged_pipeline_state = true;
     }
 
-    // 处理鼠标按下时的射线拾取
+    if (!mpm_initialized_ || !mpm_manager_) {
+        return;
+    }
+
+    // ── 注入 CFL 限幅参数到 DragHandler（一次性）──
+    // cfl=0.05: drag 注入速度限幅 max_vel = 0.05·dx/sub_dt ≈ 3 norm/s
+    //   原 cfl=0.5 → max_vel=30 norm/s，拖拽 16.58 norm/s 不受限：
+    //     1帧 0.55 norm = 35dx，30帧累积 16.5 norm ≫ 网格域 1.0 → 粒子 clamp 边界 → “上下分离”
+    //     ∇v=16.58/0.15=110/s → J 1帧增长 e^10.9 ≈ 54000× → F 爆炸 → 应力断裂
+    //   cfl=0.05 → max_vel=3：每帧 0.1 norm=6.4dx，J 增长 e^1.5≈4.5× 安全，弹性可拉回
+    static bool cfl_injected = false;
+    if (!cfl_injected && drag_handler_) {
+        auto& mpm_cfg = mpm_manager_->GetConfig();
+        const float frame_dt_cfl = 1.0f / 30.0f;
+        const float sub_dt = frame_dt_cfl / static_cast<float>(mpm_cfg.substeps);
+        constexpr float kDragCfl = 0.05f;
+        drag_handler_->SetCFLParams(mpm_manager_->GetInvDx(), sub_dt, kDragCfl);
+        spdlog::info("[PhysicsSim] CFL injected: inv_dx={:.6f}, sub_dt={:.6f}, substeps={}, "
+                     "max_velocity={:.4f} (normalized/s)",
+                     mpm_cfg.inv_dx, sub_dt, mpm_cfg.substeps,
+                     kDragCfl * (1.0f / mpm_cfg.inv_dx) / sub_dt);
+        cfl_injected = true;
+    }
+
+    auto [fb_width, fb_height] = window->getFramebufferSize();
+
+    // 计算视图投影矩阵（所有模式共用）
+    auto rotation = glm::mat4_cast(camera.rotation);
+    auto translation = glm::translate(glm::mat4(1.0f), camera.position);
+    auto view = glm::inverse(translation * rotation);
+    float tan_fovx = std::tan(glm::radians(camera.fov) / 2.0);
+    float tan_fovy = tan_fovx * static_cast<float>(fb_height) / static_cast<float>(fb_width);
+    auto proj = glm::perspective(std::atan(tan_fovy) * 2.0f,
+                                 static_cast<float>(fb_width) / static_cast<float>(fb_height),
+                                 camera.nearPlane, camera.farPlane);
+    glm::mat4 view_proj = proj * view;
+    glm::mat4 inverse_view_proj = glm::inverse(view_proj);
+
+    // ===================================================================
+    // 射线拾取（鼠标按下时）
+    // ===================================================================
     if (mouse_pressed_this_frame_ && physics_interaction_mode_ && ray_caster_ && drag_handler_) {
-        auto [fb_width, fb_height] = window->getFramebufferSize();
+        glm::vec2 ndc = ray_caster_->ScreenToNDC(
+            mouse_pos_on_press_.x, mouse_pos_on_press_.y, fb_width, fb_height);
+        glm::vec3 ray_origin, ray_direction;
+        ray_caster_->NDCToWorldRay(ndc, inverse_view_proj, ray_origin, ray_direction);
 
-        // 计算视图投影矩阵（与 updateUniforms 相同）
-        auto rotation = glm::mat4_cast(camera.rotation);
-        auto translation = glm::translate(glm::mat4(1.0f), camera.position);
-        auto view = glm::inverse(translation * rotation);
+        // MPM粒子在归一化坐标空间，将射线转换到归一化空间
+        auto& ct = mpm_coord_transform_;
+        glm::vec3 ray_origin_norm = ct.ToNormalized(ray_origin);
+        glm::vec3 ray_end_norm = ct.ToNormalized(ray_origin + ray_direction);
+        glm::vec3 ray_direction_norm = glm::normalize(ray_end_norm - ray_origin_norm);
 
-        float tan_fovx = std::tan(glm::radians(camera.fov) / 2.0);
-        float tan_fovy = tan_fovx * static_cast<float>(fb_height) / static_cast<float>(fb_width);
-        auto proj = glm::perspective(std::atan(tan_fovy) * 2.0f,
-                                     static_cast<float>(fb_width) / static_cast<float>(fb_height),
-                                     camera.nearPlane,
-                                     camera.farPlane);
-        glm::mat4 view_proj = proj * view;
+        // CPU射线检测
+        std::vector<glm::vec3> particle_positions = mpm_manager_->GetParticlePositions();
+        auto result = ray_caster_->CastFromRayCPU(ray_origin_norm, ray_direction_norm, particle_positions);
 
-        drag_handler_->OnMouseDown(
+        spdlog::info("[Physics] CPU ray cast: success={}, particle={}, distance_sq={:.6f}",
+                     result.success, result.particle_index, result.distance_sq);
+
+        // 传入相机参数，用于深度锁定拖拽平面
+        glm::vec3 cam_forward = camera.rotation * glm::vec3(0, 0, -1);
+        drag_handler_->OnMouseDownFromResult(
+            result,
             mouse_pos_on_press_.x,
             mouse_pos_on_press_.y,
-            *ray_caster_,
-            fb_width,
-            fb_height,
-            view_proj,
-            mpm_manager_->GetParticleBuffer(),
-            mpm_manager_->GetParticleCount(),
-            cmd
+            camera.position,
+            cam_forward,
+            mpm_coord_transform_
         );
     }
 
-    // 如果正在拖拽，应用拖拽力
+    // ===================================================================
+    // 速度插值模式 + MPM 物理模拟
+    // ===================================================================
+    // 新流程: Drag(速度插值) → MPM → Coupling → 渲染override
+    // 拖拽时: ApplyDrag → MPM → 耦合
+    // 非拖拽时: MPM继续运行（自然回弹靠弹性力+阻尼）
+    // 松开鼠标时: 不清零速度，保留动量靠MPM阻尼衰减
+
+    float frame_dt = 1.0f / 30.0f;  // MPM帧时间步长
+
+    // ── 1. ApplyDrag（仅拖拽时：速度插值3-pass GPU流程）──
+    // 非拖拽时跳过整个 drag pass，避免 extract/writeback 无读写循环引入噪声
+    // Extract → Drag → Writeback → memory barrier → MPM
     if (drag_handler_ && drag_handler_->IsDragging()) {
-        float dt = 1.0f / 30.0f;  // 固定物理时间步
-        drag_handler_->ApplyForce(cmd, mpm_manager_->GetParticleBuffer(), dt);
+        spdlog::debug("[PhysicsSim] IsDragging=true → computing drag params");
+        auto pushConstants = drag_handler_->ComputeDragPushConstants(
+            frame_dt,
+            camera.position,
+            camera.rotation,
+            camera.fov,
+            fb_height,
+            mpm_coord_transform_
+        );
+
+        // 只在速度非零时打印 PushConstants，减少日志泛滥
+        static int drag_log_counter = 0;
+        if (drag_log_counter++ % 5 == 0 ||
+            (pushConstants.dragVelocity.x != 0.0f || pushConstants.dragVelocity.y != 0.0f || pushConstants.dragVelocity.z != 0.0f)) {
+            spdlog::debug("[PhysicsSim] PushConstants: isDragging={}, "
+                         "center=({:.4f},{:.4f},{:.4f}), radius={:.4f}, "
+                         "vel=({:.4f},{:.4f},{:.4f}), alpha={:.2f}",
+                         pushConstants.isDragging,
+                         pushConstants.dragCenter.x, pushConstants.dragCenter.y, pushConstants.dragCenter.z,
+                         pushConstants.dragRadius,
+                         pushConstants.dragVelocity.x, pushConstants.dragVelocity.y, pushConstants.dragVelocity.z,
+                         pushConstants.alpha);
+        }
+
+        drag_handler_->ApplyDrag(
+            cmd,
+            mpm_manager_->GetParticleBuffer(),
+            mpm_manager_->GetParticleCount(),
+            pushConstants
+        );
+    } else {
+        spdlog::debug("[PhysicsSim] IsDragging=false → skipping ApplyDrag");
     }
 
-    // 执行MPM物理步进
-    mpm_manager_->Step(cmd, 1.0f / 30.0f);
+    // ── 2. 执行 MPM 物理模拟 ──
+    // MPM持续运行（无pin，自然动力学处理回弹）
+    mpm_manager_->Step(cmd, frame_dt);
+
+    // ── 3. GPU计算粒子位移 + 耦合映射 ──
+    if (coupling_initialized_ && coupling_manager_) {
+        // ComputeParticleDisplacementsGPU: displacement = current_pos - initial_pos
+        // Couple: MapDisplacements → 高斯位置/旋转更新
+        coupling_manager_->Couple(cmd, currentFrameIndex, true);
+
+        // ── 4. 复制耦合输出到 override buffers ──
+        VkMemoryBarrier couple_barrier = {VK_STRUCTURE_TYPE_MEMORY_BARRIER};
+        couple_barrier.srcAccessMask = VK_ACCESS_SHADER_WRITE_BIT;
+        couple_barrier.dstAccessMask = VK_ACCESS_TRANSFER_READ_BIT;
+        vkCmdPipelineBarrier(cmd,
+                           VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT,
+                           VK_PIPELINE_STAGE_TRANSFER_BIT,
+                           0, 1, &couple_barrier, 0, nullptr, 0, nullptr);
+
+        VkBufferCopy copy_region = {0, 0,
+            static_cast<VkDeviceSize>(coupling_manager_->GetGaussianPositionBuffer()->size)};
+        vkCmdCopyBuffer(cmd,
+                       coupling_manager_->GetGaussianPositionBuffer()->buffer,
+                       overridePositionBuffer_->buffer,
+                       1, &copy_region);
+
+        VkBufferCopy rot_copy_region = {0, 0,
+            static_cast<VkDeviceSize>(coupling_manager_->GetGaussianRotationBuffer()->size)};
+        vkCmdCopyBuffer(cmd,
+                       coupling_manager_->GetGaussianRotationBuffer()->buffer,
+                       overrideRotationBuffer_->buffer,
+                       1, &rot_copy_region);
+
+        VkMemoryBarrier copy_write_barrier = {VK_STRUCTURE_TYPE_MEMORY_BARRIER};
+        copy_write_barrier.srcAccessMask = VK_ACCESS_TRANSFER_WRITE_BIT;
+        copy_write_barrier.dstAccessMask = VK_ACCESS_SHADER_READ_BIT;
+        vkCmdPipelineBarrier(cmd,
+                           VK_PIPELINE_STAGE_TRANSFER_BIT,
+                           VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT,
+                           0, 1, &copy_write_barrier, 0, nullptr, 0, nullptr);
+
+        physics_override_active_ = true;
+    }
+}
+
+void Renderer::drawPhysicsOverlay() {
+    // 拖拽时显示绿色箭头
+    if (drag_handler_ && drag_handler_->IsDragging()) {
+        auto drag_start = drag_handler_->GetDragStartScreen();
+        auto current_pos = drag_handler_->GetCurrentScreen();
+
+        ImDrawList* draw_list = ImGui::GetForegroundDrawList();
+
+        // 绿色线段：从拖拽起点到当前位置
+        draw_list->AddLine(
+            ImVec2(static_cast<float>(drag_start.x), static_cast<float>(drag_start.y)),
+            ImVec2(static_cast<float>(current_pos.x), static_cast<float>(current_pos.y)),
+            IM_COL32(0, 255, 0, 200),
+            2.0f
+        );
+
+        // 绿色圆点：拾取位置
+        draw_list->AddCircleFilled(
+            ImVec2(static_cast<float>(drag_start.x), static_cast<float>(drag_start.y)),
+            5.0f,
+            IM_COL32(0, 255, 0, 255)
+        );
+
+        // 小圆点：当前鼠标位置
+        draw_list->AddCircleFilled(
+            ImVec2(static_cast<float>(current_pos.x), static_cast<float>(current_pos.y)),
+            3.0f,
+            IM_COL32(0, 255, 100, 255)
+        );
+
+        // 位移信息文本（速度插值模式：显示拖拽参数）
+        char disp_text[64];
+        snprintf(disp_text, sizeof(disp_text), "alpha=%.2f radius=%.3f [particle %u]",
+                 drag_handler_->GetConfig().alpha,
+                 drag_handler_->GetConfig().dragRadius,
+                 drag_handler_->GetDraggedParticle());
+        draw_list->AddText(
+            ImVec2(static_cast<float>(current_pos.x + 10), static_cast<float>(current_pos.y - 20)),
+            IM_COL32(0, 255, 0, 255),
+            disp_text
+        );
+    }
+
+    }
+
+void Renderer::buildHoverGrid() {
+    if (!scene || scene->cpuPositions.empty()) {
+        spdlog::warn("[Renderer] Cannot build hover grid: no scene positions");
+        return;
+    }
+
+    hover_grid_.grid_min = scene->cpuPositions[0];
+    hover_grid_.grid_max = scene->cpuPositions[0];
+
+    // Compute scene AABB
+    for (const auto& pos : scene->cpuPositions) {
+        hover_grid_.grid_min = glm::min(hover_grid_.grid_min, pos);
+        hover_grid_.grid_max = glm::max(hover_grid_.grid_max, pos);
+    }
+
+    // Add margin to avoid edge cases
+    glm::vec3 margin(hover_grid_.cell_size);
+    hover_grid_.grid_min -= margin;
+    hover_grid_.grid_max += margin;
+
+    // Insert all gaussians into spatial hash cells
+    hover_grid_.cells.clear();
+    for (uint32_t i = 0; i < static_cast<uint32_t>(scene->cpuPositions.size()); i++) {
+        int32_t cx, cy, cz;
+        hover_grid_.getCellCoords(scene->cpuPositions[i], cx, cy, cz);
+        auto key = hover_grid_.cellKey(cx, cy, cz);
+        hover_grid_.cells[key].push_back(i);
+    }
+
+    spdlog::info("[Renderer] Hover spatial grid built: {} cells, {} gaussians, "
+                 "AABB min=({:.3f},{:.3f},{:.3f}) max=({:.3f},{:.3f},{:.3f})",
+                 hover_grid_.cells.size(), scene->cpuPositions.size(),
+                 hover_grid_.grid_min.x, hover_grid_.grid_min.y, hover_grid_.grid_min.z,
+                 hover_grid_.grid_max.x, hover_grid_.grid_max.y, hover_grid_.grid_max.z);
 }
 
 void Renderer::updateHoverDetection() {
@@ -1320,41 +1687,15 @@ void Renderer::updateHoverDetection() {
     bool gui_wants_mouse = configuration.enableGui && guiManager.wantCaptureMouse();
     bool mouse_captured = guiManager.mouseCapture;
 
-    // 静态变量记录日志（只输出一次）
-    static bool logged_state = false;
-    if (!logged_state) {
-        spdlog::info("[Renderer] updateHoverDetection state: enableGui={}, gui_wants_mouse={}, mouse_captured={}",
-                     configuration.enableGui, gui_wants_mouse, mouse_captured);
-        logged_state = true;
-    }
-
-    if (gui_wants_mouse) {
-        return; // ImGui 捕获了鼠标
-    }
-
-    if (mouse_captured) {
-        return; // 鼠标被捕获（拖拽模式）
-    }
-
-    // 如果没有 sim_mask_ 或场景未加载，不进行检测
-    if (sim_mask_.empty() || !scene) {
-        static bool logged_empty = false;
-        if (!logged_empty) {
-            spdlog::warn("[Renderer] updateHoverDetection: sim_mask_ empty={} or scene null={}",
-                         sim_mask_.empty(), !scene);
-            logged_empty = true;
-        }
-        window->setCursor(0); // 默认光标
+    if (gui_wants_mouse || mouse_captured) {
+        window->setCursor(0);
         return;
     }
 
-    static int last_cursor_type = -1;
-    static bool log_once = true;
-
-    if (log_once) {
-        spdlog::info("[Renderer] updateHoverDetection ACTIVE: sim_mask_ size={}, scene positions={}",
-                     sim_mask_.size(), scene->cpuPositions.size());
-        log_once = false;
+    // 如果没有 sim_mask_ 或场景未加载，不进行检测
+    if (sim_mask_.empty() || !scene || hover_grid_.cells.empty()) {
+        window->setCursor(0);
+        return;
     }
 
     // 获取鼠标位置
@@ -1368,7 +1709,8 @@ void Renderer::updateHoverDetection() {
     // 检查鼠标是否在窗口内
     if (mouse_x < 0 || mouse_x >= static_cast<int>(fb_width) ||
         mouse_y < 0 || mouse_y >= static_cast<int>(fb_height)) {
-        window->setCursor(0); // 默认光标
+        window->setCursor(0);
+        current_cursor_type_ = 0;
         return;
     }
 
@@ -1381,14 +1723,13 @@ void Renderer::updateHoverDetection() {
     float tan_fovy = tan_fovx * static_cast<float>(fb_height) / static_cast<float>(fb_width);
     auto proj = glm::perspective(std::atan(tan_fovy) * 2.0f,
                                  static_cast<float>(fb_width) / static_cast<float>(fb_height),
-                                 camera.nearPlane,
-                                 camera.farPlane);
+                                 camera.nearPlane, camera.farPlane);
     glm::mat4 view_proj = proj * view;
     glm::mat4 inverse_view_proj = glm::inverse(view_proj);
 
     // 屏幕坐标转NDC
     float ndc_x = (2.0f * mouse_x) / fb_width - 1.0f;
-    float ndc_y = 1.0f - (2.0f * mouse_y) / fb_height; // Y轴翻转
+    float ndc_y = 1.0f - (2.0f * mouse_y) / fb_height;
 
     // NDC转世界射线
     glm::vec4 near_point_ndc(ndc_x, ndc_y, 0.0f, 1.0f);
@@ -1397,63 +1738,92 @@ void Renderer::updateHoverDetection() {
     glm::vec4 far_point_ndc(ndc_x, ndc_y, 1.0f, 1.0f);
     glm::vec4 far_point_world = inverse_view_proj * far_point_ndc;
 
-    // Perspective divide
-    if (near_point_world.w != 0.0f) {
-        near_point_world /= near_point_world.w;
-    }
-    if (far_point_world.w != 0.0f) {
-        far_point_world /= far_point_world.w;
-    }
+    if (near_point_world.w != 0.0f) near_point_world /= near_point_world.w;
+    if (far_point_world.w != 0.0f) far_point_world /= far_point_world.w;
 
     glm::vec3 ray_origin = glm::vec3(near_point_world);
     glm::vec3 ray_direction = glm::normalize(glm::vec3(far_point_world) - ray_origin);
 
-    // 查找最近的高斯（简化版本：只检查距离）
-    float min_distance_sq = 0.05f * 0.05f; // 5cm 阈值
+    // 使用空间哈希网格进行射线-AABB相交检测 + 光线行进
+    // O(K) 复杂度，K 为光线穿过的单元格内高斯数量（通常 << N）
+    float t_min, t_max;
+    if (!hover_grid_.rayAABB(ray_origin, ray_direction, t_min, t_max)) {
+        // 射线不穿过场景包围盒 → 默认光标
+        if (current_cursor_type_ != 0) {
+            window->setCursor(0);
+            current_cursor_type_ = 0;
+        }
+        return;
+    }
+
+    // 在场景包围盒内沿光线行进，搜索最近的高斯
+    float hover_threshold_sq = 0.05f * 0.05f;  // 5cm 阈值
+    float min_distance_sq = hover_threshold_sq;
     uint32_t closest_gaussian = UINT32_MAX;
 
-    for (size_t i = 0; i < scene->cpuPositions.size(); i++) {
-        const glm::vec3& pos = scene->cpuPositions[i];
+    // 光线行进步长 = cell_size (避免跳过单元格)
+    float t_step = hover_grid_.cell_size;
+    float t_limit = std::min(t_max, t_min + 5.0f);  // 最多行进5米
 
-        // 计算点到射线的距离
-        glm::vec3 v = pos - ray_origin;
-        float projection = glm::dot(v, ray_direction);
+    for (float t = t_min; t < t_limit; t += t_step) {
+        glm::vec3 point_on_ray = ray_origin + ray_direction * t;
+        int32_t cx, cy, cz;
+        hover_grid_.getCellCoords(point_on_ray, cx, cy, cz);
 
-        // 只考虑射线前方的点
-        if (projection < 0) continue;
+        // 检查当前单元格及相邻单元格（3x3x3邻域）
+        for (int dx = -1; dx <= 1; dx++) {
+            for (int dy = -1; dy <= 1; dy++) {
+                for (int dz = -1; dz <= 1; dz++) {
+                    auto key = hover_grid_.cellKey(cx + dx, cy + dy, cz + dz);
+                    auto it = hover_grid_.cells.find(key);
+                    if (it == hover_grid_.cells.end()) continue;
 
-        glm::vec3 closest_point = ray_origin + ray_direction * projection;
-        glm::vec3 diff = pos - closest_point;
-        float distance_sq = glm::dot(diff, diff);
+                    for (uint32_t idx : it->second) {
+                        const glm::vec3& pos = scene->cpuPositions[idx];
 
-        if (distance_sq < min_distance_sq) {
-            min_distance_sq = distance_sq;
-            closest_gaussian = static_cast<uint32_t>(i);
+                        // 计算点到射线的距离
+                        glm::vec3 v = pos - ray_origin;
+                        float projection = glm::dot(v, ray_direction);
+                        if (projection < 0) continue;
+
+                        glm::vec3 closest_point = ray_origin + ray_direction * projection;
+                        glm::vec3 diff = pos - closest_point;
+                        float distance_sq = glm::dot(diff, diff);
+
+                        if (distance_sq < min_distance_sq) {
+                            min_distance_sq = distance_sq;
+                            closest_gaussian = idx;
+                        }
+                    }
+                }
+            }
+        }
+
+        // 如果找到了非常近的高斯，提前退出
+        if (closest_gaussian != UINT32_MAX && min_distance_sq < 0.001f) {
+            break;
         }
     }
-
-    int cursor_type = 0;
 
     // 根据找到的高斯是否在可变形区域来设置光标
+    int cursor_type = 0;  // 默认光标
     if (closest_gaussian != UINT32_MAX && closest_gaussian < sim_mask_.size()) {
         if (sim_mask_[closest_gaussian]) {
-            cursor_type = 1; // 手形 - 可变形区域
+            cursor_type = 1;  // 手形 - 可变形区域
         } else {
-            cursor_type = 2; // 十字 - 非可变形区域
+            cursor_type = 2;  // 十字 - 非可变形区域
         }
     }
 
-    if (cursor_type != last_cursor_type) {
-        spdlog::info("[Renderer] Cursor CHANGE: {} -> type {} (gaussian={}, sim_mask={})",
-                     last_cursor_type, cursor_type,
+    if (cursor_type != current_cursor_type_) {
+        spdlog::debug("[Renderer] Cursor CHANGE: {} -> type {} (gaussian={}, sim_mask={})",
+                     current_cursor_type_, cursor_type,
                      closest_gaussian != UINT32_MAX ? std::to_string(closest_gaussian) : "NONE",
                      closest_gaussian != UINT32_MAX && closest_gaussian < sim_mask_.size()
                         ? (sim_mask_[closest_gaussian] ? "DEF" : "STATIC") : "N/A");
-        last_cursor_type = cursor_type;
+        current_cursor_type_ = cursor_type;
+        window->setCursor(cursor_type);
     }
-
-    current_cursor_type_ = cursor_type;  // 保存当前光标类型
-    window->setCursor(cursor_type);
 }
 
 Renderer::~Renderer() {

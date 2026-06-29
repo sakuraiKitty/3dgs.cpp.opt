@@ -11,6 +11,21 @@ layout (std430, set = 0, binding = 1) readonly buffer Cov3Ds {
     float cov3ds[];
 };
 
+// Physics override: when use_physics_override == 1, use override_positions instead of vertex positions
+layout (std430, set = 0, binding = 2) readonly buffer OverridePositions {
+    vec4 override_positions[];
+};
+
+// Physics override rotations: when use_physics_override == 1, use override_rotations
+// to dynamically compute cov3D instead of using static cov3ds
+layout (std430, set = 0, binding = 3) readonly buffer OverrideRotations {
+    vec4 override_rotations[];  // Quaternion (w, x, y, z) format
+};
+
+layout (push_constant) uniform PreprocessPushConstants {
+    uint use_physics_override;  // 0 = use vertex buffer, 1 = use physics override positions
+};
+
 layout (std140, set = 1, binding = 0) uniform Params {
     vec4 camera_position;
     mat4 proj_mat;
@@ -55,6 +70,7 @@ mat3 get_projection_jacobian_approx(vec3 t) {
     );
 }
 
+// Compute cov2D using static cov3D (original method, for non-override mode)
 mat2 compute_cov2d(vec3 cam) {
     uint index = gl_GlobalInvocationID.x;
     mat3 J = get_projection_jacobian_approx(cam);
@@ -71,15 +87,39 @@ mat2 compute_cov2d(vec3 cam) {
     return mat2(cov2d);
 }
 
+// Compute cov3D dynamically from rotation quaternion and scale vector
+// Matches precomp_cov3d.comp formula: M = S * R; cov3d = transpose(M) * M
+mat3 compute_cov3d_dynamic(vec4 rotation, vec3 scale) {
+    mat3 R = rotationFromQuaternion(rotation);
+    mat3 S = mat3(scale.x, 0, 0,
+                  0, scale.y, 0,
+                  0, 0, scale.z);
+    mat3 M = S * R;
+    mat3 cov3d = transpose(M) * M;
+    return cov3d;
+}
+
+// Compute cov2D using dynamically computed cov3D (for physics override mode)
+mat2 compute_cov2d_dynamic(vec3 cam, vec4 rotation, vec3 scale) {
+    mat3 Sigma = compute_cov3d_dynamic(rotation, scale);
+    mat3 J = get_projection_jacobian_approx(cam);
+    mat3 W = transpose(mat3(view_mat));
+    mat3 T = W * J;
+    mat3 cov2d = transpose(T) * Sigma * T;
+    cov2d[0][0] += 0.3f;
+    cov2d[1][1] += 0.3f;
+    return mat2(cov2d);
+}
+
 vec3 get_sh_vec3(uint ind) {
     uint index = gl_GlobalInvocationID.x;
     return vec3(vertices[index].sh[ind * 3], vertices[index].sh[ind * 3 + 1], vertices[index].sh[ind * 3 + 2]);
 }
 
-vec3 compute_sh() {
+vec3 compute_sh(vec3 gaussian_pos) {
     uint index = gl_GlobalInvocationID.x;
 
-    vec3 ray_direction = vertices[index].position.xyz - camera_position.xyz;
+    vec3 ray_direction = gaussian_pos - camera_position.xyz;
     ray_direction /= length(ray_direction);
     float x = ray_direction.x, y = ray_direction.y, z = ray_direction.z;
 
@@ -123,9 +163,11 @@ void main() {
     if (index >= vertices.length()) {
         return;
     }
-    if (index == 0) {
-//        debugPrintfEXT("width: %d, height: %d, tan_fovx: %f, tan_fovy: %f\n", width, height, tan_fovx, tan_fovy);
-    }
+
+    // 选择位置：物理覆写模式使用override_positions，否则使用vertex buffer
+    vec4 gaussian_position = (use_physics_override == 1u)
+        ? override_positions[index]
+        : vertices[index].position;
 
     ivec2 tile_shape = ivec2((width + TILE_WIDTH - 1) / TILE_WIDTH, (height + TILE_HEIGHT - 1) / TILE_HEIGHT);
 //    assert(tile_shape.x == 50 && tile_shape.y == 38, "invalid tile shape: %d %d\n", tile_shape);
@@ -138,16 +180,26 @@ void main() {
         return;
     }
 
-    vec4 p_hom = proj_mat * vertices[index].position;
+    vec4 p_hom = proj_mat * gaussian_position;
     float p_w = 1.0f / p_hom.w;
     vec3 ndc = vec3(p_hom.xyz * p_w);
 
-    vec4 p_view = view_mat * vertices[index].position;
+    vec4 p_view = view_mat * gaussian_position;
     if (p_view.z <= 0.2f) {
         return;
     }
 
-    mat2 cov2d = compute_cov2d(p_view.xyz);
+    // 选择 cov2D 计算方式：
+    // 物理覆写模式 → 使用 override_rotations 动态计算 cov3D
+    // 非覆写模式 → 使用静态 cov3ds buffer（一次性预计算）
+    vec3 scale = vec3(vertices[index].scale_opacity.x,
+                      vertices[index].scale_opacity.y,
+                      vertices[index].scale_opacity.z);
+
+    mat2 cov2d = (use_physics_override == 1u)
+        ? compute_cov2d_dynamic(p_view.xyz, override_rotations[index], scale)
+        : compute_cov2d(p_view.xyz);
+
     float det = determinant(cov2d);
     if (det <= 0.0) {
         return;
@@ -187,7 +239,7 @@ void main() {
     tiles_overlap[index] = num_tiles_overlap;
     attr[index].depth = p_view.z;
     attr[index].color_radii.w = radii;
-    attr[index].color_radii.xyz = compute_sh();
+    attr[index].color_radii.xyz = compute_sh(gaussian_position.xyz);
     attr[index].uv = uv;
     attr[index].magic = MAGIC;
 //    attr[index*2].magic = MAGIC;

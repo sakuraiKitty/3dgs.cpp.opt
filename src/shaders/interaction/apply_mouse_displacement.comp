@@ -1,0 +1,62 @@
+#version 460
+layout(local_size_x = 256) in;
+
+/**
+ * Direct displacement application shader
+ * 替代 apply_mouse_force 的力施加方式
+ * 直接将位移写入 drive_displacement_buffer_，带半径衰减
+ *
+ * 模式:
+ * mode=0: 对目标粒子及半径内粒子施加位移（二次衰减）
+ * mode=1: 清零所有粒子位移（恢复原始位置）
+ *
+ * 核心思想: 鼠标直接控制位移，而非通过力间接驱动速度
+ */
+
+// 输入: 粒子原始位置（计算距离用于衰减）
+layout(std430, set = 0, binding = 0) readonly buffer DrivePositions {
+    vec3 drive_positions[];
+};
+
+// 输出: 粒子位移（当前位置 - 原始位置）
+layout(std430, set = 0, binding = 1) buffer DriveDisplacements {
+    vec3 drive_displacements[];
+};
+
+layout(push_constant) uniform DisplacementUniforms {
+    vec3 target_displacement;      // 目标位移（归一化坐标空间）- vec3 must be first for 16-byte alignment
+    float influence_radius;        // 影响半径（归一化坐标空间）
+    uint target_particle_idx;      // 目标粒子索引
+    uint num_particles;            // 粒子总数
+    uint mode;                     // 0=施加位移, 1=清零
+};
+
+void main() {
+    uint p_id = gl_GlobalInvocationID.x;
+    if (p_id >= num_particles) {
+        return;
+    }
+
+    if (mode == 1u) {
+        // 清零模式: 所有位移归零
+        drive_displacements[p_id] = vec3(0.0);
+        return;
+    }
+
+    // 施加位移模式
+    vec3 target_pos = drive_positions[target_particle_idx];
+    vec3 my_pos = drive_positions[p_id];
+    float dist = length(my_pos - target_pos);
+
+    if (dist > influence_radius) {
+        // 超出影响半径: 位移为零
+        drive_displacements[p_id] = vec3(0.0);
+        return;
+    }
+
+    // 半径内: 平滑二次衰减 (1 - d/r)^2
+    float t = dist / influence_radius;
+    float weight = (1.0 - t) * (1.0 - t);
+
+    drive_displacements[p_id] = target_displacement * weight;
+}

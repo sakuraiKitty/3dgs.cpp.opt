@@ -35,9 +35,12 @@ void GaussianParticleMapper::PrecomputeMapping(
         const glm::vec3& gaussian_pos = gaussian_positions[i];
 
         // 计算到所有粒子的距离
+        // CRITICAL FIX: 用 std::less（默认，最大堆）→ top=最大距离，pop弹最大 → 留下 K 个最近邻
+        //   旧代码用 std::greater（最小堆）→ pop弹最小 → 留下 K 个【最远】粒子 →
+        //   每个高斯映射到对角端的冻结粒子 → 位移为0 → 拖拽时只有 ~17% 高斯更新。
         std::priority_queue<std::pair<float, uint32_t>,
                            std::vector<std::pair<float, uint32_t>>,
-                           std::greater<std::pair<float, uint32_t>>> pq;
+                           std::less<std::pair<float, uint32_t>>> pq;
 
         for (size_t j = 0; j < particle_positions.size(); j++) {
             glm::vec3 diff = gaussian_pos - particle_positions[j];
@@ -64,7 +67,9 @@ void GaussianParticleMapper::PrecomputeMapping(
         for (uint32_t ki = 0; ki < k; ki++) {
             if (ki < nearest.size()) {
                 knn_mappings_[i].particle_indices[ki] = nearest[ki].second;
-                knn_mappings_[i].weights[ki] = 1.0f / static_cast<float>(k); // 均匀权重
+                // Inverse-distance-squared weights (matching PhysDreamer Python)
+                // Close particles get higher weight → less dilution from zero-displacement neighbors
+                knn_mappings_[i].weights[ki] = 1.0f / (nearest[ki].first + 1e-6f);
             } else {
                 // 粒子数不足K个，用0填充
                 knn_mappings_[i].particle_indices[ki] = 0;

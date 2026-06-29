@@ -94,13 +94,7 @@ public:
         const std::vector<glm::vec3>& particle_positions
     );
 
-private:
-    /**
-     * 创建Compute Pipeline
-     */
-    void CreatePipeline();
-
-    /**
+/**
      * 屏幕坐标转NDC
      */
     glm::vec2 ScreenToNDC(int screen_x, int screen_y, uint32_t width, uint32_t height) const;
@@ -114,6 +108,12 @@ private:
         glm::vec3& out_origin,
         glm::vec3& out_direction
     ) const;
+
+private:
+    /**
+     * 创建Compute Pipeline
+     */
+    void CreatePipeline();
 
 private:
     std::shared_ptr<VulkanContext> context_;

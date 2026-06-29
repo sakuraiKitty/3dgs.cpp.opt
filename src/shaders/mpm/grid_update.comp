@@ -13,11 +13,15 @@ layout(std430, set = 0, binding = 0) buffer GridBuffer {
 };
 
 layout(push_constant) uniform GridUpdateParams {
-    uint grid_size;   // 网格分辨率
-    vec3 gravity;     // 重力加速度 [m/s^2]
-    float dt;         // 时间步长 [s]
-    float damping;    // 阻尼系数 (velocity *= damping)
-    uint padding[2];
+    uint grid_size;     // offset 0  - 网格分辨率
+    float gravity_x;    // offset 4  - 重力x分量 [m/s^2]
+    float gravity_y;    // offset 8  - 重力y分量 [m/s^2]
+    float gravity_z;    // offset 12 - 重力z分量 [m/s^2]
+    float dt;           // offset 16 - 时间步长 [s]
+    float damping;      // offset 20 - 阻尼系数
+    float max_velocity; // offset 24 - CFL 速度上限 (0=不限制): |v|*dt <= 0.5*dx
+    uint padding;       // offset 28 - 对齐填充
+    // Total: 32 bytes — all scalar fields, std430 alignment=4, matches C++ layout
 };
 
 void main() {
@@ -33,14 +37,25 @@ void main() {
     float mass = nodes[linear_idx].mass;
 
     if (mass > 0.0) {
-        // 归一化速度：v = momentum / mass
-        vec3 velocity = nodes[linear_idx].velocity / mass;
+        // 归一化速度：v = (momentum + internal_force * dt) / mass
+        // nodes.velocity stores momentum (mass * v_apic from P2G)
+        // nodes.force stores internal forces (stress from P2G)
+        vec3 velocity = (nodes[linear_idx].velocity + nodes[linear_idx].force * dt) / mass;
 
         // 应用重力：v += g * dt
-        velocity += gravity * dt;
+        velocity += vec3(gravity_x, gravity_y, gravity_z) * dt;
 
         // 应用阻尼：v *= damping
         velocity *= damping;
+
+        // CFL 速度限幅：截断应力爆炸产生的巨速，防止 G2P 读回后粒子射出网格
+        // (max_velocity 由 CPU 按 0.5*dx/dt 计算；0=不限制)
+        if (max_velocity > 0.0) {
+            float speed = length(velocity);
+            if (speed > max_velocity && speed > 1e-12) {
+                velocity *= max_velocity / speed;
+            }
+        }
 
         nodes[linear_idx].velocity = velocity;
     }

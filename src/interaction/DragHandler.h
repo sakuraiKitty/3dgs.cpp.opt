@@ -7,38 +7,68 @@
 #include "../vulkan/Shader.h"
 #include "../vulkan/DescriptorSet.h"
 #include "RayCaster.h"
+#include "../mpm/MPMStructs.h"
 #include <glm/glm.hpp>
+#include <glm/gtc/quaternion.hpp>
 #include <memory>
 
 namespace Interaction {
 
 /**
- * 拖拽状态
+ * 拖拽状态（CPU缓存，每帧更新）
+ * 严格遵循设计文档 Section 3.1
  */
-enum class DragState {
-    Idle = 0,           // 空闲
-    ParticlePicked = 1, // 已拾取粒子
-    Dragging = 2        // 正在拖拽
+struct DragState {
+    bool      isDragging = false;
+    glm::dvec2 lastMousePos;      // 上一帧鼠标屏幕坐标（像素）
+    glm::vec3 clickWorldPos;      // 首次点击的世界空间坐标
+    float     clickDepth;         // 点击点的相机空间深度（锁定拖拽平面）
+    uint32_t  pickedParticle = UINT32_MAX;  // 拾取的粒子索引（可视化用）
 };
 
 /**
- * 拖拽处理器
- * 管理鼠标拖拽交互，计算施加的力
+ * Push Constant 结构体（GPU传输，严格控制在128字节内）
+ * 严格遵循设计文档 Section 3.1 — 布局与 GLSL std430 完全匹配
  *
- * 功能：
- * - 管理拖拽状态机
- * - 计算拖拽力（基于拖拽距离）
- * - 将力应用到粒子
+ * 布局 (48 bytes):
+ *   offset 0:  vec3 dragCenter    (12 bytes) — 与 float dragRadius 组合 = 16 bytes
+ *   offset 12: float dragRadius   (4 bytes)  — vec3 的第4字节槽
+ *   offset 16: vec3 dragVelocity  (12 bytes) — 与 float alpha 组合 = 16 bytes
+ *   offset 28: float alpha        (4 bytes)  — vec3 的第4字节槽
+ *   offset 32: int32 isDragging   (4 bytes)
+ *   offset 36: float maxVelocity  (4 bytes)  — CFL 速度上限 (0=不限制)
+ *   offset 40: int32 _pad[2]      (8 bytes)
+ *   Total: 48 bytes ✓
+ */
+struct DragPushConstants {
+    glm::vec3 dragCenter;     // 拖拽中心（归一化空间）
+    float     dragRadius;     // 拖拽半径（归一化空间）
+    glm::vec3 dragVelocity;   // 拖拽速度（归一化空间/s）
+    float     alpha;          // 速度跟随系数 0~1
+    int32_t   isDragging;     // 0=未拖拽 1=拖拽中
+    float     maxVelocity;    // CFL 速度上限: |vel|*sub_dt <= 0.5*dx (0=不限制)
+    int32_t   _pad[2];        // 4字节对齐填充
+};
+
+/**
+ * 拖拽处理器 — 速度插值模式
+ * 管理鼠标拖拽交互，通过速度插值影响粒子
+ *
+ * 核心原理（设计文档 Section 2.3）：
+ * 在每帧 MPM 求解前，通过计算着色器对拖拽范围内的粒子执行速度插值，
+ * 替代直接强制赋值，降低数值冲击，同时保留拖拽跟手感。
+ *
+ * GPU 流程（3-pass）:
+ *   Extract → Drag → Writeback → MPM Step
  */
 class DragHandler {
 public:
     /**
-     * 配置
+     * 配置 — 严格遵循设计文档 Section 5
      */
     struct Config {
-        float stiffness = 50.0f;       // 刚度系数 [N/m]
-        float max_force = 100.0f;      // 最大力 [N]
-        float drag_plane_depth = 2.0f; // 拖拽平面深度 [m]
+        float dragRadius = 0.15f;   // 拖拽作用半径（世界空间单位）— 0.05 太小致局部应力爆炸
+        float alpha = 0.4f;         // 速度跟随系数 — 0.8 过高致边界剪切 F 越界
     };
 
     explicit DragHandler(std::shared_ptr<VulkanContext> context, const Config& config = Config());
@@ -46,127 +76,165 @@ public:
     ~DragHandler();
 
     /**
-     * 初始化GPU资源
+     * 初始化GPU资源（创建3个compute pipeline）
      */
     void Initialize();
 
     /**
-     * 鼠标按下事件
+     * 鼠标按下事件 — 使用预计算的射线拾取结果
+     * 严格遵循设计文档 Section 4.1.1
      *
+     * @param result 射线拾取结果
      * @param screen_x 鼠标X坐标
      * @param screen_y 鼠标Y坐标
-     * @param ray_caster 射线投射器
-     * @param window_width 窗口宽度
-     * @param window_height 窗口高度
-     * @param view_proj 视图投影矩阵
-     * @param particle_buffer 粒子缓冲区
-     * @param num_particles 粒子数量
-     * @param cmd Vulkan命令缓冲区
+     * @param cameraPosition 相机位置（用于深度锁定）
+     * @param cameraForward 相机前方向（用于计算 clickDepth）
+     * @param coordTransform MPM坐标变换（归一化→世界转换）
      */
-    void OnMouseDown(
+    void OnMouseDownFromResult(
+        const RayCastResult& result,
         int screen_x,
         int screen_y,
-        RayCaster& ray_caster,
-        uint32_t window_width,
-        uint32_t window_height,
-        const glm::mat4& view_proj,
-        const std::shared_ptr<Buffer>& particle_buffer,
-        uint32_t num_particles,
-        VkCommandBuffer cmd
+        const glm::vec3& cameraPosition,
+        const glm::vec3& cameraForward,
+        const MPM::CoordinateTransform& coordTransform
     );
 
     /**
-     * 鼠标移动事件
-     *
-     * @param screen_x 当前鼠标X坐标
-     * @param screen_y 当前鼠标Y坐标
+     * 鼠标移动事件 — 更新 lastMousePos
+     * 不在内部计算力/速度，由 ComputeDragPushConstants 负责
      */
     void OnMouseMove(int screen_x, int screen_y);
 
     /**
      * 鼠标释放事件
+     * 严格遵循设计文档 Section 4.1.3：
+     * 禁止清零粒子速度！保留拖拽末端动量，靠MPM阻尼自然衰减
      */
     void OnMouseUp();
 
     /**
-     * 应用拖拽力到粒子（每帧调用）
+     * 计算拖拽 Push Constants（核心算法）
+     * 严格遵循设计文档 Section 4.1.2
+     *
+     * @param deltaTime 帧时间步长
+     * @param cameraPosition 相机位置
+     * @param cameraRotation 相机旋转（quat）
+     * @param cameraFov 相机FOV（度数）
+     * @param windowHeight 窗口高度
+     * @param coordTransform MPM坐标变换（世界→归一化转换）
+     * @return DragPushConstants 结构体
+     */
+    DragPushConstants ComputeDragPushConstants(
+        float deltaTime,
+        const glm::vec3& cameraPosition,
+        const glm::quat& cameraRotation,
+        float cameraFov,
+        uint32_t windowHeight,
+        const MPM::CoordinateTransform& coordTransform
+    );
+
+    /**
+     * 应用拖拽到粒子（每帧调用 — 3-pass GPU流程）
+     * 严格遵循设计文档 Section 4.3
+     *
+     * 执行顺序：Extract → Drag → Writeback → memory barrier
      *
      * @param cmd Vulkan命令缓冲区
-     * @param particle_buffer 粒子缓冲区
-     * @param dt 时间步长
+     * @param particle_buffer MPM粒子数据缓冲区（ParticleData）
+     * @param num_particles 粒子数量
+     * @param pushConstants 拖拽参数
      */
-    void ApplyForce(
+    void ApplyDrag(
         VkCommandBuffer cmd,
         const std::shared_ptr<Buffer>& particle_buffer,
-        float dt
+        uint32_t num_particles,
+        const DragPushConstants& pushConstants
     );
 
     /**
      * 状态查询
      */
-    bool IsDragging() const { return state_ == DragState::Dragging; }
-    bool IsIdle() const { return state_ == DragState::Idle; }
-    uint32_t GetDraggedParticle() const { return dragged_particle_; }
-    glm::vec3 GetCurrentForce() const { return current_force_; }
-    const DragState& GetState() const { return state_; }
-
-    /**
-     * 获取拖拽信息（用于可视化）
-     */
-    struct DragInfo {
-        glm::vec3 particle_position;  // 粒子位置
-        glm::vec3 force_vector;        // 力向量
-        bool active;                   // 是否激活
-    };
-    DragInfo GetDragInfo() const;
+    bool IsDragging() const { return dragState_.isDragging; }
+    bool IsIdle() const { return !dragState_.isDragging; }
+    uint32_t GetDraggedParticle() const { return dragState_.pickedParticle; }
+    glm::ivec2 GetDragStartScreen() const { return dragStartScreen_; }
+    glm::ivec2 GetCurrentScreen() const { return currentScreen_; }
+    glm::vec3 GetClickWorldPos() const { return dragState_.clickWorldPos; }
+    float GetClickDepth() const { return dragState_.clickDepth; }
+    const Config& GetConfig() const { return config_; }
 
     /**
      * 更新配置
      */
-    void SetStiffness(float stiffness) { config_.stiffness = stiffness; }
-    void SetMaxForce(float max_force) { config_.max_force = max_force; }
-    const Config& GetConfig() const { return config_; }
+    void SetDragRadius(float radius) { config_.dragRadius = radius; }
+    void SetAlpha(float alpha) { config_.alpha = alpha; }
+
+    /**
+     * 设置 CFL 限幅参数（由 Renderer 在 MPM 初始化后注入）
+     * maxVelocity = cfl * dx / sub_dt，使 |vel|*sub_dt <= cfl*dx
+     * 防止拖拽注入速度过大导致粒子一子步射出网格 → 应力爆炸 → 永久冻结
+     *
+     * @param invDx 网格间距倒数 (1/dx)
+     * @param subDt MPM 子步时间步长 (frame_dt / substeps)
+     * @param cfl CFL 系数 (默认 0.5，单子步位移 <= 0.5 个网格单元)
+     */
+    void SetCFLParams(float invDx, float subDt, float cfl = 0.5f) {
+        if (invDx > 0.0f && subDt > 0.0f) {
+            float dx = 1.0f / invDx;
+            cfl_max_velocity_ = cfl * dx / subDt;
+            cfl_set_ = true;
+        }
+    }
 
 private:
     /**
-     * 计算拖拽力
+     * 创建同步缓冲区（drag_pos/vel buffer，延迟到首次 ApplyDrag）
+     * vec3[] stride=16 (std430 base alignment) → buffer 大小 = num_particles * 16
      */
-    glm::vec3 CalculateDragForce(
-        int current_screen_x,
-        int current_screen_y,
-        uint32_t window_width,
-        uint32_t window_height,
-        const glm::mat4& inverse_view_proj
-    );
+    void CreateSyncBuffers(uint32_t num_particles);
 
     /**
-     * 屏幕位移转世界位移
+     * 构建 descriptor sets（延迟到首次 ApplyDrag）
      */
-    glm::vec3 ScreenDeltaToWorldDelta(
-        const glm::vec2& screen_delta,
-        const glm::mat4& inverse_view_proj,
-        uint32_t window_width,
-        uint32_t window_height
-    );
+    void BuildDescriptorSets(const std::shared_ptr<Buffer>& particle_buffer);
+
+    /**
+     * 记录单个 memory barrier（compute shader write → read）
+     */
+    void RecordComputeBarrier(VkCommandBuffer cmd);
 
 private:
     std::shared_ptr<VulkanContext> context_;
     Config config_;
 
-    // 状态
-    DragState state_ = DragState::Idle;
-    uint32_t dragged_particle_ = UINT32_MAX;
-    glm::vec3 drag_start_pos_;           // 拖拽起始粒子位置
-    glm::ivec2 drag_start_screen_;       // 拖拽起始屏幕坐标
-    glm::ivec2 current_screen_;          // 当前屏幕坐标
-    glm::vec3 current_force_;            // 当前施加的力
+    // 拖拽状态
+    DragState dragState_;
+    glm::ivec2 dragStartScreen_;       // 拖拽起始屏幕坐标
+    glm::ivec2 currentScreen_;         // 当前屏幕坐标
 
-    // Compute pipeline（应用力）
-    std::shared_ptr<ComputePipeline> apply_force_pipeline_;
-    std::shared_ptr<DescriptorSet> descriptor_set_;
+    // ── Compute pipelines (3个) ──
+    std::shared_ptr<ComputePipeline> drag_pipeline_;        // drag_particle (核心拖拽)
+    std::shared_ptr<ComputePipeline> extract_pipeline_;     // extract_particle_fields (同步: ParticleData → pos/vel)
+    std::shared_ptr<ComputePipeline> writeback_pipeline_;   // writeback_velocity (同步: vel → ParticleData)
 
+    // ── Descriptor sets (3个，匹配各pipeline的binding布局) ──
+    std::shared_ptr<DescriptorSet> drag_descriptor_set_;       // binding 0=pos, 1=vel
+    std::shared_ptr<DescriptorSet> extract_descriptor_set_;    // binding 0=ParticleData, 1=pos, 2=vel
+    std::shared_ptr<DescriptorSet> writeback_descriptor_set_;  // binding 0=vel, 1=ParticleData
+
+    // ── Sync buffers (vec3[] with std430 stride=16) ──
+    std::shared_ptr<Buffer> drag_pos_buffer_;   // 粒子位置副本（归一化空间）
+    std::shared_ptr<Buffer> drag_vel_buffer_;   // 粒子速度副本（归一化空间）
+
+    // ── 状态标志 ──
     bool initialized_ = false;
-    bool descriptor_set_built_ = false;
+    bool sync_buffers_created_ = false;
+    bool descriptor_sets_built_ = false;
+
+    // ── CFL 限幅（由 Renderer 注入 MPM 网格参数）──
+    bool  cfl_set_ = false;
+    float cfl_max_velocity_ = 0.0f;  // |vel| 上限，使单子步位移 <= 0.5*dx
 };
 
 } // namespace Interaction

@@ -63,9 +63,18 @@ void MPMManager::LoadParticlesFromScene(
     CreateParticleBuffer();
     CreateGridBuffer();
     CreateDisplacementBuffer();
+    CreateInitialPosBuffer();
 
-    // 4. 上传粒子数据到GPU
+    // 上传粒子数据到GPU
     particle_buffer_->upload(cpu_particles_.data(), sizeof(ParticleData) * cpu_particles_.size(), 0);
+
+    // 上传初始位置（vec4格式，stride=16匹配std430规则）
+    std::vector<glm::vec4> initial_pos_v4(num_particles_);
+    for (size_t i = 0; i < num_particles_; i++) {
+        initial_pos_v4[i] = glm::vec4(cpu_particle_initial_pos_[i], 1.0f);
+    }
+    initial_pos_buffer_->upload(reinterpret_cast<const char*>(initial_pos_v4.data()),
+                                 static_cast<uint32_t>(num_particles_ * sizeof(glm::vec4)), 0);
 
     spdlog::info("[MPMManager] Loaded {} particles successfully", num_particles_);
 }
@@ -91,22 +100,31 @@ void MPMManager::LoadParticles(const std::vector<ParticleData>& particles) {
     CreateParticleBuffer();
     CreateGridBuffer();
     CreateDisplacementBuffer();
+    CreateInitialPosBuffer();
 
     // 上传数据
     particle_buffer_->upload(cpu_particles_.data(), sizeof(ParticleData) * cpu_particles_.size(), 0);
 
+    // 上传初始位置（vec4格式，stride=16匹配std430规则）
+    std::vector<glm::vec4> initial_pos_v4(num_particles_);
+    for (size_t i = 0; i < num_particles_; i++) {
+        initial_pos_v4[i] = glm::vec4(cpu_particle_initial_pos_[i], 1.0f);
+    }
+    initial_pos_buffer_->upload(reinterpret_cast<const char*>(initial_pos_v4.data()),
+                                 static_cast<uint32_t>(num_particles_ * sizeof(glm::vec4)), 0);
+
     spdlog::info("[MPMManager] Particles loaded successfully");
 }
 
-void MPMManager::Step(VkCommandBuffer cmd, float dt) {
+void MPMManager::Step(VkCommandBuffer cmd, float dt, uint32_t override_substeps) {
     if (!enabled_ || !initialized_) {
         return;
     }
 
-    // 执行完整的物理步进（包含多个子步）
-    float sub_dt = dt / static_cast<float>(config_.substeps);
+    uint32_t actual_substeps = override_substeps > 0 ? override_substeps : config_.substeps;
+    float sub_dt = dt / static_cast<float>(actual_substeps);
 
-    for (uint32_t s = 0; s < config_.substeps; s++) {
+    for (uint32_t s = 0; s < actual_substeps; s++) {
         Substep(cmd, sub_dt);
     }
 
@@ -123,7 +141,7 @@ void MPMManager::Reset() {
         for (size_t i = 0; i < cpu_particles_.size(); i++) {
             cpu_particles_[i].position = cpu_particle_initial_pos_[i];
             cpu_particles_[i].velocity = glm::vec3(0.0f);
-            cpu_particles_[i].deformation_gradient = glm::mat3(1.0f);
+            SetDeformationGradient(cpu_particles_[i], glm::mat3(1.0f));
         }
 
         // 上传到GPU
@@ -265,7 +283,8 @@ void MPMManager::CreateGridBuffer() {
 
     vk::BufferUsageFlags usageFlags =
         vk::BufferUsageFlagBits::eStorageBuffer |
-        vk::BufferUsageFlagBits::eTransferDst;
+        vk::BufferUsageFlagBits::eTransferDst |
+        vk::BufferUsageFlagBits::eTransferSrc;  // 诊断 readback (downloadTo) 需要 TRANSFER_SRC
 
     grid_buffer_ = std::make_shared<Buffer>(
         context_,
@@ -304,6 +323,28 @@ void MPMManager::CreateDisplacementBuffer() {
     spdlog::debug("[MPMManager] Displacement buffer created: {} KB", buffer_size / 1024);
 }
 
+void MPMManager::CreateInitialPosBuffer() {
+    spdlog::debug("[MPMManager] Creating initial position buffer for {} particles", num_particles_);
+
+    // vec4格式（stride=16匹配GLSL std430规则，避免vec3 stride=12 vs std430 stride=16错位）
+    size_t buffer_size = num_particles_ * sizeof(glm::vec4);
+
+    vk::BufferUsageFlags usageFlags =
+        vk::BufferUsageFlagBits::eStorageBuffer |
+        vk::BufferUsageFlagBits::eTransferDst |
+        vk::BufferUsageFlagBits::eTransferSrc;  // 诊断 readback (downloadTo) 需要 TRANSFER_SRC
+
+    initial_pos_buffer_ = std::make_shared<Buffer>(
+        context_,
+        static_cast<uint32_t>(buffer_size),
+        usageFlags,
+        VMA_MEMORY_USAGE_GPU_ONLY,
+        static_cast<VmaAllocationCreateFlags>(0)
+    );
+
+    spdlog::debug("[MPMManager] Initial position buffer created: {} KB (vec4 format)", buffer_size / 1024);
+}
+
 void MPMManager::BuildDescriptorSets() {
     spdlog::info("[MPMManager] Building descriptor sets...");
 
@@ -334,19 +375,73 @@ void MPMManager::BuildDescriptorSets() {
 
     grid_only_descriptor_->build();
 
+    // Build G2P descriptor set: binding 0=Grid(readonly), binding 1=Particle(write)
+    // G2P shader期望与P2G相反的binding顺序
+    g2p_descriptor_->bindBufferToDescriptorSet(
+        0, // binding 0: GridBuffer (readonly in G2P shader)
+        vk::DescriptorType::eStorageBuffer,
+        vk::ShaderStageFlagBits::eCompute,
+        grid_buffer_
+    );
+
+    g2p_descriptor_->bindBufferToDescriptorSet(
+        1, // binding 1: ParticleBuffer (write in G2P shader)
+        vk::DescriptorType::eStorageBuffer,
+        vk::ShaderStageFlagBits::eCompute,
+        particle_buffer_
+    );
+
+    g2p_descriptor_->build();
+
     descriptor_sets_built_ = true;
 
-    spdlog::info("[MPMManager] Descriptor sets built successfully");
+    // ── CRITICAL FIX: Rebuild all pipelines with actual descriptor set layouts ──
+    // Pipelines were originally built during CreatePipelines() with TEMP descriptor set layouts,
+    // because descriptor sets hadn't been built yet at that time.
+    // Now that descriptor sets ARE built with their own actual layouts, we MUST rebuild
+    // the pipeline layout and pipeline to use the real layout — otherwise vkCmdBindDescriptorSets
+    // uses a mismatched layout object and compute shaders silently fail to execute.
+    spdlog::info("[MPMManager] Rebuilding all pipelines with actual descriptor set layouts...");
+    zero_grid_pipeline_->rebuild();
+    p2g_pipeline_->rebuild();
+    grid_update_pipeline_->rebuild();
+    grid_freeze_pipeline_->rebuild();
+    g2p_pipeline_->rebuild();
+    spdlog::info("[MPMManager] All pipelines rebuilt successfully");
+
+    // ── Diagnostic: Verify pipeline state ──
+    spdlog::info("[MPMManager] Pipeline state after rebuild:");
+    spdlog::info("[MPMManager]   zero_grid: pipeline={}, layout={}",
+                 (void*)zero_grid_pipeline_->pipeline.get(),
+                 (void*)zero_grid_pipeline_->pipelineLayout.get());
+    spdlog::info("[MPMManager]   p2g: pipeline={}, layout={}",
+                 (void*)p2g_pipeline_->pipeline.get(),
+                 (void*)p2g_pipeline_->pipelineLayout.get());
+    spdlog::info("[MPMManager]   grid_update: pipeline={}, layout={}",
+                 (void*)grid_update_pipeline_->pipeline.get(),
+                 (void*)grid_update_pipeline_->pipelineLayout.get());
+    spdlog::info("[MPMManager]   grid_freeze: pipeline={}, layout={}",
+                 (void*)grid_freeze_pipeline_->pipeline.get(),
+                 (void*)grid_freeze_pipeline_->pipelineLayout.get());
+    spdlog::info("[MPMManager]   g2p: pipeline={}, layout={}",
+                 (void*)g2p_pipeline_->pipeline.get(),
+                 (void*)g2p_pipeline_->pipelineLayout.get());
+    spdlog::info("[MPMManager] Descriptor sets built + pipelines rebuilt successfully (including G2P)");
 }
 
 void MPMManager::CreateDescriptorSets() {
     spdlog::info("[MPMManager] Creating descriptor sets...");
 
-    // Descriptor set 0: 粒子 + 网格绑定（用于 P2G, G2P, Compute Stress）
+    // Descriptor set 0: 粒子 + 网格绑定（用于 P2G, Compute Stress）
+    // P2G 期望: binding 0=Particle(readonly), binding 1=Grid(write)
     particle_grid_descriptor_ = std::make_shared<DescriptorSet>(context_, FRAMES_IN_FLIGHT);
 
     // Descriptor set 1: 仅网格绑定（用于 Zero Grid, Grid Update）
     grid_only_descriptor_ = std::make_shared<DescriptorSet>(context_, FRAMES_IN_FLIGHT);
+
+    // Descriptor set 2: G2P 专用（binding 0=Grid readonly, binding 1=Particle write）
+    // G2P shader期望的binding顺序与P2G相反，不能共用同一个descriptor set
+    g2p_descriptor_ = std::make_shared<DescriptorSet>(context_, FRAMES_IN_FLIGHT);
 
     // 注意：缓冲区绑定将在 CreateParticleBuffer() 和 CreateGridBuffer() 中完成
     // 因为此时缓冲区还未创建
@@ -397,10 +492,11 @@ void MPMManager::CreatePipelines() {
                 .setStageFlags(vk::ShaderStageFlagBits::eCompute)
         };
 
+        // ZeroGridParams: {uint32_t grid_size; uint32_t padding[3];} = 16 bytes
         vk::PushConstantRange pushConstantRange(
             vk::ShaderStageFlagBits::eCompute,
             0,
-            sizeof(uint32_t) * 2  // grid_size + padding
+            16  // sizeof(ZeroGridParams) — must match C++ struct size
         );
 
         zero_grid_pipeline_ = CreateMPMPipeline(
@@ -413,33 +509,7 @@ void MPMManager::CreatePipelines() {
         zero_grid_pipeline_->addDescriptorSet(0, grid_only_descriptor_);
     }
 
-    // 2. Compute Stress Pipeline
-    {
-        std::vector<vk::DescriptorSetLayoutBinding> bindings = {
-            // binding 0: ParticleBuffer
-            vk::DescriptorSetLayoutBinding()
-                .setBinding(0)
-                .setDescriptorType(vk::DescriptorType::eStorageBuffer)
-                .setDescriptorCount(1)
-                .setStageFlags(vk::ShaderStageFlagBits::eCompute)
-        };
-
-        vk::PushConstantRange pushConstantRange(
-            vk::ShaderStageFlagBits::eCompute,
-            0,
-            sizeof(uint32_t) * 4  // num_particles + padding
-        );
-
-        compute_stress_pipeline_ = CreateMPMPipeline(
-            "compute_stress",
-            bindings,
-            pushConstantRange
-        );
-
-        compute_stress_pipeline_->addDescriptorSet(0, particle_grid_descriptor_);
-    }
-
-    // 3. P2G Pipeline
+    // 2. P2G Pipeline (compute_stress 已合并到 P2G shader 中，不再有独立 pipeline)
     {
         std::vector<vk::DescriptorSetLayoutBinding> bindings = {
             // binding 0: ParticleBuffer
@@ -456,10 +526,11 @@ void MPMManager::CreatePipelines() {
                 .setStageFlags(vk::ShaderStageFlagBits::eCompute)
         };
 
+        // P2GParams: {float dt; uint grid_size; uint num_particles; float inv_dx; uint padding[2];} = 24 bytes
         vk::PushConstantRange pushConstantRange(
             vk::ShaderStageFlagBits::eCompute,
             0,
-            sizeof(float) + sizeof(uint32_t) * 3  // dt + grid_size + num_particles + padding
+            32  // sizeof(P2GParams) — covers all fields including inv_dx
         );
 
         p2g_pipeline_ = CreateMPMPipeline(
@@ -471,7 +542,7 @@ void MPMManager::CreatePipelines() {
         p2g_pipeline_->addDescriptorSet(0, particle_grid_descriptor_);
     }
 
-    // 4. Grid Update Pipeline
+    // 3. Grid Update Pipeline
     {
         std::vector<vk::DescriptorSetLayoutBinding> bindings = {
             // binding 0: GridBuffer
@@ -482,10 +553,12 @@ void MPMManager::CreatePipelines() {
                 .setStageFlags(vk::ShaderStageFlagBits::eCompute)
         };
 
+        // GridUpdateParams: {uint grid_size; float gravity_x/y/z; float dt; float damping; uint padding[2];} = 32 bytes
+        // CRITICAL: gravity uses 3 separate floats (not vec3) to avoid std430 alignment mismatch
         vk::PushConstantRange pushConstantRange(
             vk::ShaderStageFlagBits::eCompute,
             0,
-            sizeof(uint32_t) + sizeof(glm::vec3) + sizeof(float) * 3  // grid_size + gravity + dt + damping + padding
+            32  // sizeof(GridUpdateParams) — all scalar fields, tight packing
         );
 
         grid_update_pipeline_ = CreateMPMPipeline(
@@ -495,6 +568,40 @@ void MPMManager::CreatePipelines() {
         );
 
         grid_update_pipeline_->addDescriptorSet(0, grid_only_descriptor_);
+    }
+
+    // 4. Grid Freeze Pipeline（冻结区域速度归零 — Grid Update之后、G2P之前）
+    {
+        std::vector<vk::DescriptorSetLayoutBinding> bindings = {
+            // binding 0: ParticleBuffer (readonly — 只读冻结粒子位置)
+            vk::DescriptorSetLayoutBinding()
+                .setBinding(0)
+                .setDescriptorType(vk::DescriptorType::eStorageBuffer)
+                .setDescriptorCount(1)
+                .setStageFlags(vk::ShaderStageFlagBits::eCompute),
+            // binding 1: GridBuffer (write — 归零冻结区域速度)
+            vk::DescriptorSetLayoutBinding()
+                .setBinding(1)
+                .setDescriptorType(vk::DescriptorType::eStorageBuffer)
+                .setDescriptorCount(1)
+                .setStageFlags(vk::ShaderStageFlagBits::eCompute)
+        };
+
+        // GridFreezeParams: {uint num_particles; float inv_dx; uint grid_size; uint padding;} = 16 bytes
+        vk::PushConstantRange pushConstantRange(
+            vk::ShaderStageFlagBits::eCompute,
+            0,
+            16
+        );
+
+        grid_freeze_pipeline_ = CreateMPMPipeline(
+            "grid_freeze",
+            bindings,
+            pushConstantRange
+        );
+
+        // 共用 particle_grid_descriptor_（binding 0=Particle, binding 1=Grid — 与P2G布局一致）
+        grid_freeze_pipeline_->addDescriptorSet(0, particle_grid_descriptor_);
     }
 
     // 5. G2P Pipeline
@@ -514,10 +621,11 @@ void MPMManager::CreatePipelines() {
                 .setStageFlags(vk::ShaderStageFlagBits::eCompute)
         };
 
+        // G2PParams: {float dt; uint grid_size; uint num_particles; float inv_dx; uint padding[2];} = 24 bytes
         vk::PushConstantRange pushConstantRange(
             vk::ShaderStageFlagBits::eCompute,
             0,
-            sizeof(float) + sizeof(uint32_t) * 3  // dt + grid_size + num_particles + padding
+            32  // sizeof(G2PParams) — same layout as P2GParams
         );
 
         g2p_pipeline_ = CreateMPMPipeline(
@@ -526,10 +634,10 @@ void MPMManager::CreatePipelines() {
             pushConstantRange
         );
 
-        g2p_pipeline_->addDescriptorSet(0, particle_grid_descriptor_);
+        g2p_pipeline_->addDescriptorSet(0, g2p_descriptor_);
     }
 
-    spdlog::info("[MPMManager] All MPM pipelines created successfully");
+    spdlog::info("[MPMManager] All MPM pipelines created successfully (including Grid Freeze)");
 }
 
 void MPMManager::RecordPhysicsCommandBuffer(VkCommandBuffer cmd, float dt) {
@@ -538,7 +646,8 @@ void MPMManager::RecordPhysicsCommandBuffer(VkCommandBuffer cmd, float dt) {
 }
 
 void MPMManager::Substep(VkCommandBuffer cmd, float dt) {
-    // 单个 MPM 子步：Zero Grid -> Compute Stress -> P2G -> Grid Update -> G2P
+    // 单个 MPM 子步：Zero Grid → P2G(含inline应力) → Grid Update → Grid Freeze → G2P
+    // 拖拽交互由 DragHandler 的 ApplyDrag 在 Step 前单独处理（速度插值模式）
 
     // 1. Zero Grid
     {
@@ -568,35 +677,7 @@ void MPMManager::Substep(VkCommandBuffer cmd, float dt) {
                            0, 1, &barrier, 0, nullptr, 0, nullptr);
     }
 
-    // 2. Compute Stress (Phase 1.2: FCR材料模型)
-    {
-        struct StressParams {
-            uint32_t num_particles;
-            uint32_t padding[3];
-        };
-        StressParams params{num_particles_};
-
-        vkCmdBindPipeline(cmd, VK_PIPELINE_BIND_POINT_COMPUTE, compute_stress_pipeline_->pipeline.get());
-        compute_stress_pipeline_->bind(cmd, 0, Pipeline::DescriptorOption(0));
-        vkCmdPushConstants(cmd, compute_stress_pipeline_->pipelineLayout.get(),
-                          VK_SHADER_STAGE_COMPUTE_BIT, 0, sizeof(params), &params);
-
-        uint32_t groups = (num_particles_ + 255) / 256;
-        vkCmdDispatch(cmd, groups, 1, 1);
-    }
-
-    // Memory barrier: Particle write (stress) -> Read
-    {
-        VkMemoryBarrier barrier = {VK_STRUCTURE_TYPE_MEMORY_BARRIER};
-        barrier.srcAccessMask = VK_ACCESS_SHADER_WRITE_BIT;
-        barrier.dstAccessMask = VK_ACCESS_SHADER_READ_BIT;
-        vkCmdPipelineBarrier(cmd,
-                           VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT,
-                           VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT,
-                           0, 1, &barrier, 0, nullptr, 0, nullptr);
-    }
-
-    // 3. P2G
+    // 2. P2G (应力计算已inline合并，不再有独立compute_stress dispatch)
     {
         struct P2GParams {
             float dt;
@@ -627,16 +708,32 @@ void MPMManager::Substep(VkCommandBuffer cmd, float dt) {
                            0, 1, &barrier, 0, nullptr, 0, nullptr);
     }
 
-    // 4. Grid Update
+    // 3. Grid Update
     {
+        // CRITICAL: 使用3个独立float替代glm::vec3 — std430中vec3 alignment=16,
+        // 但C++ glm::vec3 alignment=4, 导致gravity字段offset不匹配:
+        // C++ offset 4 vs GLSL offset 16 → shader读到dt/damping而非gravity!
+        // 改为float后alignment=4, 所有字段紧密排列, C++/GLSL布局完全一致
         struct GridUpdateParams {
-            uint32_t grid_size;
-            glm::vec3 gravity;
-            float dt;
-            float damping;
-            uint32_t padding[2];
+            uint32_t grid_size;     // offset 0
+            float gravity_x;        // offset 4
+            float gravity_y;        // offset 8
+            float gravity_z;        // offset 12
+            float dt;               // offset 16
+            float damping;          // offset 20
+            float max_velocity;     // offset 24 — CFL 速度上限 (0=不限制)
+            uint32_t padding;       // offset 28
+            // sizeof = 32 (28 bytes + 4 padding for struct alignment)
         };
-        GridUpdateParams params{config_.grid_size, config_.gravity, dt, config_.damping};
+        static_assert(sizeof(GridUpdateParams) == 32,
+            "GridUpdateParams must match GLSL push constant layout of 32 bytes");
+        // CFL: |v|*dt <= 0.5*dx → max_v = 0.5*dx/dt = 0.5/(inv_dx*dt)
+        // 截断应力爆炸产生的网格巨速，防止粒子射出网格永久冻结
+        const float grid_cfl_max_velocity = 0.5f / (config_.inv_dx * dt);
+        GridUpdateParams params{config_.grid_size,
+                                 config_.gravity.x, config_.gravity.y, config_.gravity.z,
+                                 dt, config_.damping,
+                                 grid_cfl_max_velocity, 0u};
 
         vkCmdBindPipeline(cmd, VK_PIPELINE_BIND_POINT_COMPUTE, grid_update_pipeline_->pipeline.get());
         grid_update_pipeline_->bind(cmd, 0, Pipeline::DescriptorOption(0));
@@ -648,6 +745,38 @@ void MPMManager::Substep(VkCommandBuffer cmd, float dt) {
     }
 
     // Memory barrier: Grid write -> Read, Particle write -> Read
+    {
+        VkMemoryBarrier barrier = {VK_STRUCTURE_TYPE_MEMORY_BARRIER};
+        barrier.srcAccessMask = VK_ACCESS_SHADER_WRITE_BIT;
+        barrier.dstAccessMask = VK_ACCESS_SHADER_READ_BIT;
+        vkCmdPipelineBarrier(cmd,
+                           VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT,
+                           VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT,
+                           0, 1, &barrier, 0, nullptr, 0, nullptr);
+    }
+
+    // 4. Grid Freeze（冻结区域速度归零 — 对应 PhysDreamer apply_grid_bc_w_freeze_pts）
+    {
+        struct GridFreezeParams {
+            uint32_t num_particles;    // offset 0
+            float inv_dx;              // offset 4
+            uint32_t grid_size;        // offset 8
+            uint32_t padding;          // offset 12
+        };
+        static_assert(sizeof(GridFreezeParams) == 16,
+            "GridFreezeParams must match GLSL push constant layout of 16 bytes");
+        GridFreezeParams params{num_particles_, config_.inv_dx, config_.grid_size};
+
+        vkCmdBindPipeline(cmd, VK_PIPELINE_BIND_POINT_COMPUTE, grid_freeze_pipeline_->pipeline.get());
+        grid_freeze_pipeline_->bind(cmd, 0, Pipeline::DescriptorOption(0));
+        vkCmdPushConstants(cmd, grid_freeze_pipeline_->pipelineLayout.get(),
+                          VK_SHADER_STAGE_COMPUTE_BIT, 0, sizeof(params), &params);
+
+        uint32_t groups = (num_particles_ + 255) / 256;
+        vkCmdDispatch(cmd, groups, 1, 1);
+    }
+
+    // Memory barrier: Grid write (freeze) -> Read (G2P)
     {
         VkMemoryBarrier barrier = {VK_STRUCTURE_TYPE_MEMORY_BARRIER};
         barrier.srcAccessMask = VK_ACCESS_SHADER_WRITE_BIT;
@@ -678,7 +807,7 @@ void MPMManager::Substep(VkCommandBuffer cmd, float dt) {
         vkCmdDispatch(cmd, groups, 1, 1);
     }
 
-    // Memory barrier: Particle write -> Read (next substep)
+    // Memory barrier: Particle write -> Read (next substep, after G2P step 5)
     {
         VkMemoryBarrier barrier = {VK_STRUCTURE_TYPE_MEMORY_BARRIER};
         barrier.srcAccessMask = VK_ACCESS_SHADER_WRITE_BIT;

@@ -1,0 +1,29 @@
+#version 460
+#extension GL_GOOGLE_include_directive : enable
+#include "../mpm/mpm_structs.glsl"
+
+/**
+ * 速度回写 Shader — Writeback Pass
+ *
+ * 将 drag_vel_buffer 中的速度写回 ParticleData.velocity
+ * 跳过冻结粒子（保持原始 velocity 不变）
+ *
+ * Buffer 绑定:
+ *   binding 0: vec3 dragVel[] — 拖拽后的速度数据（只读）
+ *   binding 1: ParticleData particles[] — 目标数据（写 velocity 字段）
+ */
+
+layout(local_size_x = 256) in;
+
+layout(std430, set = 0, binding = 0) buffer DragVelBuffer { vec3 dragVel[]; };
+layout(std430, set = 0, binding = 1) buffer ParticleBuffer { ParticleData particles[]; };
+
+void main() {
+    uint idx = gl_GlobalInvocationID.x;
+    if (idx >= particles.length()) return;
+
+    // 冻结粒子不写回（保持原始 velocity，不受拖拽影响）
+    if (particles[idx].freeze_flag != 0u) return;
+
+    particles[idx].velocity = dragVel[idx];
+}

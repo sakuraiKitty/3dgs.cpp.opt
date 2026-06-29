@@ -40,11 +40,11 @@ public:
 
         // 时间步配置
         float dt = 1.0f / 30.0f;              // 时间步长 [s]
-        uint32_t substeps = 128;              // 子步数
+        uint32_t substeps = 32;               // 子步数 (从128降低，减少累积阻尼)
 
         // 物理参数
         glm::vec3 gravity = {0.0f, -9.8f, 0.0f}; // 重力加速度 [m/s^2]
-        float damping = 0.99f;               // 网格速度阻尼
+        float damping = 0.999f;              // 网格速度阻尼 (从0.99→0.999，减少97%衰减)
 
         // 材料参数（默认jelly）
         MaterialConfig material;
@@ -90,8 +90,9 @@ public:
      *
      * @param cmd Vulkan命令缓冲区
      * @param dt 时间步长
+     * @param override_substeps 可选的子步数覆盖（0=使用config_.substeps）
      */
-    void Step(VkCommandBuffer cmd, float dt);
+    void Step(VkCommandBuffer cmd, float dt, uint32_t override_substeps = 0);
 
     /**
      * 重置模拟到初始状态
@@ -105,6 +106,7 @@ public:
     void Disable() { enabled_ = false; }
     bool IsEnabled() const { return enabled_; }
 
+
     /**
      * 状态查询
      */
@@ -117,6 +119,18 @@ public:
      * 获取粒子缓冲区（用于交互系统）
      */
     std::shared_ptr<Buffer> GetParticleBuffer() const { return particle_buffer_; }
+    std::shared_ptr<Buffer> GetGridBuffer() const { return grid_buffer_; }
+    float GetInvDx() const { return config_.inv_dx; }
+
+    /**
+     * 获取初始位置缓冲区（用于GPU位移计算）
+     */
+    std::shared_ptr<Buffer> GetInitialPosBuffer() const { return initial_pos_buffer_; }
+
+    /**
+     * 获取粒子位移缓冲区（用于GPU位移计算）
+     */
+    std::shared_ptr<Buffer> GetDisplacementBuffer() const { return particle_displacement_buffer_; }
 
     /**
      * 获取粒子位移（用于高斯耦合）
@@ -151,6 +165,7 @@ private:
      * 创建GPU缓冲区
      */
     void CreateParticleBuffer();
+    void CreateInitialPosBuffer();
     void CreateGridBuffer();
     void CreateDisplacementBuffer();
 
@@ -209,20 +224,24 @@ private:
 
     // GPU缓冲区
     std::shared_ptr<Buffer> particle_buffer_;           // 粒子数据
+    std::shared_ptr<Buffer> initial_pos_buffer_;        // 粒子初始位置（用于GPU位移计算）
     std::shared_ptr<Buffer> particle_displacement_buffer_; // 粒子位移
     std::shared_ptr<Buffer> grid_buffer_;                // 网格节点
     std::shared_ptr<Buffer> staging_buffer_;             // 用于下载结果
 
     // Compute pipelines
     std::shared_ptr<ComputePipeline> zero_grid_pipeline_;
-    std::shared_ptr<ComputePipeline> compute_stress_pipeline_;
+    // compute_stress_pipeline_ 已移除 — 应力计算合并到 P2G shader inline
     std::shared_ptr<ComputePipeline> p2g_pipeline_;
     std::shared_ptr<ComputePipeline> grid_update_pipeline_;
+    std::shared_ptr<ComputePipeline> grid_freeze_pipeline_;   // 网格冻结pipeline（冻结区域速度归零）
     std::shared_ptr<ComputePipeline> g2p_pipeline_;
 
     // Descriptor sets
-    std::shared_ptr<DescriptorSet> particle_grid_descriptor_; // 粒子+网格绑定
-    std::shared_ptr<DescriptorSet> grid_only_descriptor_;      // 仅网格绑定
+    std::shared_ptr<DescriptorSet> particle_grid_descriptor_; // 粒子+网格绑定（P2G: 0=Particle,1=Grid）
+    std::shared_ptr<DescriptorSet> grid_only_descriptor_;      // 仅网格绑定（ZeroGrid, GridUpdate）
+    std::shared_ptr<DescriptorSet> g2p_descriptor_;            // G2P专用（0=Grid readonly,1=Particle write）
+
 
     // 粒子生成器
     ParticleGenerator generator_;

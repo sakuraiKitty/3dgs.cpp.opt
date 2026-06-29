@@ -1,0 +1,72 @@
+#version 460
+
+/**
+ * 粒子拖拽 Shader — 速度插值模式（严格遵循设计文档）
+ *
+ * 核心原理：
+ * 在拖拽半径内对粒子执行速度插值，替代硬赋值，降低数值冲击
+ * vel = vel * (1-factor) + dragVelocity * factor
+ * 其中 factor = weight * alpha, weight = clamp(1 - dist/dragRadius, 0, 1)
+ *
+ * Push constant 布局 (48 bytes, C++/GLSL std430 完全匹配):
+ *   vec3  dragCenter;     // offset 0  (align=16 ✓)
+ *   float dragRadius;     // offset 12 (vec3 tail slot)
+ *   vec3  dragVelocity;   // offset 16 (align=16 ✓)
+ *   float alpha;          // offset 28 (vec3 tail slot)
+ *   int   isDragging;     // offset 32
+ *   float maxVelocity;    // offset 36 (CFL 速度上限, 0=不限制)
+ *   int   pad1;           // offset 40
+ *   int   pad2;           // offset 44
+ *
+ * Buffer 绑定（严格遵循设计文档）:
+ *   binding 0: vec3 pos[] — 粒子位置（归一化空间）
+ *   binding 1: vec3 vel[] — 粒子速度（归一化空间/s）
+ */
+
+layout(local_size_x = 256) in;
+
+layout(push_constant) uniform DragPC {
+    vec3  dragCenter;     // 拖拽中心（归一化空间）
+    float dragRadius;     // 拖拽半径（归一化空间）
+    vec3  dragVelocity;   // 拖拽速度（归一化空间/s）
+    float alpha;          // 速度跟随系数 0~1
+    int   isDragging;     // 0=未拖拽 1=拖拽中
+    float maxVelocity;    // CFL 速度上限 (0=不限制): |vel|*sub_dt <= 0.5*dx
+    int   pad1;
+    int   pad2;
+} pc;
+
+// 严格遵循设计文档的 Buffer 绑定
+layout(std430, binding = 0) buffer ParticlePos { vec3 pos[]; };
+layout(std430, binding = 1) buffer ParticleVel { vec3 vel[]; };
+
+void main() {
+    const uint idx = gl_GlobalInvocationID.x;
+    if (idx >= pos.length()) return;
+
+    // 未拖拽状态直接退出
+    if (pc.isDragging == 0) return;
+
+    // 计算粒子到拖拽中心的距离
+    const vec3 p = pos[idx];
+    const float dist = distance(p, pc.dragCenter);
+    if (dist > pc.dragRadius) return;
+
+    // 平滑权重：中心权重=1，边缘线性衰减到0
+    const float weight = clamp(1.0 - dist / pc.dragRadius, 0.0, 1.0);
+
+    // 速度插值：替代硬赋值，降低数值冲击
+    const float factor = weight * pc.alpha;
+    vec3 new_vel = vel[idx] * (1.0 - factor) + pc.dragVelocity * factor;
+
+    // CFL 安全限幅：限制注入后速度幅值，保证 |vel|*sub_dt <= 0.5*dx
+    // 防止拖拽速度过大导致粒子一子步射出网格 → 应力爆炸 → 永久冻结
+    if (pc.maxVelocity > 0.0) {
+        float mag = length(new_vel);
+        if (mag > pc.maxVelocity && mag > 1e-12) {
+            new_vel *= pc.maxVelocity / mag;
+        }
+    }
+
+    vel[idx] = new_vel;
+}

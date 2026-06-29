@@ -28,24 +28,69 @@ namespace MPM {
  * - material参数: 杨氏模量、泊松比等
  */
 struct alignas(16) ParticleData {
-    glm::vec3 position;              // 0-12   - 位置 [m]
-    float mass;                      // 12-16  - 质量 [kg]
-    glm::vec3 velocity;               // 16-28  - 速度 [m/s]
-    uint32_t freeze_flag;            // 28-32  - 冻结标志 (0=可动, 1=冻结)
-    glm::mat3 deformation_gradient;  // 32-80  - 变形梯度 F (3x3矩阵)
-    float volume;                    // 80-84  - 体积 [m^3]
-    uint32_t material_id;            // 84-88  - 材料ID
-    float youngs_modulus;            // 88-92  - 杨氏模量 E [Pa]
-    float poisson_ratio;             // 92-96  - 泊松比 nu
-    float density;                   // 96-100 - 密度 [kg/m^3]
+    glm::vec3 position;                    // 0-12   - 位置 [m]
+    float mass;                            // 12-16  - 质量 [kg]
+    glm::vec3 velocity;                    // 16-28  - 速度 [m/s]
+    uint32_t freeze_flag;                  // 28-32  - 冻结标志 (0=可动, 1=冻结)
 
-    // 新增字段（用于高级物理特性）
-    glm::mat3 apic_matrix;           // 100-148 - APIC动量矩阵C
-    uint32_t is_filled_point;        // 148-152 - 是否为内部填充点 (0=原始高斯, 1=填充点)
-    float padding[1];                // 152-156 - 对齐填充
+    // 变形梯度 F: 使用 vec4[3] 存储（每列16字节stride），匹配 GLSL std430 mat3 布局
+    // GLSL std430 mat3: vec3列 × 16字节stride = 48字节 (vs C++ glm::mat3 = 36字节)
+    // vec4 存储: .xyz = 列向量, .w = 0.0f (std430 inter-column padding)
+    glm::vec4 deformation_gradient_cols[3];// 32-80  - 变形梯度 F (48B: 3 vec4列 × 16 stride)
 
-    // 总计160字节 (16字节对齐)
+    float volume;                          // 80-84  - 体积 [m^3]
+    uint32_t material_id;                  // 84-88  - 材料ID
+    float youngs_modulus;                  // 88-92  - 杨氏模量 E [Pa]
+    float poisson_ratio;                   // 92-96  - 泊松比 nu
+    float density;                         // 96-100 - 密度 [kg/m^3]
+
+    // apic_matrix 需要 16字节对齐（std430 mat3 alignment = 16），从 offset 112 开始
+    // C++ glm::vec4 默认对齐=4，必须显式填充 12 字节(100→112) 才能匹配 GLSL 的 mat3 偏移
+    float _apic_padding[3];               // 100-112 - 对齐填充 (匹配 std430 mat3 的 16 字节对齐)
+
+    // APIC动量矩阵C: 同样使用 vec4[3] 存储，匹配 GLSL std430 mat3 布局
+    glm::vec4 apic_matrix_cols[3];         // 112-160 - APIC动量矩阵C (48B: 3 vec4列 × 16 stride)
+
+    uint32_t is_filled_point;              // 160-164 - 是否为内部填充点 (0=原始高斯, 1=填充点)
+    float _final_padding[3];               // 164-176 - 尾部填充 (std430 数组 stride=176, 非160!)
+
+    // sizeof = 176 ✓ 完全匹配 GLSL std430 数组 stride (mat3 的 16 字节对齐使 stride 从 168 上调到 176)
+    // 之前误设为 160 → C++ 按 160 上传、GLSL 按 176 读取 → 粒子错位 + 缓冲区溢出 → NaN/爆炸
 };
+
+// Compile-time verification: C++ struct stride must match GLSL std430 array stride
+// GLSL ParticleData: mat3 apic_matrix @ offset 112 (16-aligned), 数组 ArrayStride = 176
+static_assert(sizeof(ParticleData) == 176,
+    "ParticleData must match GLSL std430 array stride of 176 bytes "
+    "(mat3 forces 16-byte alignment → apic_matrix at 112, array stride rounded 168→176)");
+
+// ============================================================================
+// mat3 ↔ vec4[3] conversion helpers
+// glm::mat3(vec4,vec4,vec4) extracts .xyz from each vec4 → vec3 column
+// glm::vec4(m[i], 0.0f) stores vec3 column + padding .w=0 (std430 inter-column gap)
+// ============================================================================
+
+inline glm::mat3 GetDeformationGradient(const ParticleData& p) {
+    return glm::mat3(p.deformation_gradient_cols[0],
+                     p.deformation_gradient_cols[1],
+                     p.deformation_gradient_cols[2]);
+}
+
+inline void SetDeformationGradient(ParticleData& p, const glm::mat3& m) {
+    for (int i = 0; i < 3; i++)
+        p.deformation_gradient_cols[i] = glm::vec4(m[i], 0.0f);
+}
+
+inline glm::mat3 GetApicMatrix(const ParticleData& p) {
+    return glm::mat3(p.apic_matrix_cols[0],
+                     p.apic_matrix_cols[1],
+                     p.apic_matrix_cols[2]);
+}
+
+inline void SetApicMatrix(ParticleData& p, const glm::mat3& m) {
+    for (int i = 0; i < 3; i++)
+        p.apic_matrix_cols[i] = glm::vec4(m[i], 0.0f);
+}
 
 /**
  * MPM网格节点数据结构
@@ -126,7 +171,25 @@ struct DeformableRegion {
     );
 
     // 生成sim_mask向量(true=可变形)
-    std::vector<bool> GenerateSimMask(size_t total_gaussians) const;
+    std::vector<bool> GenerateSimMask(size_t total_gaussians) const {
+        std::vector<bool> mask(total_gaussians, false);
+
+        // 标记可变形高斯
+        for (uint32_t idx : deformable_indices) {
+            if (idx < total_gaussians) {
+                mask[idx] = true;
+            }
+        }
+
+        // 标记静态高斯
+        for (uint32_t idx : static_indices) {
+            if (idx < total_gaussians) {
+                mask[idx] = false;
+            }
+        }
+
+        return mask;
+    }
 
     // 统计
     size_t GetDeformableCount() const { return deformable_indices.size(); }
