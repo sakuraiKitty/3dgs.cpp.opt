@@ -4,9 +4,6 @@
 
 `3dgs.cpp.opt` is a derivative project built on top of [3DGS.cpp](https://github.com/shg8/3DGS.cpp), incorporating the Material Point Method (MPM) physics simulation ideas from [PhysDreamer](https://github.com/snap-research/PhysDreamer). It extends the originally static Vulkan Gaussian Splatting renderer into a **real-time, draggable, deformable** physics interaction demo.
 
-![demo](docs/videos/vulkan-splatting-demo.mp4)
-
-> Video above: hold `P` + left-click drag on the flower head; MPM particles drive the foreground gaussians into elastic deformation and recovery (carnations scene, ~105 FPS @ RTX 4090).
 
 ---
 
@@ -161,7 +158,7 @@ Environment variables can also be used with the `VKGS_` prefix (e.g. `VKGS_VALID
 ```bash
 ./build/apps/viewer/Release/3dgs_viewer.exe \
     --camera camera.txt \
-    "D:/liuyue/physDreamerVulkanDemo/PhysDreamer/data/physics_dreamer/carnations/point_cloud.ply"
+    "<yourpath>/carnations/point_cloud.ply"
 ```
 
 ---
