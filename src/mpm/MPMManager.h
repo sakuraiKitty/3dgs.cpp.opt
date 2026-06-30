@@ -123,6 +123,48 @@ public:
     const DeformableRegion& GetRegion() const { return region_; }
 
     /**
+     * 初始粒子 AABB（归一化空间），用于交互抓取半径自适应
+     * 对标 PhysDreamer gui_demo.py: grab_radius = aabb_diag * 0.02
+     */
+    float GetInitialAABBDiag() const { return aabb_diag_; }
+    bool HasAABB() const { return aabb_computed_; }
+
+    /**
+     * 运行时设置网格速度阻尼（对标 PhysDreamer 释放阻尼）
+     * 拖拽中=1.0(无阻尼纯跟随)，释放=0.95^(1/substeps)/子步(衰减振荡)
+     * Substep 每4阶段 grid_update 读 config_.damping，故运行时改立即生效
+     */
+    void SetDamping(float d) { config_.damping = d; }
+
+    /**
+     * 位置 home-spring 开关 + 刚度（为刚体旋转/平移模态提供恢复力，FCR 客观材料无法）
+     * k≈15 → 周期 T=2π/√k≈1.6s；配合释放阻尼 0.95/帧，松手后 1-2 次振荡归位。
+     * enable=0 关闭（纯 FCR，会卡在刚体旋转态）。
+     */
+    void SetHomeSpring(float k, bool enable) {
+        home_spring_.k_spring = k;
+        home_spring_.enable = enable ? 1u : 0u;
+    }
+
+    /**
+     * 拖拽速度 Dirichlet BC（每子步 SET 半径内非冻结粒子速度，对标 PhysDreamer enforce_particle_velocity_by_mask）
+     * 由 Renderer 每帧（拖拽中）调用，MPMManager 在 Substep 的 zero_grid 后、P2G 前派发。
+     * 释放时调 ClearDragVelocityBC() 停止驱动，自由震荡。
+     * center/radius/velocity 均为归一化空间，maxVelocity=CFL 上限(0=不限)。
+     */
+    void SetDragVelocityBC(const glm::vec3& center, float radius,
+                           const glm::vec3& velocity, float maxVelocity) {
+        drag_bc_.center = center;
+        drag_bc_.radius = radius;
+        drag_bc_.velocity = velocity;
+        drag_bc_.alpha = 0.0f;  // SET 模式未用
+        drag_bc_.isDragging = 1;
+        drag_bc_.maxVelocity = maxVelocity;
+        drag_bc_.numParticles = num_particles_;
+    }
+    void ClearDragVelocityBC() { drag_bc_.isDragging = 0; }
+
+    /**
      * 获取粒子缓冲区（用于交互系统）
      */
     std::shared_ptr<Buffer> GetParticleBuffer() const { return particle_buffer_; }
@@ -227,6 +269,12 @@ private:
     std::vector<glm::vec3> cpu_particle_initial_pos_;   // 初始位置（用于计算位移）
     uint32_t num_particles_ = 0;
 
+    // 初始粒子 AABB（归一化空间，交互抓取半径自适应用）
+    glm::vec3 aabb_min_ = glm::vec3(0.0f);
+    glm::vec3 aabb_max_ = glm::vec3(0.0f);
+    float aabb_diag_ = 0.0f;
+    bool aabb_computed_ = false;
+
     // 网格数据
     uint32_t grid_total_nodes_ = 0; // grid_size^3
 
@@ -247,11 +295,40 @@ private:
     std::shared_ptr<ComputePipeline> grid_update_pipeline_;
     std::shared_ptr<ComputePipeline> grid_freeze_pipeline_;   // 网格冻结pipeline（冻结区域速度归零）
     std::shared_ptr<ComputePipeline> g2p_pipeline_;
+    std::shared_ptr<ComputePipeline> drag_bc_pipeline_;       // 拖拽速度 Dirichlet BC（每子步）
+    std::shared_ptr<ComputePipeline> pin_frozen_pipeline_;    // 粒子级硬冻结（每子步 G2P 后，对标 PhysDreamer gui_demo.py:313）
+    std::shared_ptr<ComputePipeline> home_spring_pipeline_;   // 位置 home-spring（每子步 ZeroGrid 后，为刚体模态提供恢复力）
+
+    // 位置 home-spring 参数（16 bytes，与 apply_home_spring.comp push constant 布局一致）
+    // FCR 客观材料对纯旋转零应力→花头刚体旋转不回弹；弹簧 F=-k(x-x0) 专治该刚体模态。
+    struct HomeSpringParams {
+        float    k_spring;       // offset 0  — 弹簧刚度 ω² (1/s²), 周期 T=2π/√k
+        float    dt;             // offset 4  — 子步时间步长（每子步由 Substep 注入）
+        uint32_t num_particles;  // offset 8
+        uint32_t enable;         // offset 12 — 0=禁用 1=启用
+    };
+    static_assert(sizeof(HomeSpringParams) == 16, "HomeSpringParams must be 16 bytes (GLSL push constant)");
+    HomeSpringParams home_spring_{0.0f, 0.0f, 0u, 0u};  // 默认禁用
+
+    // 拖拽速度 BC 参数（48 bytes，与 apply_drag_velocity_bc.comp push constant 布局一致）
+    struct DragBCParams {
+        glm::vec3 center;        // offset 0
+        float     radius;        // offset 12
+        glm::vec3 velocity;      // offset 16
+        float     alpha;         // offset 28 (SET 模式未用)
+        int32_t   isDragging;    // offset 32
+        float     maxVelocity;   // offset 36
+        uint32_t  numParticles;  // offset 40
+        int32_t   _pad;          // offset 44
+    };
+    static_assert(sizeof(DragBCParams) == 48, "DragBCParams must be 48 bytes (GLSL push constant)");
+    DragBCParams drag_bc_{};  // isDragging=0 默认（不驱动）
 
     // Descriptor sets
     std::shared_ptr<DescriptorSet> particle_grid_descriptor_; // 粒子+网格绑定（P2G: 0=Particle,1=Grid）
     std::shared_ptr<DescriptorSet> grid_only_descriptor_;      // 仅网格绑定（ZeroGrid, GridUpdate）
     std::shared_ptr<DescriptorSet> g2p_descriptor_;            // G2P专用（0=Grid readonly,1=Particle write）
+    std::shared_ptr<DescriptorSet> particle_init_descriptor_; // 粒子+初始位置（PinFrozen: 0=Particle,1=InitPos）
 
 
     // 粒子生成器

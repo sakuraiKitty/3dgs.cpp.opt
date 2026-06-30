@@ -1,0 +1,45 @@
+#version 460
+#extension GL_GOOGLE_include_directive : enable
+#include "mpm_structs.glsl"
+
+/**
+ * 位置 home-spring（每子步，ZeroGrid 后、DragBC 前）
+ *
+ * 目的：为刚体模态（整体平移/旋转）提供 FCR 无法给出的恢复力。
+ *   FCR 客观材料对纯旋转零应力（τ=2μ(F−R)Fᵀ, F=R→τ=0），故花头被拖拽后
+ *   绕花茎锚点刚体旋转、卡死不回弹（诊断 ratio=max|F−R|/max|F−I|≈0.057）。
+ *   位置弹簧 F=-k(x-x0) 直接拉回初始位，专治该刚体模态；FCR 仍管局部变形。
+ *
+ * 实现：粒子级速度冲量  v += -k*(x-x0)*dt
+ *   - 冻结粒子跳过（freeze_flag!=0）
+ *   - 在 DragBC 之前执行：拖拽中 DragBC 的 SET 覆盖被抓粒子速度 → 弹簧不影响被抓 batch；
+ *     非抓取粒子保留弹簧冲量，P2G 经下方 barrier 可见。
+ *   - 弱刚度 k≈15（周期 T=2π/√k≈1.6s），释放阻尼 0.95/帧使其 1-2 次振荡后归位。
+ */
+layout(local_size_x = 256) in;
+
+layout(std430, set = 0, binding = 0) buffer ParticleBuffer {
+    ParticleData particles[];
+};
+
+// 初始位置（vec4 stride=16，与 initial_pos_buffer_ 上传格式一致）
+layout(std430, set = 0, binding = 1) readonly buffer InitPosBuffer {
+    vec4 init_pos[];
+};
+
+layout(push_constant) uniform SpringParams {
+    float k_spring;       // offset 0  — 弹簧刚度 ω² (1/s²), 周期 T=2π/√k
+    float dt;             // offset 4  — 子步时间步长
+    uint  num_particles;  // offset 8
+    uint  enable;         // offset 12 — 0=禁用 1=启用
+} pc;
+
+void main() {
+    uint idx = gl_GlobalInvocationID.x;
+    if (idx >= pc.num_particles || pc.enable == 0u) return;
+    if (particles[idx].freeze_flag != 0u) return;  // 冻结粒子不动
+
+    vec3 disp = particles[idx].position - init_pos[idx].xyz;
+    // 位置 home-spring 速度冲量
+    particles[idx].velocity -= pc.k_spring * disp * pc.dt;
+}

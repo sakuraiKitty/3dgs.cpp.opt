@@ -1,0 +1,43 @@
+#version 460
+#extension GL_GOOGLE_include_directive : enable
+#include "mpm_structs.glsl"
+
+/**
+ * 粒子级硬冻结（每子步，对标 PhysDreamer gui_demo.py:313-318）
+ *   nxt_x[freeze_mask] = freeze_init_x[freeze_mask]
+ *   nxt_v[freeze_mask] = 0
+ *
+ * 旧实现仅 grid_freeze.comp 零化冻结粒子的【网格节点】速度（软锚点），
+ * 冻结粒子本身仍被 G2P 更新位置（漂移）→ 锚点不刚性 → 花头弯曲不连贯 → 不回弹。
+ * 本 shader 在 G2P 之后把冻结粒子硬钉回初始位置 + 速度清零，形成刚性锚点，
+ * 花头在拖拽点与锚点间形成连贯弹性弯曲，释放后 FCR 可恢复。
+ *
+ * 流程位置：G2P 之后（每子步末尾）。
+ */
+layout(local_size_x = 256) in;
+
+layout(std430, set = 0, binding = 0) buffer ParticleBuffer {
+    ParticleData particles[];
+};
+
+// 初始位置（vec4 stride=16，与 initial_pos_buffer_ 上传格式一致）
+layout(std430, set = 0, binding = 1) readonly buffer InitPosBuffer {
+    vec4 init_pos[];
+};
+
+layout(push_constant) uniform PinParams {
+    uint num_particles;  // offset 0
+    uint _pad[3];        // offset 4,8,12 (16 字节对齐)
+} pc;
+
+void main() {
+    uint idx = gl_GlobalInvocationID.x;
+    if (idx >= pc.num_particles) return;
+
+    // 只处理冻结粒子
+    if (particles[idx].freeze_flag == 0u) return;
+
+    // 硬钉：位置=初始，速度=0
+    particles[idx].position = init_pos[idx].xyz;
+    particles[idx].velocity = vec3(0.0);
+}

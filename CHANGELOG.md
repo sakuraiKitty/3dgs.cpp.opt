@@ -1,5 +1,55 @@
 # 更新日志 (CHANGELOG)
 
+## 2026年6月30日 - 位置 Home-Spring + 拖拽机制重构 + 死代码清理 + 文档 ✅
+
+### 🎯 实施成果
+
+修复花头拖拽释放后**卡死在残余位移不回弹**的最终根因（刚体旋转模态），重构拖拽机制对标 PhysDreamer GUI，清理死代码并补全算法/管线文档。
+
+#### 1. 位置 Home-Spring（核心修复 — 刚体模态恢复力）
+
+**问题**: 花头拖拽释放后 `max_disp` 从 0.27 降到 0.14 后**平台停滞**，`max_vel→0`，`max_strain` 停在 0.92，不回原位。诊断 `ratio=max|F−R|/max|F−I|≈0.057` → F 94% 为旋转，即花头绕花茎锚点**刚体旋转**。
+
+**根因（数学性质，非 bug）**: FCR 是客观材料，应力 `τ=2μ(F−R)Fᵀ` 对纯旋转 F=R 恒为零。客观材料对刚体运动零应力零恢复力——**任何应力公式（PK1/Kirchhoff/Neo-Hookean）都修不了**，因它们都客观。极分解 R 只保证正确性（对标 PhysDreamer SVD），不提供恢复力。
+
+**修复**: 新增 `apply_home_spring.comp`，每子步（ZeroGrid 后、DragBC 前）对非冻结粒子做速度冲量 `v += -k·(x-x0)·dt`，专治刚体平移/旋转模态。FCR 仍管局部变形，弹簧管刚体漂移，二者分工。
+- `k=15` → 周期 T=2π/√k≈1.6s，配合释放阻尼 0.95/帧 → 松手后 1-2 次振荡归位
+- 放在 DragBC 前：拖拽中 SET 覆盖被抓粒子→弹簧不影响拖拽 batch
+- 复用 `particle_init_descriptor_`（与 PinFrozen 同布局）
+- `SetHomeSpring(k, enable)` 可调可关
+
+**修改位置**: 新增 `src/shaders/mpm/apply_home_spring.comp` + `shaders/apply_home_spring.spv`；`src/mpm/MPMManager.{h,cpp}`（pipeline + Substep 1a 派发 + HomeSpringParams）；`src/Renderer.cpp`（CFL 注入处 `SetHomeSpring(15, true)`）
+
+#### 2. 拖拽机制重构（对标 PhysDreamer GUI，P0-P3 + 位置反馈）
+
+将 DragHandler 从脉冲式 alpha-blend 改为 PhysDreamer GUI 同款机制：
+- **P0 抓取半径自适应**: `grab_radius = AABB_diag · 0.02`（对标 `gui_demo.py:186`，~200 粒子局部抓取，旧固定 0.2→~1700 粒子→刚体旋转）
+- **P1 释放阻尼**: 拖拽中 damping=1.0，释放后 `0.95^(1/substeps)`/子步（对标 `gui_demo.py:288`）
+- **P2 每子步 SET 速度 BC**: `apply_drag_velocity_bc.comp`，半径内非冻结粒子 SET velocity（对标 `enforce_particle_velocity_by_mask`）。旧 ApplyDrag 每帧一次+alpha blend 太弱（小半径 max_disp 仅 0.0006）
+- **P3 粒子级硬冻结**: `pin_frozen_particles.comp`，每子步 G2P 后把冻结粒子硬钉回 init_pos + v=0（对标 `gui_demo.py:313-318`），形成刚性锚点
+- **位置反馈**: `dragVel=(target-cur_pick)/dt`（对标 `gui_demo.py:340`），dragCenter=当前粒子位置（跟随 batch）。旧鼠标速度法边界持续撕裂（strain 2.46），位置反馈到位 v=0 界住变形
+- **CFL 限幅**: `SetCFLParams(inv_dx, sub_dt, cfl=0.05)`，单子步位移 ≤ 0.05·dx
+- **BuildDescriptorSets 闪退修复**: 触发条件加 `&& initial_pos_buffer_`，CreateInitialPosBuffer 末尾补触发（CreateGridBuffer 触发时 initial_pos_buffer_ 未建→空缓冲绑定崩溃）
+
+**修改位置**: `src/interaction/DragHandler.{h,cpp}`（位置反馈 `SetCurrentPickWorld` + `ComputeDragPushConstants`）；`src/mpm/MPMManager.{h,cpp}`（DragBCParams + `SetDragVelocityBC` + AABB + `SetDamping` + drag_bc/pin_frozen pipeline）；`src/Renderer.cpp`（CFL/grab radius/damping/home-spring 注入 + 位置回读）；新增 `src/shaders/interaction/apply_drag_velocity_bc.comp`、`src/shaders/mpm/pin_frozen_particles.comp` + 对应 .spv
+
+#### 3. 死代码清理
+
+- **移除 DragHandler 3-pass GPU 流程**: `ApplyDrag`/`CreateSyncBuffers`/`BuildDescriptorSets`/`RecordComputeBarrier` + 3 pipeline/3 descriptor/2 sync buffer 成员。该流程在 P2 改用 MPMManager 每子步 SET BC 后已成死代码（Renderer 不再调用 ApplyDrag）。`Initialize()` 内联为 no-op
+- **移除冗余调试日志**: `[Physics] P key held` 每帧调试打印（ admitted debug aid）
+- **更新过时注释**: Renderer 物理流程注释 `ApplyDrag` → `SetDragVelocityBC`
+
+#### 4. 文档
+
+- 新增 `PHYSICS_PIPELINE_DETAIL.md`：算法与管线详细文档（数据结构/std430 对齐/MPM 子步/FCR 材料/耦合/交互/16 bug 修复历程/客观性设计决策）
+- 新增 `PIPELINE_DIAGRAM.md`：一帧管线图（21 个 pass 的 dispatch size/local/线程数/频率 + 推导表）
+
+### 🔬 核心教训
+
+FCR 客观性 → 纯旋转零应力是**数学性质**非 bug。PhysDreamer 靠冻结掩码几何布局（钉花头顶端 6.7%）阻止刚体旋转，纯 FCR 即可回位；本 demo 冻结布局不同（花头可自由旋转），故加 home-spring 补偿。三条修复路中"改拖拽"（选项3）已做但修不了旋转（旋转是刚体模态非力施加问题），最终落定"位置 home-spring"（选项1）。
+
+---
+
 ## 2026年6月29日 - PLY解析stride修复 + KNN映射修复 + 诊断清理 ✅
 
 ### 🎯 实施成果

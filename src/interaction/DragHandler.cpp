@@ -15,115 +15,8 @@ DragHandler::~DragHandler() {
     spdlog::info("[DragHandler] Destroyed");
 }
 
-void DragHandler::Initialize() {
-    spdlog::info("[DragHandler] Initializing GPU resources...");
-
-    try {
-        // ── 1. drag_particle pipeline (核心拖拽shader) ──
-        // 严格遵循设计文档：binding 0=vec3 pos[], binding 1=vec3 vel[]
-        // Push constant: 48 bytes (DragPC layout)
-        spdlog::info("[DragHandler] Creating drag_pipeline...");
-        auto drag_shader = std::make_shared<Shader>(context_, "drag_particle");
-        drag_shader->load();
-        drag_pipeline_ = std::make_shared<ComputePipeline>(context_, drag_shader);
-
-        std::vector<vk::DescriptorSetLayoutBinding> drag_bindings = {
-            // binding 0: ParticlePos (vec3 pos[])
-            vk::DescriptorSetLayoutBinding()
-                .setBinding(0)
-                .setDescriptorType(vk::DescriptorType::eStorageBuffer)
-                .setDescriptorCount(1)
-                .setStageFlags(vk::ShaderStageFlagBits::eCompute),
-            // binding 1: ParticleVel (vec3 vel[])
-            vk::DescriptorSetLayoutBinding()
-                .setBinding(1)
-                .setDescriptorType(vk::DescriptorType::eStorageBuffer)
-                .setDescriptorCount(1)
-                .setStageFlags(vk::ShaderStageFlagBits::eCompute),
-        };
-        for (const auto& b : drag_bindings) {
-            drag_pipeline_->addDescriptorSetLayoutBinding(b);
-        }
-        drag_pipeline_->addPushConstant(
-            vk::ShaderStageFlagBits::eCompute, 0, sizeof(DragPushConstants));
-        drag_pipeline_->build();
-
-        drag_descriptor_set_ = std::make_shared<DescriptorSet>(context_, 1);
-        spdlog::info("[DragHandler] drag_pipeline created (48B push constant)");
-
-        // ── 2. extract_particle_fields pipeline (同步: ParticleData → pos/vel) ──
-        // binding 0=ParticleData, binding 1=dragPos, binding 2=dragVel
-        spdlog::info("[DragHandler] Creating extract_pipeline...");
-        auto extract_shader = std::make_shared<Shader>(context_, "extract_particle_fields");
-        extract_shader->load();
-        extract_pipeline_ = std::make_shared<ComputePipeline>(context_, extract_shader);
-
-        std::vector<vk::DescriptorSetLayoutBinding> extract_bindings = {
-            // binding 0: ParticleData particles[]
-            vk::DescriptorSetLayoutBinding()
-                .setBinding(0)
-                .setDescriptorType(vk::DescriptorType::eStorageBuffer)
-                .setDescriptorCount(1)
-                .setStageFlags(vk::ShaderStageFlagBits::eCompute),
-            // binding 1: dragPos (vec3[])
-            vk::DescriptorSetLayoutBinding()
-                .setBinding(1)
-                .setDescriptorType(vk::DescriptorType::eStorageBuffer)
-                .setDescriptorCount(1)
-                .setStageFlags(vk::ShaderStageFlagBits::eCompute),
-            // binding 2: dragVel (vec3[])
-            vk::DescriptorSetLayoutBinding()
-                .setBinding(2)
-                .setDescriptorType(vk::DescriptorType::eStorageBuffer)
-                .setDescriptorCount(1)
-                .setStageFlags(vk::ShaderStageFlagBits::eCompute),
-        };
-        for (const auto& b : extract_bindings) {
-            extract_pipeline_->addDescriptorSetLayoutBinding(b);
-        }
-        // extract shader 无 push constant
-        extract_pipeline_->build();
-
-        extract_descriptor_set_ = std::make_shared<DescriptorSet>(context_, 1);
-        spdlog::info("[DragHandler] extract_pipeline created");
-
-        // ── 3. writeback_velocity pipeline (同步: vel → ParticleData) ──
-        // binding 0=dragVel, binding 1=ParticleData
-        spdlog::info("[DragHandler] Creating writeback_pipeline...");
-        auto writeback_shader = std::make_shared<Shader>(context_, "writeback_velocity");
-        writeback_shader->load();
-        writeback_pipeline_ = std::make_shared<ComputePipeline>(context_, writeback_shader);
-
-        std::vector<vk::DescriptorSetLayoutBinding> writeback_bindings = {
-            // binding 0: dragVel (vec3[])
-            vk::DescriptorSetLayoutBinding()
-                .setBinding(0)
-                .setDescriptorType(vk::DescriptorType::eStorageBuffer)
-                .setDescriptorCount(1)
-                .setStageFlags(vk::ShaderStageFlagBits::eCompute),
-            // binding 1: ParticleData particles[]
-            vk::DescriptorSetLayoutBinding()
-                .setBinding(1)
-                .setDescriptorType(vk::DescriptorType::eStorageBuffer)
-                .setDescriptorCount(1)
-                .setStageFlags(vk::ShaderStageFlagBits::eCompute),
-        };
-        for (const auto& b : writeback_bindings) {
-            writeback_pipeline_->addDescriptorSetLayoutBinding(b);
-        }
-        // writeback shader 无 push constant
-        writeback_pipeline_->build();
-
-        writeback_descriptor_set_ = std::make_shared<DescriptorSet>(context_, 1);
-        spdlog::info("[DragHandler] writeback_pipeline created");
-
-        initialized_ = true;
-        spdlog::info("[DragHandler] Initialization complete (3 pipelines + 3 descriptor sets)");
-    } catch (const std::exception& e) {
-        spdlog::error("[DragHandler] Initialization failed: {}", e.what());
-        throw;
-    }
-}
+// Initialize() 已内联到头文件：GPU 拖拽改由 MPMManager 每子步 SET 速度 BC 实现，
+// DragHandler 仅负责 CPU 端拾取/位置反馈/PC 计算，无需 GPU 资源。
 
 void DragHandler::OnMouseDownFromResult(
     const RayCastResult& result,
@@ -142,6 +35,7 @@ void DragHandler::OnMouseDownFromResult(
         dragState_.isDragging = true;
         dragState_.pickedParticle = result.particle_index;
         dragState_.lastMousePos = glm::dvec2(screen_x, screen_y);
+        cur_pick_set_ = false;  // 重置：首帧用鼠标速度，后续帧由 Renderer 注入 GPU 回读位置
 
         // 严格遵循设计文档 Section 4.1.1:
         // 1. RayCastResult.hit_point 是归一化空间位置
@@ -190,6 +84,7 @@ void DragHandler::OnMouseUp() {
     // 禁止清零粒子速度！保留拖拽末端动量，靠MPM阻尼自然衰减
     dragState_.isDragging = false;
     dragState_.pickedParticle = UINT32_MAX;
+    cur_pick_set_ = false;
 }
 
 DragPushConstants DragHandler::ComputeDragPushConstants(
@@ -232,15 +127,27 @@ DragPushConstants DragHandler::ComputeDragPushConstants(
     const glm::vec3 camUp      = cameraRotation * glm::vec3(0, 1, 0);
     // 屏幕Y轴向下，与相机up方向相反
 
-    // 4. 计算世界空间拖拽速度（除以deltaTime消除帧率依赖）
-    const glm::vec3 dragVel_world = (camRight * static_cast<float>(dx)
-                                    + (-camUp) * static_cast<float>(dy))
-                                    * pixelToWorld / deltaTime;
-
-    // 5. 计算当前拖拽中心（沿相机平面平移，深度不变）
-    const glm::vec3 dragCenter_world = dragState_.clickWorldPos
+    // 4. 计算拖拽目标（鼠标在抓取深度平面的世界坐标）
+    //    target = 点击点 + 累积鼠标增量（对标 PhysDreamer grab_center_press_world + drag_offset_world）
+    const glm::vec3 target_world = dragState_.clickWorldPos
         + camRight * static_cast<float>(dx) * pixelToWorld
         + (-camUp) * static_cast<float>(dy) * pixelToWorld;
+
+    // 5. 位置反馈速度（P 控制器，对标 PhysDreamer gui_demo.py:340 world_v = (target - cur_pick)/frame_dt）
+    //    旧实现 dragVel = 鼠标速度(delta/dt)，batch 被强制到鼠标速度，弹性抵抗时边界持续撕裂(strain 2.46)。
+    //    位置反馈：dragVel = (target - 当前粒子位置)/dt，batch 被拉向鼠标目标，到位 v=0，
+    //    变形被鼠标位移界住（防撕裂）。dragCenter = 当前粒子位置（球随 batch 移动，近似固定掩码）。
+    glm::vec3 dragVel_world;
+    glm::vec3 dragCenter_world;
+    if (cur_pick_set_) {
+        dragCenter_world = current_pick_world_;          // 球心=当前粒子位置（跟随 batch）
+        dragVel_world = (target_world - current_pick_world_) / deltaTime;
+    } else {
+        // 首帧无回读：退化为鼠标速度，球心=目标
+        dragCenter_world = target_world;
+        dragVel_world = (camRight * static_cast<float>(dx)
+                         + (-camUp) * static_cast<float>(dy)) * pixelToWorld / deltaTime;
+    }
 
     // 6. 转换到归一化空间
     pc.dragCenter   = coordTransform.ToNormalized(dragCenter_world);
@@ -264,124 +171,5 @@ DragPushConstants DragHandler::ComputeDragPushConstants(
     return pc;
 }
 
-void DragHandler::CreateSyncBuffers(uint32_t num_particles) {
-    // vec3[] stride=16 (GLSL std430 base alignment=16)
-    // buffer 大小 = num_particles * 16 bytes
-    const uint32_t buffer_size = num_particles * sizeof(glm::vec4);  // sizeof(glm::vec4) = 16
-
-    spdlog::info("[DragHandler] Creating sync buffers: {} particles, {} bytes each",
-                 num_particles, buffer_size);
-
-    drag_pos_buffer_ = Buffer::storage(context_, buffer_size, false, 0,
-                                       "Drag Pos Buffer");
-    drag_vel_buffer_ = Buffer::storage(context_, buffer_size, false, 0,
-                                       "Drag Vel Buffer");
-
-    // 初始化为零（避免首次 extract 前的垃圾数据）
-    // GPU-only buffer 无法直接 upload，依赖 extract shader 填充
-
-    sync_buffers_created_ = true;
-    spdlog::info("[DragHandler] Sync buffers created");
-}
-
-void DragHandler::BuildDescriptorSets(const std::shared_ptr<Buffer>& particle_buffer) {
-    spdlog::info("[DragHandler] Building descriptor sets (lazy init)");
-
-    // ── drag descriptor set: binding 0=pos, binding 1=vel ──
-    drag_descriptor_set_->bindBufferToDescriptorSet(
-        0, vk::DescriptorType::eStorageBuffer,
-        vk::ShaderStageFlagBits::eCompute, drag_pos_buffer_);
-    drag_descriptor_set_->bindBufferToDescriptorSet(
-        1, vk::DescriptorType::eStorageBuffer,
-        vk::ShaderStageFlagBits::eCompute, drag_vel_buffer_);
-    drag_descriptor_set_->build();
-    drag_pipeline_->addDescriptorSet(0, drag_descriptor_set_);
-
-    // ── extract descriptor set: binding 0=ParticleData, 1=pos, 2=vel ──
-    extract_descriptor_set_->bindBufferToDescriptorSet(
-        0, vk::DescriptorType::eStorageBuffer,
-        vk::ShaderStageFlagBits::eCompute, particle_buffer);
-    extract_descriptor_set_->bindBufferToDescriptorSet(
-        1, vk::DescriptorType::eStorageBuffer,
-        vk::ShaderStageFlagBits::eCompute, drag_pos_buffer_);
-    extract_descriptor_set_->bindBufferToDescriptorSet(
-        2, vk::DescriptorType::eStorageBuffer,
-        vk::ShaderStageFlagBits::eCompute, drag_vel_buffer_);
-    extract_descriptor_set_->build();
-    extract_pipeline_->addDescriptorSet(0, extract_descriptor_set_);
-
-    // ── writeback descriptor set: binding 0=vel, 1=ParticleData ──
-    writeback_descriptor_set_->bindBufferToDescriptorSet(
-        0, vk::DescriptorType::eStorageBuffer,
-        vk::ShaderStageFlagBits::eCompute, drag_vel_buffer_);
-    writeback_descriptor_set_->bindBufferToDescriptorSet(
-        1, vk::DescriptorType::eStorageBuffer,
-        vk::ShaderStageFlagBits::eCompute, particle_buffer);
-    writeback_descriptor_set_->build();
-    writeback_pipeline_->addDescriptorSet(0, writeback_descriptor_set_);
-
-    descriptor_sets_built_ = true;
-    spdlog::info("[DragHandler] All 3 descriptor sets built and bound to pipelines");
-}
-
-void DragHandler::RecordComputeBarrier(VkCommandBuffer cmd) {
-    VkMemoryBarrier barrier = {VK_STRUCTURE_TYPE_MEMORY_BARRIER};
-    barrier.srcAccessMask = VK_ACCESS_SHADER_WRITE_BIT;
-    barrier.dstAccessMask = VK_ACCESS_SHADER_READ_BIT;
-    vkCmdPipelineBarrier(cmd,
-        VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT,
-        VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT,
-        0, 1, &barrier, 0, nullptr, 0, nullptr);
-}
-
-void DragHandler::ApplyDrag(
-    VkCommandBuffer cmd,
-    const std::shared_ptr<Buffer>& particle_buffer,
-    uint32_t num_particles,
-    const DragPushConstants& pushConstants
-) {
-    if (!initialized_) {
-        spdlog::error("[DragHandler] Not initialized");
-        return;
-    }
-
-    // ── 延迟初始化：首次调用时创建 sync buffers 和 descriptor sets ──
-    if (!sync_buffers_created_) {
-        CreateSyncBuffers(num_particles);
-    }
-    if (!descriptor_sets_built_) {
-        BuildDescriptorSets(particle_buffer);
-    }
-
-    const uint32_t groups = (num_particles + 255) / 256;
-
-    // ── Pass 1: Extract (ParticleData → drag_pos + drag_vel) ──
-    spdlog::debug("[DragHandler] Pass 1: Extract (ParticleData → pos/vel)");
-    extract_pipeline_->bind(cmd, 0, Pipeline::DescriptorOption(0));
-    vkCmdDispatch(cmd, groups, 1, 1);
-    RecordComputeBarrier(cmd);
-
-    // ── Pass 2: Drag (速度插值 on drag buffers) ──
-    spdlog::debug("[DragHandler] Pass 2: Drag (velocity interpolation)");
-    drag_pipeline_->bind(cmd, 0, Pipeline::DescriptorOption(0));
-    vkCmdPushConstants(cmd, drag_pipeline_->pipelineLayout.get(),
-                       VK_SHADER_STAGE_COMPUTE_BIT, 0,
-                       sizeof(DragPushConstants), &pushConstants);
-    vkCmdDispatch(cmd, groups, 1, 1);
-    RecordComputeBarrier(cmd);
-
-    // ── Pass 3: Writeback (drag_vel → ParticleData.velocity) ──
-    spdlog::debug("[DragHandler] Pass 3: Writeback (vel → ParticleData)");
-    writeback_pipeline_->bind(cmd, 0, Pipeline::DescriptorOption(0));
-    vkCmdDispatch(cmd, groups, 1, 1);
-    RecordComputeBarrier(cmd);
-
-    spdlog::debug("[DragHandler] ApplyDrag complete: 3 passes dispatched, "
-                 "isDragging={}, dragCenter=({:.4f},{:.4f},{:.4f})",
-                 pushConstants.isDragging,
-                 pushConstants.dragCenter.x,
-                 pushConstants.dragCenter.y,
-                 pushConstants.dragCenter.z);
-}
-
 } // namespace Interaction
+

@@ -1,0 +1,61 @@
+#version 460
+#extension GL_GOOGLE_include_directive : enable
+#include "../mpm/mpm_structs.glsl"
+
+/**
+ * 拖拽速度 Dirichlet BC（每子步执行，对标 PhysDreamer enforce_particle_velocity_by_mask）
+ *
+ * PhysDreamer gui_demo.py:295-306 每帧重挂 enforce_particle_velocity_by_mask，
+ * 其 modify_particle_v_before_p2g 每子步在 P2G 前 SET particle_v = grab_velocity（半径内掩码粒子）。
+ * 旧实现 DragHandler 每帧一次 + alpha=0.2 blend → 速度扩散后 batch 停止，变形微弱。
+ * 本 shader 每子步 SET（非 blend）半径内非冻结粒子速度 = dragVelocity，持续驱动 batch 跟随鼠标，
+ * 与周围非拖拽粒子形成持续速度梯度 → 局部变形 → 非均匀 F → 弹性回弹。
+ *
+ * 流程位置：ZeroGrid 之后、P2G 之前（对标 pre_p2g_operations）。
+ *
+ * Push constant (48 bytes, 与 DragPushConstants 布局一致):
+ *   vec3 center; float radius; vec3 velocity; float alpha; int isDragging; float maxVelocity; int pad[2]
+ */
+layout(local_size_x = 256) in;
+
+layout(std430, set = 0, binding = 0) buffer ParticleBuffer {
+    ParticleData particles[];
+};
+
+layout(push_constant) uniform DragBC {
+    vec3  center;        // offset 0  拖拽中心（归一化空间）
+    float radius;        // offset 12 拖拽半径（归一化空间）
+    vec3  velocity;      // offset 16 拖拽目标速度（归一化空间/s）
+    float alpha;         // offset 28 (未用，SET 模式)
+    int   isDragging;    // offset 32 0=未拖拽 1=拖拽中
+    float maxVelocity;   // offset 36 CFL 速度上限 (0=不限制)
+    uint  numParticles;  // offset 40 粒子数（边界检查，避免依赖 SSBO length/stride）
+    int   pad1;          // offset 44
+} pc;
+
+void main() {
+    uint idx = gl_GlobalInvocationID.x;
+    if (idx >= pc.numParticles) return;
+    if (pc.isDragging == 0) return;
+
+    // 冻结粒子不拖（锚点保持）
+    if (particles[idx].freeze_flag != 0u) return;
+
+    vec3 p = particles[idx].position;
+    float dist = distance(p, pc.center);
+    if (dist > pc.radius) return;
+
+    // 对标 PhysDreamer: SET velocity = grab_velocity（Dirichlet BC，硬掩码半径内统一）
+    // 不做距离衰减 blend —— 持续硬驱动 batch 跟随鼠标，弹性在边界形成变形梯度。
+    vec3 v = pc.velocity;
+
+    // CFL 限幅：|v|*sub_dt <= 0.5*dx，防一子步射出网格
+    if (pc.maxVelocity > 0.0) {
+        float mag = length(v);
+        if (mag > pc.maxVelocity && mag > 1e-12) {
+            v *= pc.maxVelocity / mag;
+        }
+    }
+
+    particles[idx].velocity = v;
+}

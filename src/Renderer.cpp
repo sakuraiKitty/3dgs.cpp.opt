@@ -273,14 +273,11 @@ void Renderer::loadSceneToGPU() {
                         mpm_config.dt = 1.0f / 30.0f;
                         mpm_config.substeps = 128;     // 原版carnation.py substep=768(离线)；实时折中128
                                                       // CFL: E=2.14MPa→c_p≈38, dx=1/64, sub_dt=(1/30)/128=0.00026 < dx/c_p=0.00041 ✓
-                        mpm_config.damping = 1.0f;      // 纯 PhysDreamer: grid_v_damping_scale=1.1>1 → 阻尼kernel被跳过(无显式阻尼)
-                                                      // 原版靠纯弹性+APIC数值耗散自然弹振荡。
-                                                      // ── 关键：damping 是【每子步】乘一次(grid_update: velocity*=damping)，不是每帧 ──
-                                                      // 0.9999^128=0.987/帧 → 0.681/秒(每秒损32%速度)。从 max_disp 衰减率反推
-                                                      // 花朵弯曲模式 ω~0.1rad/s，阻尼 c=0.385/s → ζ=c/(2ω)≈1.9 过阻尼 → 单调爬行无振荡。
-                                                      // 且子步越多每帧阻尼越重(阻尼按子步累加)，故提 substeps 必须同时去阻尼。
-                                                      // damping=1.0 → c=0 → ζ=0 → 弹振(仅APIC数值耗散衰减，与PhysDreamer一致)。
-                                                      // 稳定性靠 Fix A(应力对称化)消除能量注入，无阻尼亦稳。若仍发散回退0.99999。
+                        mpm_config.damping = 1.0f;      // 初始值；运行时由 P1 释放阻尼覆盖（见 handlePhysicsInteraction Step 前）
+                                                      // 拖拽中=1.0(无阻尼纯跟随)，非拖拽=0.95^(1/substeps)/子步(衰减振荡)。
+                                                      // 对标 PhysDreamer gui_demo.py:156,288 release_damping=0.95/帧。
+                                                      // 历史根因：damping 是【每子步】乘一次，0.9999^128=0.681/s 过阻尼→爬行无振荡；
+                                                      // 现配合 P0 小半径局部变形(真实弹性恢复力)后，释放阻尼让振荡衰减归位。
                         // 原版carnation.py无gravity字段——花由冻结茎支撑处于静止平衡，变形只来自交互力
                         // 之前-2是调试值，驱动冻结边界应力反馈爆炸→粒子甩飞→花头散点
                         mpm_config.gravity = {0.0f, 0.0f, 0.0f};
@@ -651,8 +648,8 @@ void Renderer::draw() {
     renderForegroundOnly_ = guiManager.renderBackgroundOnly;
 
     // 3a. Execute physics GPU commands BEFORE preprocess (if MPM simulation is active)
-    // Physics updates: ApplyDrag(if dragging) → MPM Step → displacement → coupling → override buffers
-    // MPM持续运行（拖拽时 + 非拖拽时都运行，自然回弹靠弹性力+阻尼）
+    // Physics updates: SetDragVelocityBC(if dragging) → MPM Step(含 home-spring) → displacement → coupling → override buffers
+    // MPM持续运行（拖拽时 + 非拖拽时都运行，自然回弹靠弹性力+阻尼+home-spring）
     if (mpm_initialized_ && mpm_manager_ && mpm_manager_->IsEnabled() &&
         coupling_initialized_ && coupling_manager_) {
         auto& physicsCmd = physicsCommandBuffers[frameIdx];
@@ -1339,11 +1336,11 @@ void Renderer::initializeInteractionSystem() {
     ray_caster_ = std::make_shared<Interaction::RayCaster>(context, ray_caster_config);
     ray_caster_->Initialize();
 
-    // 创建拖拽处理器（力驱动MPM模式 — force作为加速度）
+    // 创建拖拽处理器（速度插值模式）
     Interaction::DragHandler::Config drag_config;
-    // dragRadius=0.2: 拖拽作用域覆盖更大花头区域，降低速度梯度 ∇v=dragVel/radius → F 不再越界
-    //   (0.15 + 16 norm/s → ∇v=110/s → 1帧 J×e^10 爆炸 → 拖拽区与主体断裂 → “上下分离”)
-    drag_config.dragRadius = 0.2f;   // 拖拽作用半径（世界空间单位）
+    // dragRadius=0.2 为初始默认值；运行时由 P0 在 CFL 注入块用 AABB对角线*2% 覆盖
+    // （对标 PhysDreamer gui_demo.py:186，局部抓取避免刚体旋转无回弹）
+    drag_config.dragRadius = 0.2f;   // 拖拽作用半径（世界空间单位，将被 P0 覆盖）
     // alpha=0.2: 速度跟随系数，粒子只跟随 20% 鼠标速度，弹性应力有空间拉回（防飞出网格）
     drag_config.alpha = 0.2f;         // 速度跟随系数
     drag_handler_ = std::make_shared<Interaction::DragHandler>(context, drag_config);
@@ -1372,13 +1369,6 @@ void Renderer::handlePhysicsInteraction() {
 
     // 处理物理交互触发条件：P键 + 左键
     bool p_key_held = keys[8];  // P键索引
-
-    // 添加日志来检测按键状态
-    static int log_counter = 0;
-    if (p_key_held && log_counter++ % 10 == 0) { // P键按下时每秒输出6次
-        spdlog::debug("[Physics] P key held: {}, Left mouse: {}, Right mouse: {}",
-                     p_key_held, mouse_buttons[0], mouse_buttons[2]);
-    }
 
     bool left_mouse_down = mouse_buttons[0];  // 左键
 
@@ -1464,6 +1454,31 @@ void Renderer::updatePhysicsSimulation(VkCommandBuffer cmd) {
                      "max_velocity={:.4f} (normalized/s)",
                      mpm_cfg.inv_dx, sub_dt, mpm_cfg.substeps,
                      kDragCfl * (1.0f / mpm_cfg.inv_dx) / sub_dt);
+
+        // ── P0: 抓取半径自适应 = AABB对角线 * 2%（对标 PhysDreamer gui_demo.py:186）──
+        // 旧固定 0.2(world)→0.161(norm) 约花头对角线 30%，抓 ~1700 粒子 → 整体刚体旋转
+        //   → 均匀F → 均匀内应力自平衡 → 无恢复力 → 卡死不回弹（根因见 memory）。
+        // 2% 对角线抓 ~200 粒子 → 局部变形 → 非均匀F → 弹性回弹。
+        if (mpm_manager_->HasAABB()) {
+            const float diag_world = mpm_manager_->GetInitialAABBDiag() * mpm_coord_transform_.scale;
+            constexpr float kGrabPortion = 0.02f;  // AABB对角线占比，PhysDreamer 同值
+            const float grab_radius_world = diag_world * kGrabPortion;
+            drag_handler_->SetDragRadius(grab_radius_world);
+            spdlog::info("[PhysicsSim] Grab radius = AABB_diag({:.4f}world) * {:.2f} = {:.4f}world "
+                         "({:.4f}norm) — 局部抓取对标PhysDreamer",
+                         diag_world, kGrabPortion, grab_radius_world,
+                         grab_radius_world / mpm_coord_transform_.scale);
+        }
+
+        // ── 位置 home-spring：为刚体模态提供恢复力 ──
+        // FCR 客观材料对纯旋转零应力，花头拖拽后绕花茎刚体旋转卡死不回弹
+        //   （诊断 ratio=max|F-R|/max|F-I|≈0.057，F 94% 为旋转）。
+        // 弱弹簧 F=-k(x-x0) 专治该刚体模态；k=15→周期 T=2π/√k≈1.6s，
+        //   配合释放阻尼 0.95/帧，松手后 1-2 次振荡归位。FCR 仍管局部变形。
+        constexpr float kHomeSpringK = 15.0f;
+        mpm_manager_->SetHomeSpring(kHomeSpringK, /*enable=*/true);
+        spdlog::info("[PhysicsSim] Home-spring enabled: k={:.1f} (T≈{:.2f}s) — 恢复刚体旋转/平移模态",
+                     kHomeSpringK, 6.2831853f / std::sqrt(kHomeSpringK));
         cfl_injected = true;
     }
 
@@ -1530,6 +1545,19 @@ void Renderer::updatePhysicsSimulation(VkCommandBuffer cmd) {
     // Extract → Drag → Writeback → memory barrier → MPM
     if (drag_handler_ && drag_handler_->IsDragging()) {
         spdlog::debug("[PhysicsSim] IsDragging=true → computing drag params");
+
+        // 位置反馈：回读拾取粒子当前位置（对标 PhysDreamer gui_demo.py:335 cur_pick = particle_x[grab_idx]）
+        // 同步下载粒子缓冲(~1ms)，取 picked 粒子世界坐标注入 DragHandler，供 grab_v=(target-cur)/dt。
+        // 读的是上一帧已提交状态（当前帧 Step 未跑），一帧滞后可接受。
+        const uint32_t picked = drag_handler_->GetDraggedParticle();
+        if (picked != UINT32_MAX) {
+            auto positions = mpm_manager_->GetParticlePositions();  // 归一化空间
+            if (picked < positions.size()) {
+                drag_handler_->SetCurrentPickWorld(
+                    mpm_coord_transform_.ToOriginal(positions[picked]));
+            }
+        }
+
         auto pushConstants = drag_handler_->ComputeDragPushConstants(
             frame_dt,
             camera.position,
@@ -1553,18 +1581,34 @@ void Renderer::updatePhysicsSimulation(VkCommandBuffer cmd) {
                          pushConstants.alpha);
         }
 
-        drag_handler_->ApplyDrag(
-            cmd,
-            mpm_manager_->GetParticleBuffer(),
-            mpm_manager_->GetParticleCount(),
-            pushConstants
+        // P2: 拖拽速度 Dirichlet BC 交由 MPMManager 每子步派发（对标 PhysDreamer enforce_particle_velocity_by_mask）
+        // 旧 ApplyDrag 3-pass 每帧一次+alpha blend 太弱（小半径下 max_disp 仅 0.0006），
+        // 改为每子步 SET 半径内粒子速度=dragVelocity，持续驱动 batch 跟随鼠标 → 局部变形。
+        mpm_manager_->SetDragVelocityBC(
+            pushConstants.dragCenter,
+            pushConstants.dragRadius,
+            pushConstants.dragVelocity,
+            pushConstants.maxVelocity
         );
     } else {
-        spdlog::debug("[PhysicsSim] IsDragging=false → skipping ApplyDrag");
+        // 释放：停止速度 BC 驱动，花头自由震荡（靠 P1 释放阻尼衰减归位）
+        mpm_manager_->ClearDragVelocityBC();
     }
 
     // ── 2. 执行 MPM 物理模拟 ──
     // MPM持续运行（无pin，自然动力学处理回弹）
+    // ── P1: 释放阻尼（对标 PhysDreamer gui_demo.py:288 release_damping=0.95/帧）──
+    // 拖拽中=1.0(无阻尼纯跟随)，非拖拽=0.95^(1/substeps)/子步(衰减振荡归位)。
+    // 阻尼是每子步乘一次(grid_update)，故按子步折算避免过阻尼。
+    // idle(静止)时 v=0，阻尼无效，故非拖拽阶段统一用释放阻尼是安全的。
+    {
+        const bool dragging = drag_handler_ && drag_handler_->IsDragging();
+        const uint32_t subs = mpm_manager_->GetConfig().substeps;
+        const float damping = dragging
+            ? 1.0f
+            : std::pow(0.95f, 1.0f / static_cast<float>(subs));  // 0.95/帧 → 每子步
+        mpm_manager_->SetDamping(damping);
+    }
     mpm_manager_->Step(cmd, frame_dt);
 
     // 轻量诊断：每60帧回读粒子缓冲，打印 max|disp|/max|vel|/max|F-I|/moved

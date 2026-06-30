@@ -2,6 +2,7 @@
 #include "../GSScene.h"
 #include <spdlog/spdlog.h>
 #include <glm/gtc/matrix_transform.hpp>
+#include <limits>
 
 namespace MPM {
 
@@ -90,11 +91,20 @@ void MPMManager::LoadParticles(const std::vector<ParticleData>& particles) {
     cpu_particles_ = particles;
     num_particles_ = static_cast<uint32_t>(particles.size());
 
-    // 保存初始位置
+    // 保存初始位置 + 计算初始 AABB（归一化空间，用于交互抓取半径自适应）
     cpu_particle_initial_pos_.reserve(num_particles_);
+    aabb_min_ = glm::vec3(std::numeric_limits<float>::max());
+    aabb_max_ = glm::vec3(std::numeric_limits<float>::lowest());
     for (const auto& p : cpu_particles_) {
         cpu_particle_initial_pos_.push_back(p.position);
+        aabb_min_ = glm::min(aabb_min_, p.position);
+        aabb_max_ = glm::max(aabb_max_, p.position);
     }
+    aabb_diag_ = glm::length(aabb_max_ - aabb_min_);
+    aabb_computed_ = true;
+    spdlog::info("[MPMManager] Initial AABB min=({:.4f},{:.4f},{:.4f}) max=({:.4f},{:.4f},{:.4f}) diag={:.4f}",
+                 aabb_min_.x, aabb_min_.y, aabb_min_.z,
+                 aabb_max_.x, aabb_max_.y, aabb_max_.z, aabb_diag_);
 
     // 创建GPU缓冲区
     CreateParticleBuffer();
@@ -403,7 +413,8 @@ void MPMManager::CreateParticleBuffer() {
     spdlog::debug("[MPMManager] Particle buffer created: {} MB", buffer_size / 1024 / 1024);
 
     // 如果所有缓冲区都已创建，则绑定到 descriptor sets
-    if (particle_buffer_ && grid_buffer_ && !descriptor_sets_built_) {
+    // 含 initial_pos_buffer_（PinFrozen 绑定需要），未全创建则等 CreateInitialPosBuffer 触发
+    if (particle_buffer_ && grid_buffer_ && initial_pos_buffer_ && !descriptor_sets_built_) {
         BuildDescriptorSets();
     }
 }
@@ -429,7 +440,7 @@ void MPMManager::CreateGridBuffer() {
     spdlog::debug("[MPMManager] Grid buffer created: {} MB", buffer_size / 1024 / 1024);
 
     // 如果所有缓冲区都已创建，则绑定到 descriptor sets
-    if (particle_buffer_ && grid_buffer_ && !descriptor_sets_built_) {
+    if (particle_buffer_ && grid_buffer_ && initial_pos_buffer_ && !descriptor_sets_built_) {
         BuildDescriptorSets();
     }
 }
@@ -475,6 +486,11 @@ void MPMManager::CreateInitialPosBuffer() {
     );
 
     spdlog::debug("[MPMManager] Initial position buffer created: {} KB (vec4 format)", buffer_size / 1024);
+
+    // initial_pos_buffer_ 是最后创建的；此时 particle/grid 均已就绪，触发 BuildDescriptorSets
+    if (particle_buffer_ && grid_buffer_ && initial_pos_buffer_ && !descriptor_sets_built_) {
+        BuildDescriptorSets();
+    }
 }
 
 void MPMManager::BuildDescriptorSets() {
@@ -525,6 +541,21 @@ void MPMManager::BuildDescriptorSets() {
 
     g2p_descriptor_->build();
 
+    // Build PinFrozen descriptor set: binding 0=Particle(write), binding 1=InitPos(readonly)
+    particle_init_descriptor_->bindBufferToDescriptorSet(
+        0,
+        vk::DescriptorType::eStorageBuffer,
+        vk::ShaderStageFlagBits::eCompute,
+        particle_buffer_
+    );
+    particle_init_descriptor_->bindBufferToDescriptorSet(
+        1,
+        vk::DescriptorType::eStorageBuffer,
+        vk::ShaderStageFlagBits::eCompute,
+        initial_pos_buffer_
+    );
+    particle_init_descriptor_->build();
+
     descriptor_sets_built_ = true;
 
     // ── CRITICAL FIX: Rebuild all pipelines with actual descriptor set layouts ──
@@ -539,6 +570,9 @@ void MPMManager::BuildDescriptorSets() {
     grid_update_pipeline_->rebuild();
     grid_freeze_pipeline_->rebuild();
     g2p_pipeline_->rebuild();
+    drag_bc_pipeline_->rebuild();
+    pin_frozen_pipeline_->rebuild();
+    home_spring_pipeline_->rebuild();
     spdlog::info("[MPMManager] All pipelines rebuilt successfully");
 
     // ── Diagnostic: Verify pipeline state ──
@@ -574,6 +608,9 @@ void MPMManager::CreateDescriptorSets() {
     // Descriptor set 2: G2P 专用（binding 0=Grid readonly, binding 1=Particle write）
     // G2P shader期望的binding顺序与P2G相反，不能共用同一个descriptor set
     g2p_descriptor_ = std::make_shared<DescriptorSet>(context_, FRAMES_IN_FLIGHT);
+
+    // Descriptor set 3: 粒子 + 初始位置（PinFrozen: binding 0=Particle write, binding 1=InitPos readonly）
+    particle_init_descriptor_ = std::make_shared<DescriptorSet>(context_, FRAMES_IN_FLIGHT);
 
     // 注意：缓冲区绑定将在 CreateParticleBuffer() 和 CreateGridBuffer() 中完成
     // 因为此时缓冲区还未创建
@@ -769,6 +806,93 @@ void MPMManager::CreatePipelines() {
         g2p_pipeline_->addDescriptorSet(0, g2p_descriptor_);
     }
 
+    // 6. Drag Velocity BC Pipeline（每子步速度 Dirichlet BC，对标 PhysDreamer enforce_particle_velocity_by_mask）
+    // binding 0=ParticleBuffer(write velocity)，复用 particle_grid_descriptor_（与 grid_freeze 同布局）
+    {
+        std::vector<vk::DescriptorSetLayoutBinding> bindings = {
+            vk::DescriptorSetLayoutBinding()
+                .setBinding(0)
+                .setDescriptorType(vk::DescriptorType::eStorageBuffer)
+                .setDescriptorCount(1)
+                .setStageFlags(vk::ShaderStageFlagBits::eCompute),
+            vk::DescriptorSetLayoutBinding()
+                .setBinding(1)
+                .setDescriptorType(vk::DescriptorType::eStorageBuffer)
+                .setDescriptorCount(1)
+                .setStageFlags(vk::ShaderStageFlagBits::eCompute),
+        };
+        vk::PushConstantRange pushConstantRange(
+            vk::ShaderStageFlagBits::eCompute,
+            0,
+            48  // sizeof(DragBCParams) — center/radius/velocity/alpha/isDragging/maxVelocity/pad[2]
+        );
+        drag_bc_pipeline_ = CreateMPMPipeline(
+            "apply_drag_velocity_bc",
+            bindings,
+            pushConstantRange
+        );
+        drag_bc_pipeline_->addDescriptorSet(0, particle_grid_descriptor_);
+    }
+
+    // 7. Pin Frozen Pipeline（每子步粒子级硬冻结，对标 PhysDreamer gui_demo.py:313）
+    // binding 0=ParticleBuffer(write pos/vel), binding 1=InitPos(readonly vec4[])
+    {
+        std::vector<vk::DescriptorSetLayoutBinding> bindings = {
+            vk::DescriptorSetLayoutBinding()
+                .setBinding(0)
+                .setDescriptorType(vk::DescriptorType::eStorageBuffer)
+                .setDescriptorCount(1)
+                .setStageFlags(vk::ShaderStageFlagBits::eCompute),
+            vk::DescriptorSetLayoutBinding()
+                .setBinding(1)
+                .setDescriptorType(vk::DescriptorType::eStorageBuffer)
+                .setDescriptorCount(1)
+                .setStageFlags(vk::ShaderStageFlagBits::eCompute),
+        };
+        // PinParams: {uint num_particles; uint pad[3];} = 16 bytes
+        vk::PushConstantRange pushConstantRange(
+            vk::ShaderStageFlagBits::eCompute,
+            0,
+            16
+        );
+        pin_frozen_pipeline_ = CreateMPMPipeline(
+            "pin_frozen_particles",
+            bindings,
+            pushConstantRange
+        );
+        pin_frozen_pipeline_->addDescriptorSet(0, particle_init_descriptor_);
+    }
+
+    // 8. Home Spring Pipeline（每子步 ZeroGrid 后，为刚体模态提供恢复力）
+    //    binding 0=ParticleBuffer(write velocity), binding 1=InitPos(readonly vec4[])
+    //    复用 particle_init_descriptor_（与 PinFrozen 同布局）
+    {
+        std::vector<vk::DescriptorSetLayoutBinding> bindings = {
+            vk::DescriptorSetLayoutBinding()
+                .setBinding(0)
+                .setDescriptorType(vk::DescriptorType::eStorageBuffer)
+                .setDescriptorCount(1)
+                .setStageFlags(vk::ShaderStageFlagBits::eCompute),
+            vk::DescriptorSetLayoutBinding()
+                .setBinding(1)
+                .setDescriptorType(vk::DescriptorType::eStorageBuffer)
+                .setDescriptorCount(1)
+                .setStageFlags(vk::ShaderStageFlagBits::eCompute),
+        };
+        // HomeSpringParams: {float k; float dt; uint num; uint enable;} = 16 bytes
+        vk::PushConstantRange pushConstantRange(
+            vk::ShaderStageFlagBits::eCompute,
+            0,
+            16
+        );
+        home_spring_pipeline_ = CreateMPMPipeline(
+            "apply_home_spring",
+            bindings,
+            pushConstantRange
+        );
+        home_spring_pipeline_->addDescriptorSet(0, particle_init_descriptor_);
+    }
+
     spdlog::info("[MPMManager] All MPM pipelines created successfully (including Grid Freeze)");
 }
 
@@ -796,6 +920,34 @@ void MPMManager::Substep(VkCommandBuffer cmd, float dt) {
 
         uint32_t groups = (config_.grid_size + 7) / 8;
         vkCmdDispatch(cmd, groups, groups, groups);
+    }
+
+    // 1a. 位置 home-spring（每子步，ZeroGrid 后、DragBC 前）
+    // 为刚体模态（整体平移/旋转）提供恢复力——FCR 客观材料对纯旋转零应力，无此弹簧则
+    // 花头拖拽后绕花茎刚体旋转卡死不回弹（ratio=max|F-R|/max|F-I|≈0.057 佐证）。
+    // 速度冲量 v += -k*(x-x0)*dt；DragBC 的 SET 随后覆盖被抓粒子→弹簧不影响拖拽 batch。
+    // 写 particle.velocity，由 DragBC 后的 barrier（SHADER_WRITE→READ）覆盖给 P2G。
+    if (home_spring_.enable != 0u && home_spring_pipeline_) {
+        home_spring_.dt = dt;
+        home_spring_.num_particles = num_particles_;
+        vkCmdBindPipeline(cmd, VK_PIPELINE_BIND_POINT_COMPUTE, home_spring_pipeline_->pipeline.get());
+        home_spring_pipeline_->bind(cmd, 0, Pipeline::DescriptorOption(0));
+        vkCmdPushConstants(cmd, home_spring_pipeline_->pipelineLayout.get(),
+                           VK_SHADER_STAGE_COMPUTE_BIT, 0, sizeof(home_spring_), &home_spring_);
+        uint32_t pgroups = (num_particles_ + 255) / 256;
+        vkCmdDispatch(cmd, pgroups, 1, 1);
+    }
+
+    // 1b. 拖拽速度 Dirichlet BC（每子步，对标 PhysDreamer pre_p2g_operations / enforce_particle_velocity_by_mask）
+    // 仅 isDragging 时派发：半径内非冻结粒子 SET velocity = drag_bc_.velocity（持续驱动 batch）
+    // 写 particle.velocity，由下方 barrier（SHADER_WRITE→READ，全局）覆盖，P2G 读到更新后的速度
+    if (drag_bc_.isDragging != 0 && drag_bc_pipeline_) {
+        vkCmdBindPipeline(cmd, VK_PIPELINE_BIND_POINT_COMPUTE, drag_bc_pipeline_->pipeline.get());
+        drag_bc_pipeline_->bind(cmd, 0, Pipeline::DescriptorOption(0));
+        vkCmdPushConstants(cmd, drag_bc_pipeline_->pipelineLayout.get(),
+                           VK_SHADER_STAGE_COMPUTE_BIT, 0, sizeof(drag_bc_), &drag_bc_);
+        uint32_t pgroups = (num_particles_ + 255) / 256;
+        vkCmdDispatch(cmd, pgroups, 1, 1);
     }
 
     // Memory barrier: Grid write -> Read
@@ -934,6 +1086,25 @@ void MPMManager::Substep(VkCommandBuffer cmd, float dt) {
         g2p_pipeline_->bind(cmd, 0, Pipeline::DescriptorOption(0));
         vkCmdPushConstants(cmd, g2p_pipeline_->pipelineLayout.get(),
                           VK_SHADER_STAGE_COMPUTE_BIT, 0, sizeof(params), &params);
+
+        uint32_t groups = (num_particles_ + 255) / 256;
+        vkCmdDispatch(cmd, groups, 1, 1);
+    }
+
+    // 6. Pin Frozen（每子步粒子级硬冻结，对标 PhysDreamer gui_demo.py:313-318）
+    // G2P 更新了所有粒子位置（含冻结粒子的漂移）；此处把冻结粒子硬钉回初始位+速度清零，
+    // 形成刚性锚点，使花头弯曲连贯可恢复。写 particle.position/velocity，由下方 barrier 覆盖。
+    {
+        struct PinParams {
+            uint32_t num_particles;
+            uint32_t padding[3];
+        };
+        PinParams params{num_particles_};
+
+        vkCmdBindPipeline(cmd, VK_PIPELINE_BIND_POINT_COMPUTE, pin_frozen_pipeline_->pipeline.get());
+        pin_frozen_pipeline_->bind(cmd, 0, Pipeline::DescriptorOption(0));
+        vkCmdPushConstants(cmd, pin_frozen_pipeline_->pipelineLayout.get(),
+                           VK_SHADER_STAGE_COMPUTE_BIT, 0, sizeof(params), &params);
 
         uint32_t groups = (num_particles_ + 255) / 256;
         vkCmdDispatch(cmd, groups, 1, 1);

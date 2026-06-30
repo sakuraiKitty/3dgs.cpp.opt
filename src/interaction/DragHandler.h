@@ -76,9 +76,9 @@ public:
     ~DragHandler();
 
     /**
-     * 初始化GPU资源（创建3个compute pipeline）
+     * 初始化（保留为接口；GPU 拖拽已移至 MPMManager 每子步 SET BC，此处无 GPU 资源需创建）
      */
-    void Initialize();
+    void Initialize() { initialized_ = true; }
 
     /**
      * 鼠标按下事件 — 使用预计算的射线拾取结果
@@ -135,22 +135,16 @@ public:
     );
 
     /**
-     * 应用拖拽到粒子（每帧调用 — 3-pass GPU流程）
-     * 严格遵循设计文档 Section 4.3
-     *
-     * 执行顺序：Extract → Drag → Writeback → memory barrier
-     *
-     * @param cmd Vulkan命令缓冲区
-     * @param particle_buffer MPM粒子数据缓冲区（ParticleData）
-     * @param num_particles 粒子数量
-     * @param pushConstants 拖拽参数
+     * 应用拖拽到粒子（已废弃：拖拽改由 MPMManager 每子步 SET 速度 BC 实现，见 SetDragVelocityBC）
+     * 声明移除。如需恢复旧 3-pass GPU 流程，参考 git 历史 DragHandler.cpp::ApplyDrag。
      */
-    void ApplyDrag(
-        VkCommandBuffer cmd,
-        const std::shared_ptr<Buffer>& particle_buffer,
-        uint32_t num_particles,
-        const DragPushConstants& pushConstants
-    );
+
+    /**
+     * 设置当前抓取粒子的世界坐标（位置反馈用，每帧由 Renderer 从 GPU 回读后注入）
+     * 对标 PhysDreamer gui_demo.py:335-340: cur_pick = 当前粒子位置，grab_v = (target - cur_pick)/frame_dt
+     * 位置反馈 P 控制器：batch 被拉向鼠标目标，到位 v=0，变形被鼠标位移界住（防撕裂）。
+     */
+    void SetCurrentPickWorld(const glm::vec3& p) { current_pick_world_ = p; cur_pick_set_ = true; }
 
     /**
      * 状态查询
@@ -188,23 +182,6 @@ public:
     }
 
 private:
-    /**
-     * 创建同步缓冲区（drag_pos/vel buffer，延迟到首次 ApplyDrag）
-     * vec3[] stride=16 (std430 base alignment) → buffer 大小 = num_particles * 16
-     */
-    void CreateSyncBuffers(uint32_t num_particles);
-
-    /**
-     * 构建 descriptor sets（延迟到首次 ApplyDrag）
-     */
-    void BuildDescriptorSets(const std::shared_ptr<Buffer>& particle_buffer);
-
-    /**
-     * 记录单个 memory barrier（compute shader write → read）
-     */
-    void RecordComputeBarrier(VkCommandBuffer cmd);
-
-private:
     std::shared_ptr<VulkanContext> context_;
     Config config_;
 
@@ -213,24 +190,12 @@ private:
     glm::ivec2 dragStartScreen_;       // 拖拽起始屏幕坐标
     glm::ivec2 currentScreen_;         // 当前屏幕坐标
 
-    // ── Compute pipelines (3个) ──
-    std::shared_ptr<ComputePipeline> drag_pipeline_;        // drag_particle (核心拖拽)
-    std::shared_ptr<ComputePipeline> extract_pipeline_;     // extract_particle_fields (同步: ParticleData → pos/vel)
-    std::shared_ptr<ComputePipeline> writeback_pipeline_;   // writeback_velocity (同步: vel → ParticleData)
-
-    // ── Descriptor sets (3个，匹配各pipeline的binding布局) ──
-    std::shared_ptr<DescriptorSet> drag_descriptor_set_;       // binding 0=pos, 1=vel
-    std::shared_ptr<DescriptorSet> extract_descriptor_set_;    // binding 0=ParticleData, 1=pos, 2=vel
-    std::shared_ptr<DescriptorSet> writeback_descriptor_set_;  // binding 0=vel, 1=ParticleData
-
-    // ── Sync buffers (vec3[] with std430 stride=16) ──
-    std::shared_ptr<Buffer> drag_pos_buffer_;   // 粒子位置副本（归一化空间）
-    std::shared_ptr<Buffer> drag_vel_buffer_;   // 粒子速度副本（归一化空间）
+    // 位置反馈：当前抓取粒子世界坐标（GPU 回读，每帧更新）
+    glm::vec3 current_pick_world_ = glm::vec3(0.0f);
+    bool cur_pick_set_ = false;
 
     // ── 状态标志 ──
     bool initialized_ = false;
-    bool sync_buffers_created_ = false;
-    bool descriptor_sets_built_ = false;
 
     // ── CFL 限幅（由 Renderer 注入 MPM 网格参数）──
     bool  cfl_set_ = false;
