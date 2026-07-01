@@ -1,7 +1,9 @@
 # 一帧管线图 (Frame Pipeline Diagram)
 
 > 分支 `phys-sim` ｜ carnation 场景实测：1,037,279 高斯 / 13,356 MPM 粒子 / 窗口默认 1280×720
-> frame_dt = 1/30 s ｜ MPM substeps = 128 → sub_dt ≈ 0.00026 s
+> frame_dt = 1/30 s ｜ MPM substeps = **256**（ScenePhysicsProfile carnation）→ sub_dt ≈ 1.3e-4 s
+> 算法状态：home-spring 已关闭（dispatch 跳过）/ 纯 FCR 恢复 / CFL=0.02 / DragBC 应变门控
+> 实测 FPS：~16（物理开，256 substeps）/ ~105（物理关）
 
 ---
 
@@ -12,35 +14,34 @@
 
 ┌──────────────────────────────────────────────────────────────────────────────┐
 │ A. 物理交互 (CPU)                                                            │
-│   ① 射线拾取 RayCaster (CPU, 遍历 13356 粒子)                                │
-│   ② 位置回读 GetParticlePositions (download 2.3MB, ~1ms)                     │
+│   ① 射线拾取 RayCaster (CPU, 遍历 13356 粒子，仅首次拾取)                     │
+│   ② 单粒子 GPU 回读 GetParticlePositionGPU (staging 176B + waitIdle, ~1ms)   │
 │   ③ DragHandler.ComputeDragPushConstants (位置反馈 v=(target-cur)/dt)        │
-│   ④ SetDragVelocityBC / SetDamping / SetHomeSpring                           │
+│   ④ SetDragVelocityBC / SetDamping (home-spring/F-relax 已关闭，不注入)      │
 └───────────────────────────┬──────────────────────────────────────────────────┘
                             ▼
 ┌──────────────────────────────────────────────────────────────────────────────┐
-│ B. MPM Step  (× 128 substeps, sub_dt ≈ 0.00026 s)                            │
-│   每个 substep 顺序执行 8 个 compute pass:                                   │
+│ B. MPM Step  (× 256 substeps, sub_dt ≈ 1.3e-4 s)                             │
+│   每个 substep 顺序执行 6~7 个 compute pass:                                 │
 │                                                                              │
 │  ⑤ zero_grid            dispatch (8,8,8)   local 8³   = 512 wg / 262144 thr  │
-│      └─ 清零 64³ 网格节点                                                    │
-│  ⑥ apply_home_spring     dispatch (53,1,1)  local 256  [enable=1]            │
-│      └─ v += -k(x-x0)·dt  (刚体模态恢复力)                                   │
+│      └─ 清零 64³ 网格节点（全量扫，待优化为稀疏清零见 §12.6）                  │
+│  ⑥ apply_home_spring     【跳过】enable=0，dispatch 不派发（home-spring 关闭）│
 │  ⑦ apply_drag_velocity_bc dispatch (53,1,1)  local 256  [仅 isDragging]      │
-│      └─ SET 半径内非冻结粒子速度                                              │
+│      └─ SET 半径内非冻结粒子速度 + 应变门控 smoothstep(1.2,1.5) + J<0.1 停驱  │
 │  ⑧ p2g                  dispatch (53,1,1)  local 256                         │
 │      └─ APIC 质量/动量/C 传递 + inline FCR 应力 + 3×3×3 B-spline             │
 │  ⑨ grid_update           dispatch (8,8,8)   local 8³   = 512 wg              │
 │      └─ 重力 + 阻尼 + CFL 限幅                                                │
 │  ⑩ grid_freeze           dispatch (53,1,1)  local 256                         │
-│      └─ 冻结粒子所在网格节点速度归零                                          │
+│      └─ 冻结粒子所在网格节点速度归零（单节点，薄壳）                            │
 │  ⑪ g2p                   dispatch (53,1,1)  local 256                         │
-│      └─ APIC 回写 v/C/F + NaN 归零                                            │
+│      └─ APIC 回写 v/C/F + 仅 NaN/inf reset（移除 det 软界）                    │
 │  ⑫ pin_frozen_particles  dispatch (53,1,1)  local 256                         │
-│      └─ 冻结粒子硬钉回 init_pos + v=0                                         │
+│      └─ 冻结粒子硬钉 init_pos + v=0 + F=I + C=0（切断虚假应力源）              │
 │                                                                              │
 │   每阶段后插 VkMemoryBarrier(SHADER_WRITE→READ)                              │
-│   单帧总 dispatch = 8 × 128 = 1024 次 compute                                 │
+│   单帧 dispatch = 6×256 = 1536（idle，⑥跳过）/ 7×256 = 1792（拖拽 +⑦）        │
 └───────────────────────────┬──────────────────────────────────────────────────┘
                             ▼
 ┌──────────────────────────────────────────────────────────────────────────────┐
@@ -88,14 +89,14 @@
 
 | # | Pass | Shader/阶段 | Dispatch (wg) | Local | 线程数 | 频率 |
 |---|------|------------|---------------|-------|--------|------|
-| ⑤ | ZeroGrid | zero_grid.comp | 8×8×8=512 | 8³ | 262144 | ×128 |
-| ⑥ | HomeSpring | apply_home_spring.comp | 53 | 256 | 13568 | ×128 |
-| ⑦ | DragBC | apply_drag_velocity_bc.comp | 53 | 256 | 13568 | ×128 (拖拽时) |
-| ⑧ | P2G | p2g.comp | 53 | 256 | 13568 | ×128 |
-| ⑨ | GridUpdate | grid_update.comp | 8×8×8=512 | 8³ | 262144 | ×128 |
-| ⑩ | GridFreeze | grid_freeze.comp | 53 | 256 | 13568 | ×128 |
-| ⑪ | G2P | g2p.comp | 53 | 256 | 13568 | ×128 |
-| ⑫ | PinFrozen | pin_frozen_particles.comp | 53 | 256 | 13568 | ×128 |
+| ⑤ | ZeroGrid | zero_grid.comp | 8×8×8=512 | 8³ | 262144 | ×256 |
+| ⑥ | HomeSpring | apply_home_spring.comp | 53 | 256 | 13568 | **跳过**（enable=0）|
+| ⑦ | DragBC | apply_drag_velocity_bc.comp | 53 | 256 | 13568 | ×256 (拖拽时) |
+| ⑧ | P2G | p2g.comp | 53 | 256 | 13568 | ×256 |
+| ⑨ | GridUpdate | grid_update.comp | 8×8×8=512 | 8³ | 262144 | ×256 |
+| ⑩ | GridFreeze | grid_freeze.comp | 53 | 256 | 13568 | ×256 |
+| ⑪ | G2P | g2p.comp | 53 | 256 | 13568 | ×256 |
+| ⑫ | PinFrozen | pin_frozen_particles.comp | 53 | 256 | 13568 | ×256 |
 | ⑬ | ParticleDisp | compute_particle_displacements.spv | 53 | 256 | 13568 | ×1 |
 | ⑭ | GaussMap | DisplacementMapper.map | 128 | 256 | 32768 | ×1 |
 | ⑮ | Preprocess | preprocess.comp | 4053 | 256 | ~1.04M | ×1 |
@@ -110,12 +111,13 @@
 
 ## 关键说明
 
-- **MPM 粒子数 13,356** → `(13356+255)/256 = 53` workgroups/阶段；128 substeps × 8 阶段 = **1024 次 compute dispatch/帧**（物理主开销）
-- **网格 64³=262144 节点** → ZeroGrid/GridUpdate 用 8³ local + 8×8×8 dispatch 覆盖
+- **MPM 粒子数 13,356** → `(13356+255)/256 = 53` workgroups/阶段；256 substeps × 6 阶段（⑥HomeSpring 跳过）= **1536 次 compute dispatch/帧**（idle）；拖拽时 +⑦DragBC = 7×256 = **1792 次/帧**。这是 ~16 FPS 的主开销。
+- **网格 64³=262144 节点** → ZeroGrid/GridUpdate 用 8³ local + 8×8×8 dispatch 覆盖（全量扫，carnation 粒子只占花头区域，大部分节点 mass=0，是优化候选见 PHYSICS_PIPELINE_DETAIL.md §12.6）。
 - **渲染分辨率 1280×720**（默认窗口，`apps/viewer/main.cpp:90-91`；可 `--width/--height` 改）→ render.comp 80×45 tiles，每 tile 16×16
-- **D 段有 CPU 同步点**：preprocessFence 等 prefix_sum 完成后 CPU 回读 `numInstances`，再据此算 radix sort 的 dispatch size——这是帧内唯一 CPU 回读阻塞点
+- **D 段有 CPU 同步点**：preprocessFence 等 prefix_sum 完成后 CPU 回读 `numInstances`，再据此算 radix sort 的 dispatch size——帧内唯一渲染侧 CPU 回读阻塞点
+- **A 段②拖拽中每帧 waitIdle**：`GetParticlePositionGPU` 单粒子 staging 回读 + `queue.waitIdle` 阻塞 ~1ms（一帧滞后），优化为异步见 §12.4
 - **Preprocess 命令缓冲录制一次复用**：因读 live override buffer，位移每帧变化也能正确重算 cov3D
-- **DragBC ⑦ 仅拖拽时派发**；HomeSpring ⑥ enable=1 时恒派发
+- **DragBC ⑦ 仅拖拽时派发**；HomeSpring ⑥ enable=0 恒跳过（dispatch 不派发，pipeline 保留以便实验）
 
 ---
 
@@ -126,8 +128,8 @@
 | numVertices (高斯总数) | 1,037,279 | point_cloud.ply |
 | num_particles (MPM 粒子) | 13,356 | moving_part_points.ply |
 | num_deformable (前景高斯) | 32,703 | clean_object_points 匹配 |
-| grid_size | 64 | MPMManager::Config |
-| substeps | 128 | MPMManager::Config |
+| grid_size | 64 | ScenePhysicsProfile (carnation) |
+| substeps | **256** | ScenePhysicsProfile (carnation；hat/telephone=64, alocasia=128) |
 | 窗口默认 | 1280×720 | main.cpp:90-91 |
 | TILE_WIDTH/HEIGHT | 16×16 | shaders/common.glsl |
 | MPM particle wg | `(13356+255)/256 = 53` | Substep() |
@@ -139,4 +141,4 @@
 
 ---
 
-*基于 phys-sim 分支 2026-06-30 状态。dispatch size 随场景/窗口尺寸变化。*
+*基于 phys-sim 分支 2026-07-01 状态（home-spring 关闭 / 纯 FCR / substeps=256 / ScenePhysicsProfile 按场景）。dispatch size 随场景/窗口尺寸变化。*

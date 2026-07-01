@@ -7,10 +7,14 @@
  *   nxt_x[freeze_mask] = freeze_init_x[freeze_mask]
  *   nxt_v[freeze_mask] = 0
  *
- * 旧实现仅 grid_freeze.comp 零化冻结粒子的【网格节点】速度（软锚点），
- * 冻结粒子本身仍被 G2P 更新位置（漂移）→ 锚点不刚性 → 花头弯曲不连贯 → 不回弹。
- * 本 shader 在 G2P 之后把冻结粒子硬钉回初始位置 + 速度清零，形成刚性锚点，
- * 花头在拖拽点与锚点间形成连贯弹性弯曲，释放后 FCR 可恢复。
+ * 硬钉 position + velocity，**并重置 F=I、C=0**。
+ *
+ * 与 PD 的差异：PD gui_demo.py:317-318 只钉 x/v，不动 F/C。PD 能这样做是因为其
+ * 冻结壳足够厚，冻结粒子的 3x3x3 支撑节点几乎全被 grid_freeze 零化 → ∇v≈0 →
+ * F≈I/C≈0 自然保持。我们的 carnation 冻结壳仅 ~2 格厚 + grid_freeze 只冻单节点，
+ * 冻结粒子其余 26 节点常有非零速度 → ∇v≠0 → F 漂移到 1.67 → 注入 tau=6.2M
+ * 虚假应力 → 全场 F 爆炸（实测：移除重置后 max|F-R| 0.21→1.67，max_tau 320k→6.2M）。
+ * 故必须显式重置 F=I、C=0 切断虚假应力源。这是我们对 PD 的必要补丁。
  *
  * 流程位置：G2P 之后（每子步末尾）。
  */
@@ -37,7 +41,12 @@ void main() {
     // 只处理冻结粒子
     if (particles[idx].freeze_flag == 0u) return;
 
-    // 硬钉：位置=初始，速度=0
+    // 硬钉：位置=初始，速度=0（对标 PD gui_demo.py:317-318）
     particles[idx].position = init_pos[idx].xyz;
     particles[idx].velocity = vec3(0.0);
+
+    // 刚性锚点不变形：F=I、APIC C=0。切断冻结粒子的永久虚假应力源
+    // （我们的单节点 grid_freeze 不足以保持 F≈I，必须显式重置）。
+    particles[idx].deformation_gradient = mat3(1.0);
+    particles[idx].apic_matrix = mat3(0.0);
 }

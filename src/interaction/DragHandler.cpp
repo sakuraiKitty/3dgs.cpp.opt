@@ -37,6 +37,11 @@ void DragHandler::OnMouseDownFromResult(
         dragState_.lastMousePos = glm::dvec2(screen_x, screen_y);
         cur_pick_set_ = false;  // 重置：首帧用鼠标速度，后续帧由 Renderer 注入 GPU 回读位置
 
+        // 手势统计重置
+        drag_frame_count_ = 0;
+        accumulated_disp_ = 0.0f;
+        cfl_clamp_count_ = 0;
+
         // 严格遵循设计文档 Section 4.1.1:
         // 1. RayCastResult.hit_point 是归一化空间位置
         // 2. 转换到世界空间得到 clickWorldPos
@@ -77,8 +82,11 @@ void DragHandler::OnMouseMove(int screen_x, int screen_y) {
 void DragHandler::OnMouseUp() {
     if (dragState_.isDragging) {
         spdlog::info("[DragHandler] Mouse up — releasing particle {} "
-                     "(保留拖拽末端动量，靠MPM阻尼自然衰减)",
-                     dragState_.pickedParticle);
+                     "(保留拖拽末端动量，靠MPM阻尼自然衰减) | "
+                     "gesture: frames={} accum_disp={:.4f}world cfl_clamp_frames={}"
+                     " (累积位移大+clamp多=用户大力拖拽=拉断风险)",
+                     dragState_.pickedParticle,
+                     drag_frame_count_, accumulated_disp_, cfl_clamp_count_);
     }
     // 严格遵循设计文档 Section 4.1.3:
     // 禁止清零粒子速度！保留拖拽末端动量，靠MPM阻尼自然衰减
@@ -155,6 +163,25 @@ DragPushConstants DragHandler::ComputeDragPushConstants(
     pc.dragVelocity = dragVel_world / coordTransform.scale;
     pc.alpha        = config_.alpha;
     pc.isDragging   = 1;
+
+    // ── 手势统计 + CFL clamp 事件日志 ──
+    drag_frame_count_++;
+    if (cur_pick_set_) {
+        accumulated_disp_ += glm::length(target_world - current_pick_world_);
+    }
+    // CFL clamp 触发检测：|dragVel|>maxVel 着色器会限幅，此处记录用户输入超限事件
+    if (pc.maxVelocity > 0.0f) {
+        float vmag = glm::length(pc.dragVelocity);
+        if (vmag > pc.maxVelocity) {
+            cfl_clamp_count_++;
+            // 首次触发即打印（避免刷屏），后续在 OnMouseUp 摘要里汇总
+            if (cfl_clamp_count_ == 1) {
+                spdlog::warn("[DragHandler] CFL clamp TRIGGERED: |dragVel|={:.4f} > maxVel={:.4f} "
+                              "(用户甩鼠标超 CFL，速度被限幅；累积应变改由应变门控兜底)",
+                              vmag, pc.maxVelocity);
+            }
+        }
+    }
 
     // info 级打印（每 10 次拖拽一帧）——确认 CFL 限幅是否注入到 pc.maxVelocity
     // 期望：cfl_set=1, maxVel≈3.0；若 maxVel=0 → SetCFLParams 未调用；若 maxVel=30 → 旧 exe

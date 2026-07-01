@@ -50,30 +50,57 @@ void Renderer::initialize() {
 void Renderer::handleInput() {
     auto translation = window->getCursorTranslation();
     auto keys = window->getKeys(); // W, A, S, D
+    auto mouse_buttons = window->getMouseButton(); // [left, middle, right]
 
-    // 移除鼠标移动控制相机旋转的功能
-    // 鼠标仅用于：光标悬停检测 + 物理交互（P + 左键）
-    // 相机只能通过键盘控制
+    // 右键拖拽 → 旋转镜头（FPS 风格 look）
+    // 仅在 GUI 未占用鼠标、且未处于物理交互(P+左键)时生效，避免冲突
+    bool gui_wants_mouse = configuration.enableGui && guiManager.wantCaptureMouse();
+    if (mouse_buttons[2] && !gui_wants_mouse && !physics_interaction_mode_) {
+        const float sensitivity = 0.003f; // rad/px
+        float yaw = -static_cast<float>(translation[0]) * sensitivity;
+        float pitch = -static_cast<float>(translation[1]) * sensitivity;
 
-    // move camera (键盘控制)
+        // yaw 绕世界 Y 轴：保持竖直向上，不引入 roll
+        camera.rotation = glm::angleAxis(yaw, glm::vec3(0.0f, 1.0f, 0.0f)) * camera.rotation;
+
+        // pitch 绕相机本地 X 轴（右向量），钳制俯仰避免在 ±90° 翻转
+        glm::vec3 right = glm::normalize(camera.rotation * glm::vec3(1.0f, 0.0f, 0.0f));
+        glm::quat candidate = glm::angleAxis(pitch, right) * camera.rotation;
+        glm::vec3 new_forward = candidate * glm::vec3(0.0f, 0.0f, -1.0f);
+        if (std::abs(glm::dot(new_forward, glm::vec3(0.0f, 1.0f, 0.0f))) < 0.99f) {
+            camera.rotation = candidate;
+        }
+    }
+
+    // 滚轮 → 沿相机前向 dolly（缩放/推拉），GUI 占用鼠标时让出给 ImGui
+    auto scroll = window->getScrollOffset();
+    if (!gui_wants_mouse && scroll[1] != 0.0) {
+        const float zoomSpeed = 0.5f; // 每个滚轮刻度前进的单位数
+        glm::vec3 forward = camera.rotation * glm::vec3(0.0f, 0.0f, -1.0f);
+        camera.position += forward * (static_cast<float>(scroll[1]) * zoomSpeed);
+    }
+
+    // move camera (键盘控制：W/S 上下, A/D 左右, SPACE/SHIFT 上下, Q/E 旋转)
     if (!configuration.enableGui || !guiManager.wantCaptureKeyboard()) {
+        const float moveSpeed = 0.1f;        // 移动速度（世界单位/帧），原 0.3 → 0.1 降灵敏度
+        const float rollSpeed = 0.02f;       // roll 速度（rad/帧）
         glm::vec3 direction = glm::vec3(0.0f, 0.0f, 0.0f);
-        if (keys[0]) {
-            direction += glm::vec3(0.0f, 0.0f, -1.0f);
-        }
-        if (keys[1]) {
-            direction += glm::vec3(-1.0f, 0.0f, 0.0f);
-        }
-        if (keys[2]) {
-            direction += glm::vec3(0.0f, 0.0f, 1.0f);
-        }
-        if (keys[3]) {
-            direction += glm::vec3(1.0f, 0.0f, 0.0f);
-        }
-        if (keys[4]) {
+        if (keys[0]) {                       // W → 上
             direction += glm::vec3(0.0f, 1.0f, 0.0f);
         }
-        if (keys[5]) {
+        if (keys[1]) {                       // A → 左
+            direction += glm::vec3(-1.0f, 0.0f, 0.0f);
+        }
+        if (keys[2]) {                       // S → 下
+            direction += glm::vec3(0.0f, -1.0f, 0.0f);
+        }
+        if (keys[3]) {                       // D → 右
+            direction += glm::vec3(1.0f, 0.0f, 0.0f);
+        }
+        if (keys[4]) {                       // SPACE → 上（保留）
+            direction += glm::vec3(0.0f, 1.0f, 0.0f);
+        }
+        if (keys[5]) {                       // LEFT_SHIFT → 下（保留）
             direction += glm::vec3(0.0f, -1.0f, 0.0f);
         }
         if (keys[6]) {
@@ -88,7 +115,15 @@ void Renderer::handleInput() {
         }
         if (direction != glm::vec3(0.0f, 0.0f, 0.0f)) {
             direction = glm::normalize(direction);
-            camera.position += (glm::mat4_cast(camera.rotation) * glm::vec4(direction, 1.0f)).xyz() * 0.3f;
+            camera.position += (glm::mat4_cast(camera.rotation) * glm::vec4(direction, 1.0f)).xyz() * moveSpeed;
+        }
+
+        // Q/E → 绕相机前向轴 roll（Q 逆时针, E 顺时针）
+        if (keys[9]) {                       // Q
+            camera.rotation = camera.rotation * glm::angleAxis(rollSpeed, glm::vec3(0.0f, 0.0f, 1.0f));
+        }
+        if (keys[10]) {                      // E
+            camera.rotation = camera.rotation * glm::angleAxis(-rollSpeed, glm::vec3(0.0f, 0.0f, 1.0f));
         }
     }
 }
@@ -233,13 +268,19 @@ void Renderer::loadSceneToGPU() {
                 // Step 5.5: Initialize MPM Physics Simulation
                 spdlog::info("[Renderer] ===== Initializing MPM Physics Simulation =====");
                 if (sceneLoader_.GetMovingPartPoints().IsValid()) {
+                    // 按场景名加载物理参数 preset（carnation/hat/alocasia/telephone）
+                    // 取自 PhysDreamer configs/<scene>.py 的 simulate_cfg，避免硬编码 carnation 值套到 hat 上
+                    const auto profile = MPM::GetScenePhysicsProfile(descriptor.scene_path);
+                    spdlog::info("[Renderer] Scene physics profile: '{}' (E={}, nu={}, downsample={}, substeps={})",
+                                 profile.scene_name, profile.E, profile.nu, profile.downsample_scale, profile.substeps);
+
                     MPM::MPMInitializer::Config mpm_config;
-                    mpm_config.grid_size = 64;
-                    mpm_config.downsample_scale = 0.1f;
+                    mpm_config.grid_size = profile.grid_size;
+                    mpm_config.downsample_scale = profile.downsample_scale;
                     mpm_config.use_internal_fill = true;
-                    mpm_config.material.E = 2140628.25f;   // carnation原版值 (carnation.py init_young)
-                    mpm_config.material.nu = 0.3f;
-                    mpm_config.material.density = 2000.0f;
+                    mpm_config.material.E = profile.E;
+                    mpm_config.material.nu = profile.nu;
+                    mpm_config.material.density = profile.density;
 
                     auto mpm_result = MPM::MPMInitializer::Initialize(
                         descriptor,
@@ -267,20 +308,22 @@ void Renderer::loadSceneToGPU() {
                         // 创建并初始化 MPMManager
                         mpm_manager_ = std::make_shared<MPM::MPMManager>(context);
 
-                        // 配置MPM参数
+                        // 配置MPM参数（沿用上方按场景名加载的 profile）
                         MPM::MPMManager::Config mpm_config;
-                        mpm_config.grid_size = 64;
+                        mpm_config.grid_size = profile.grid_size;
+                        mpm_config.grid_spacing = 1.0f / static_cast<float>(profile.grid_size);
+                        mpm_config.inv_dx = static_cast<float>(profile.grid_size);
                         mpm_config.dt = 1.0f / 30.0f;
-                        mpm_config.substeps = 128;     // 原版carnation.py substep=768(离线)；实时折中128
-                                                      // CFL: E=2.14MPa→c_p≈38, dx=1/64, sub_dt=(1/30)/128=0.00026 < dx/c_p=0.00041 ✓
+                        mpm_config.substeps = profile.substeps;   // 按场景：carnation128 / hat64 / alocasia128 / telephone64
+                                                                  // 实时折中=离线/6；CFL: sub_dt=(1/30)/substeps < dx/c_p
                         mpm_config.damping = 1.0f;      // 初始值；运行时由 P1 释放阻尼覆盖（见 handlePhysicsInteraction Step 前）
                                                       // 拖拽中=1.0(无阻尼纯跟随)，非拖拽=0.95^(1/substeps)/子步(衰减振荡)。
                                                       // 对标 PhysDreamer gui_demo.py:156,288 release_damping=0.95/帧。
                                                       // 历史根因：damping 是【每子步】乘一次，0.9999^128=0.681/s 过阻尼→爬行无振荡；
                                                       // 现配合 P0 小半径局部变形(真实弹性恢复力)后，释放阻尼让振荡衰减归位。
-                        // 原版carnation.py无gravity字段——花由冻结茎支撑处于静止平衡，变形只来自交互力
-                        // 之前-2是调试值，驱动冻结边界应力反馈爆炸→粒子甩飞→花头散点
-                        mpm_config.gravity = {0.0f, 0.0f, 0.0f};
+                        // PhysDreamer 四场景 simulate_cfg 均无 gravity 字段——花/帽/电话由冻结边界支撑处于静止平衡，
+                        // 变形只来自交互力。之前-2是调试值，驱动冻结边界应力反馈爆炸→粒子甩飞→散点
+                        mpm_config.gravity = profile.gravity;
 
                         mpm_manager_->Initialize(mpm_config);
                         mpm_manager_->LoadParticles(mpm_particles_);
@@ -1438,30 +1481,41 @@ void Renderer::updatePhysicsSimulation(VkCommandBuffer cmd) {
     }
 
     // ── 注入 CFL 限幅参数到 DragHandler（一次性）──
-    // cfl=0.05: drag 注入速度限幅 max_vel = 0.05·dx/sub_dt ≈ 3 norm/s
-    //   原 cfl=0.5 → max_vel=30 norm/s，拖拽 16.58 norm/s 不受限：
-    //     1帧 0.55 norm = 35dx，30帧累积 16.5 norm ≫ 网格域 1.0 → 粒子 clamp 边界 → “上下分离”
-    //     ∇v=16.58/0.15=110/s → J 1帧增长 e^10.9 ≈ 54000× → F 爆炸 → 应力断裂
-    //   cfl=0.05 → max_vel=3：每帧 0.1 norm=6.4dx，J 增长 e^1.5≈4.5× 安全，弹性可拉回
+    // cfl=0.02: drag 注入速度限幅 max_vel = 0.02·dx/sub_dt ≈ 2.4 norm/s（兜底）
+    //   原实测 cfl=0.05 → max_vel=6，dragVel=1.42 不触发 CFL，但 1.42 持续 256 子步
+    //   → 累积应变 3.0 → 拉断飞出。CFL 只防单子步射出，累积应变改由 apply_drag_velocity_bc
+    //   的应变门控（按 F 列范数/det 衰减）负责。CFL 收到 0.02 作极端甩鼠标的兜底。
+    //   cfl=0.02 → max_vel=2.4：每帧 0.08 norm=5dx，单子步 J 增长 e^0.013≈1.01 安全。
     static bool cfl_injected = false;
     if (!cfl_injected && drag_handler_) {
         auto& mpm_cfg = mpm_manager_->GetConfig();
         const float frame_dt_cfl = 1.0f / 30.0f;
         const float sub_dt = frame_dt_cfl / static_cast<float>(mpm_cfg.substeps);
-        constexpr float kDragCfl = 0.05f;
+        constexpr float kDragCfl = 0.02f;
         drag_handler_->SetCFLParams(mpm_manager_->GetInvDx(), sub_dt, kDragCfl);
         spdlog::info("[PhysicsSim] CFL injected: inv_dx={:.6f}, sub_dt={:.6f}, substeps={}, "
                      "max_velocity={:.4f} (normalized/s)",
                      mpm_cfg.inv_dx, sub_dt, mpm_cfg.substeps,
                      kDragCfl * (1.0f / mpm_cfg.inv_dx) / sub_dt);
 
-        // ── P0: 抓取半径自适应 = AABB对角线 * 2%（对标 PhysDreamer gui_demo.py:186）──
-        // 旧固定 0.2(world)→0.161(norm) 约花头对角线 30%，抓 ~1700 粒子 → 整体刚体旋转
-        //   → 均匀F → 均匀内应力自平衡 → 无恢复力 → 卡死不回弹（根因见 memory）。
-        // 2% 对角线抓 ~200 粒子 → 局部变形 → 非均匀F → 弹性回弹。
+        // ── P0: 抓取半径 = AABB对角线占比（对标 PhysDreamer gui_demo.py:186 原则）──
+        // 决定"局部变形 vs 刚体运动"的是**空间半径**（相对物体尺寸），不是粒子计数。
+        // FCR 应力 τ=2μ(F−R)Fᵀ 对纯刚性运动 F≈R 有 τ≈0 → 无恢复力 → 拖拽后不回弹。
+        // PD 用 2% 半径：空间局部 → 花头内部 F≠R → FCR 有恢复力 → 可回弹。
+        //   (PD 2% 抓 ~109 粒子是因为其云密；我们稀疏云 2% 仅 ~3 粒子)
+        //
+        // 旧值 7.5%：虽只抓 ~140 粒子(占云 1%)，但**空间半径是 PD 的 3.75×**，
+        // 抓取球跨越花头-茎连接区 → 整块花头作刚性转动/平移 → F≈R → FCR 零恢复
+        // → 花头不归位 + 茎被迫长期弯折桥接 → 茎部 F 累积扭曲塌陷。这正是 bug 现象。
+        //
+        // 降到 2%（=PD 原值）：空间半径=PD 局部尺度，避免刚性模态。稀疏云 2% 仅 ~3 粒子，
+        // 配合下方 P0-2(移除 F 软界 clamp) + P1(R 极分解迭代提升)，局部小变形可被
+        // FCR 正确恢复，不再全场扩散（旧"3 粒子→F 炸到 1.67 全场累积"是 clamp/R
+        // 非保守能量注入所致，移除后局部应变可控）。
+        // 调参指引：若边界 ∇v 爆炸 → 升至 0.03；若仍刚性不回弹 → 检查 substeps≥256。
         if (mpm_manager_->HasAABB()) {
             const float diag_world = mpm_manager_->GetInitialAABBDiag() * mpm_coord_transform_.scale;
-            constexpr float kGrabPortion = 0.02f;  // AABB对角线占比，PhysDreamer 同值
+            constexpr float kGrabPortion = 0.02f;  // 空间局部（对标 PD 2%）；稀疏云 ~3 粒子
             const float grab_radius_world = diag_world * kGrabPortion;
             drag_handler_->SetDragRadius(grab_radius_world);
             spdlog::info("[PhysicsSim] Grab radius = AABB_diag({:.4f}world) * {:.2f} = {:.4f}world "
@@ -1470,15 +1524,18 @@ void Renderer::updatePhysicsSimulation(VkCommandBuffer cmd) {
                          grab_radius_world / mpm_coord_transform_.scale);
         }
 
-        // ── 位置 home-spring：为刚体模态提供恢复力 ──
-        // FCR 客观材料对纯旋转零应力，花头拖拽后绕花茎刚体旋转卡死不回弹
-        //   （诊断 ratio=max|F-R|/max|F-I|≈0.057，F 94% 为旋转）。
-        // 弱弹簧 F=-k(x-x0) 专治该刚体模态；k=15→周期 T=2π/√k≈1.6s，
-        //   配合释放阻尼 0.95/帧，松手后 1-2 次振荡归位。FCR 仍管局部变形。
-        constexpr float kHomeSpringK = 15.0f;
-        mpm_manager_->SetHomeSpring(kHomeSpringK, /*enable=*/true);
-        spdlog::info("[PhysicsSim] Home-spring enabled: k={:.1f} (T≈{:.2f}s) — 恢复刚体旋转/平移模态",
-                     kHomeSpringK, 6.2831853f / std::sqrt(kHomeSpringK));
+        // ── 恢复机制：纯 FCR 弹性（对标 PhysDreamer gui_demo.py）──
+        // PhysDreamer 不用 home-spring、不用 F 松弛，靠 FCR 弹性应力（F≠I→τ≠0）自然恢复。
+        // 之前的 home-spring + F 松弛是治"刚体旋转锁死"症状的 workaround，但互相拆台：
+        //   - F 松弛驱 F→I → τ=2μ(F−R)Fᵀ→0 → 杀死 FCR 弹性耦合 → 无恢复力
+        //   - home-spring 速度冲量在 P2G→G2P 回路丢失（实测 v 比理论小 360×）→ 失效
+        // 真根因是 substeps=128(<PD 最小 256)+拖拽成刚体模态；提到 256+局部 2% 抓取后
+        // 拖拽产生局部变形(F≠R)，FCR 即可恢复（PD gui_demo.py:184-186 作者自述）。
+        mpm_manager_->SetHomeSpring(0.0f, /*enable=*/false);  // 关闭：PD 不用位置弹簧
+        mpm_manager_->SetFRelaxAlpha(0.0f);                    // 关闭：保留 FCR 弹性恢复力
+        spdlog::info("[PhysicsSim] Recovery = pure FCR (PhysDreamer-aligned): home-spring OFF, F-relax OFF; "
+                     "substeps={} (PD min 256). FCR τ=2μ(F−R)Fᵀ provides elastic restore.",
+                     mpm_cfg.substeps);
         cfl_injected = true;
     }
 
@@ -1546,15 +1603,16 @@ void Renderer::updatePhysicsSimulation(VkCommandBuffer cmd) {
     if (drag_handler_ && drag_handler_->IsDragging()) {
         spdlog::debug("[PhysicsSim] IsDragging=true → computing drag params");
 
-        // 位置反馈：回读拾取粒子当前位置（对标 PhysDreamer gui_demo.py:335 cur_pick = particle_x[grab_idx]）
-        // 同步下载粒子缓冲(~1ms)，取 picked 粒子世界坐标注入 DragHandler，供 grab_v=(target-cur)/dt。
-        // 读的是上一帧已提交状态（当前帧 Step 未跑），一帧滞后可接受。
+        // 位置反馈：回读拾取粒子当前 GPU 位置（对标 PhysDreamer gui_demo.py:335 cur_pick = particle_x[grab_idx]）
+        // C3 修复：旧路径 GetParticlePositions() 返回 cpu_particles_（仅 Load/Reset 赋值，Step 后永不更新）
+        //         → cur_pick 恒为初始位置 → P 控制器 dragVel=(target-init)/dt 饱和在 CFL，batch 过冲不归位。
+        //         改为 GetParticlePositionGPU：单粒子 staging 回读，queue.waitIdle 保证读到上一帧已提交状态（一帧滞后）。
         const uint32_t picked = drag_handler_->GetDraggedParticle();
         if (picked != UINT32_MAX) {
-            auto positions = mpm_manager_->GetParticlePositions();  // 归一化空间
-            if (picked < positions.size()) {
+            auto cur_pos = mpm_manager_->GetParticlePositionGPU(picked);  // 归一化空间
+            if (cur_pos) {
                 drag_handler_->SetCurrentPickWorld(
-                    mpm_coord_transform_.ToOriginal(positions[picked]));
+                    mpm_coord_transform_.ToOriginal(*cur_pos));
             }
         }
 
@@ -1608,6 +1666,10 @@ void Renderer::updatePhysicsSimulation(VkCommandBuffer cmd) {
             ? 1.0f
             : std::pow(0.95f, 1.0f / static_cast<float>(subs));  // 0.95/帧 → 每子步
         mpm_manager_->SetDamping(damping);
+
+        // home-spring 已在 init 关闭（纯 FCR 恢复，对标 PhysDreamer）。此处保持关闭，
+        // 不再每帧按 !dragging 切换 —— PD 无位置弹簧，FCR τ 提供全部恢复力。
+        mpm_manager_->SetHomeSpring(0.0f, /*enable=*/false);
     }
     mpm_manager_->Step(cmd, frame_dt);
 

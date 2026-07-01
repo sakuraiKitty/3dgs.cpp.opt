@@ -176,6 +176,14 @@ void MPMManager::Diagnose() {
     float max_stretch = 0.0f, max_tau = 0.0f;
     uint32_t stretch_low = 0;  // |F−R|/|F−I| < 0.1（旋转主导）的粒子数
 
+    // ── 拉断前兆诊断（应变门控配套）──
+    // min_det: det(F) 最小值，<0.3 = G2P 已限幅介入；<0.1 = 塌缩前兆
+    // max_stretch_col: F 列范数最大值 = 拉伸比，>2.0 = G2P 已限幅截断
+    // gated: deform=max(列范数,1/|J|) > 1.5 或 det<0.1 的粒子数 = 被 apply_drag_velocity_bc 弹性门控衰减的粒子
+    //   （弹性硬截断：超 1.5 不再跟随鼠标，非塑性；与 shader deform=max(stretch,1/|J|) smoothstep(1.2,1.5) 一致）
+    float min_det = 1e9f, max_stretch_col = 0.0f;
+    uint32_t gated = 0;
+
     auto safe_norm = [](const glm::vec3& v) -> glm::vec3 {
         float l = glm::length(v);
         return l < 1e-8f ? glm::vec3(0.0f) : v / l;
@@ -238,6 +246,15 @@ void MPMManager::Diagnose() {
         float J = F[0][0]*(F[1][1]*F[2][2]-F[1][2]*F[2][1])
                 - F[0][1]*(F[1][0]*F[2][2]-F[1][2]*F[2][0])
                 + F[0][2]*(F[1][0]*F[2][1]-F[1][1]*F[2][0]);
+
+        // ── 拉断前兆统计（与 apply_drag_velocity_bc 应变门控指标一致）──
+        // deform = max(列范数, 1/|J|)：兼顾拉伸与压缩塌缩（实测主导失效模式是 min_det 跌到 0.09）
+        if (J < min_det) min_det = J;
+        float col_stretch = std::max({glm::length(F[0]), glm::length(F[1]), glm::length(F[2])});
+        if (col_stretch > max_stretch_col) max_stretch_col = col_stretch;
+        float compress = 1.0f / std::max(std::fabs(J), 1e-4f);
+        float deform = std::max(col_stretch, compress);
+        if (deform > 1.5f || J < 0.1f) gated++;
         glm::mat3 Ft(F[0][0], F[1][0], F[2][0],
                      F[0][1], F[1][1], F[2][1],
                      F[0][2], F[1][2], F[2][2]);
@@ -269,6 +286,11 @@ void MPMManager::Diagnose() {
     spdlog::info("[MPM-Diag]   ROTvsSTRETCH: max|F-R|={:.4f} max|tau|={:.2f} | ratio={:.3f} "
                  "stretch<10%strain:{} | 若ratio≈0且tau≈0→F旋转主导→无恢复力(花头刚体旋转)",
                  max_stretch, max_tau, stretch_ratio, stretch_low);
+    // 拉断前兆：min_det→0/负 = 内翻塌缩即将甩飞；gated>0 = 应变门控已介入衰减拖拽速度
+    if (min_det > 1e8f) min_det = 0.0f;  // 全冻结时无样本
+    spdlog::info("[MPM-Diag]   TEAR-WATCH: min_det={:.4f} max_stretch_col={:.4f} gated(deform>1.5orJ<0.1):{}/{} | "
+                 "min_det<0.3=体积限幅介入 <0.1=塌缩前兆 stretch>2.0=拉伸限幅 gated>0=门控停跟随(非塑性)",
+                 min_det, max_stretch_col, gated, n_active);
     spdlog::info("[MPM-Diag]   sample: E={:.1f} vol={:.3e} mass={:.3e} rho={:.1f} | "
                  "expect dv/substep = tau*gradw*dt/rho ≈ {:.3f}",
                  sample_E, sample_vol, sample_mass, sample_rho,
@@ -342,6 +364,30 @@ std::vector<glm::vec3> MPMManager::GetParticlePositions() const {
     }
 
     return positions;
+}
+
+std::optional<glm::vec3> MPMManager::GetParticlePositionGPU(uint32_t index) {
+    if (!initialized_ || num_particles_ == 0 || !particle_buffer_) {
+        return std::nullopt;
+    }
+    if (index >= num_particles_) {
+        return std::nullopt;
+    }
+
+    // 同步 staging 回读单粒子（176B）。endOneTimeCommandBuffer 内 queue.waitIdle()
+    // 保证读到上一帧已提交的 Step 结果（一帧滞后），供拖拽 P 控制器 cur_pick 使用。
+    // 修复 C3：旧路径 GetParticlePositions() 返回 cpu_particles_（init 后永不更新），
+    //         导致 cur_pick 恒为初始位置 → dragVel=(target-init)/dt 饱和在 CFL 上限，
+    //         batch 过冲不归位、home-spring 也因 disp 失真而无恢复力。
+    const VkDeviceSize offset =
+        static_cast<VkDeviceSize>(index) * static_cast<VkDeviceSize>(sizeof(ParticleData));
+    ParticleData p = particle_buffer_->readOne<ParticleData>(offset);
+
+    // NaN 防护（GPU 异常时 position 可能变 NaN，反馈进 P 控制器会污染整批）
+    if (std::isnan(p.position.x) || std::isnan(p.position.y) || std::isnan(p.position.z)) {
+        return std::nullopt;
+    }
+    return p.position;
 }
 
 void MPMManager::AutoSegmentRegion(const std::vector<glm::vec3>& all_positions) {
@@ -879,11 +925,11 @@ void MPMManager::CreatePipelines() {
                 .setDescriptorCount(1)
                 .setStageFlags(vk::ShaderStageFlagBits::eCompute),
         };
-        // HomeSpringParams: {float k; float dt; uint num; uint enable;} = 16 bytes
+        // HomeSpringParams: {float k; float dt; uint num; uint enable; float f_relax_alpha; uint pad} = 24 bytes
         vk::PushConstantRange pushConstantRange(
             vk::ShaderStageFlagBits::eCompute,
             0,
-            16
+            sizeof(HomeSpringParams)
         );
         home_spring_pipeline_ = CreateMPMPipeline(
             "apply_home_spring",

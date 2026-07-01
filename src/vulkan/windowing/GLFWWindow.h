@@ -7,6 +7,7 @@
 // 前向声明 GLFW 类型（避免在头文件中 include GLFW，防止 GLFW_INCLUDE_VULKAN 冲突）
 struct GLFWwindow;
 typedef void (*GLFWcursorposfun)(GLFWwindow*, double, double);
+typedef void (*GLFWscrollfun)(GLFWwindow*, double, double);
 
 class GLFWWindow final : public Window {
 public:
@@ -24,7 +25,9 @@ public:
 
     std::array<double, 2> getCursorPosition() override;
 
-    std::array<bool, 9> getKeys() override;
+    std::array<double, 2> getScrollOffset() override;
+
+    std::array<bool, 11> getKeys() override;
 
     void mouseCapture(bool capture) override;
 
@@ -63,6 +66,12 @@ private:
     double callbackCursorX_ = 0.0;  // 回调存储的光标 X
     double callbackCursorY_ = 0.0;  // 回调存储的光标 Y
     static void cursorPositionCallback(GLFWwindow* window, double x, double y);
+
+    // ── 滚轮回调（链式转发给 ImGui，避免吞掉其 wheel 事件）──
+    GLFWscrollfun prevScrollCallback_ = nullptr;  // ImGui 的滚轮回调
+    double scrollX_ = 0.0;  // 累积的滚轮水平偏移
+    double scrollY_ = 0.0;  // 累积的滚轮垂直偏移
+    static void scrollCallback(GLFWwindow* window, double xoffset, double yoffset);
 
     /**
      * 创建彩色光标

@@ -21,6 +21,7 @@
 #include "mpm/MPMInitializer.h"
 #include "mpm/MPMStructs.h"
 #include "mpm/MPMManager.h"
+#include "mpm/ScenePhysicsProfile.h"
 #include "interaction/RayCaster.h"
 #include "interaction/DragHandler.h"
 #include "coupling/CouplingManager.h"

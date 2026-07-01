@@ -21,7 +21,11 @@ public:
 
     virtual std::array<double, 2> getCursorPosition() { return {0, 0}; }
 
-    virtual std::array<bool, 9> getKeys() { return {false, false, false, false, false, false, false, false, false}; }
+    // 返回自上次调用以来累积的滚轮偏移量并清零（x: 水平, y: 垂直，通常只用到 y）
+    virtual std::array<double, 2> getScrollOffset() { return {0, 0}; }
+
+    // [0]=W [1]=A [2]=S [3]=D [4]=SPACE [5]=LSHIFT [6]=ESC [7]=F12 [8]=P [9]=Q [10]=E
+    virtual std::array<bool, 11> getKeys() { return {false, false, false, false, false, false, false, false, false, false, false}; }
 
     virtual void mouseCapture(bool capture) { }
 

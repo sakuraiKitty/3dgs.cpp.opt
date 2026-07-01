@@ -200,6 +200,12 @@ private:
     // ── CFL 限幅（由 Renderer 注入 MPM 网格参数）──
     bool  cfl_set_ = false;
     float cfl_max_velocity_ = 0.0f;  // |vel| 上限，使单子步位移 <= 0.5*dx
+
+    // ── 手势统计（OnMouseDown 重置，OnMouseUp 摘要日志）──
+    // 用于定位"大力拖拽拉断"：累积位移/帧数/CFL clamp 触发次数反映用户输入强度
+    uint32_t drag_frame_count_ = 0;     // 本次拖拽经历帧数
+    float    accumulated_disp_ = 0.0f;  // 累积 |target-cur_pick| 世界位移
+    uint32_t cfl_clamp_count_ = 0;      // |dragVel|>maxVel 被 CFL 限幅的帧数
 };
 
 } // namespace Interaction

@@ -3,18 +3,23 @@
 #include "mpm_structs.glsl"
 
 /**
- * 位置 home-spring（每子步，ZeroGrid 后、DragBC 前）
+ * 位置 home-spring + F 松弛（每子步，ZeroGrid 后、DragBC 前；仅 enable=1 即释放时派发）
  *
  * 目的：为刚体模态（整体平移/旋转）提供 FCR 无法给出的恢复力。
- *   FCR 客观材料对纯旋转零应力（τ=2μ(F−R)Fᵀ, F=R→τ=0），故花头被拖拽后
- *   绕花茎锚点刚体旋转、卡死不回弹（诊断 ratio=max|F−R|/max|F−I|≈0.057）。
- *   位置弹簧 F=-k(x-x0) 直接拉回初始位，专治该刚体模态；FCR 仍管局部变形。
+ *   FCR 客观材料对纯旋转零应力（τ=2μ(F−R)Fᵀ, F=R→τ=0），且 bulk 区域 F 均匀 →
+ *   τ 均匀 → partition-of-unity 净力=0 → 花头拖拽后刚体旋转卡死不回弹。
  *
- * 实现：粒子级速度冲量  v += -k*(x-x0)*dt
- *   - 冻结粒子跳过（freeze_flag!=0）
- *   - 在 DragBC 之前执行：拖拽中 DragBC 的 SET 覆盖被抓粒子速度 → 弹簧不影响被抓 batch；
- *     非抓取粒子保留弹簧冲量，P2G 经下方 barrier 可见。
- *   - 弱刚度 k≈15（周期 T=2π/√k≈1.6s），释放阻尼 0.95/帧使其 1-2 次振荡后归位。
+ * 两路恢复：
+ *   (1) 位置弹簧 v += -k*(x-x0)*dt —— 恢复刚体平移（拉回初始位）
+ *   (2) F 松弛 F += α*(I-F)         —— 直接退掉锁定的刚体旋转（FCR 恢复不了）
+ *   两者配合：位置回位 + F 退旋转 → 花头复原。F 松弛还顺带降低 (F−R)→降低 τ，
+ *   解除之前抵消 spring 的应力阻塞，让 spring 也能拉回位置。
+ *
+ * 实现：
+ *   - 冻结粒子跳过（freeze_flag!=0，其 F 由 pin_frozen 重置为 I）
+ *   - 仅释放时派发（Renderer 每帧设 enable=!dragging）：拖拽中让 DragBC 自由驱动，
+ *     无橡皮筋回拽；松手后才恢复。
+ *   - 弱刚度 k≈15（T≈1.6s），F 松弛 α≈5e-4/substep（substeps=128 时 ~1s 退完）。
  */
 layout(local_size_x = 256) in;
 
@@ -32,6 +37,8 @@ layout(push_constant) uniform SpringParams {
     float dt;             // offset 4  — 子步时间步长
     uint  num_particles;  // offset 8
     uint  enable;         // offset 12 — 0=禁用 1=启用
+    float f_relax_alpha;  // offset 16 — F 松弛系数（每子步 F += α(I−F)；0=关）
+    uint  _pad;           // offset 20
 } pc;
 
 void main() {
@@ -39,7 +46,14 @@ void main() {
     if (idx >= pc.num_particles || pc.enable == 0u) return;
     if (particles[idx].freeze_flag != 0u) return;  // 冻结粒子不动
 
+    // (1) 位置 home-spring 速度冲量：恢复刚体平移
     vec3 disp = particles[idx].position - init_pos[idx].xyz;
-    // 位置 home-spring 速度冲量
     particles[idx].velocity -= pc.k_spring * disp * pc.dt;
+
+    // (2) F 松弛：直接退掉锁定的刚体旋转（FCR 客观材料对纯旋转零应力无法恢复）
+    if (pc.f_relax_alpha > 0.0) {
+        mat3 F = particles[idx].deformation_gradient;
+        mat3 I = mat3(1.0);
+        particles[idx].deformation_gradient = F + (I - F) * pc.f_relax_alpha;
+    }
 }

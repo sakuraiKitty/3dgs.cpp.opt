@@ -89,6 +89,8 @@ void GLFWWindow::installCursorCallback() {
     // 保存 ImGui 的回调，并在其之上安装我们的回调
     // glfwSetCursorPosCallback 返回之前安装的回调（ImGui 的）
     prevCursorPosCallback_ = glfwSetCursorPosCallback(glfw_win, cursorPositionCallback);
+    // 同样在 ImGui 之上安装滚轮回调，链式转发给 ImGui（保留其 wheel 事件）
+    prevScrollCallback_ = glfwSetScrollCallback(glfw_win, scrollCallback);
     // 用 glfwGetCursorPos 初始化回调位置（仅用于首次初始化）
     double init_x, init_y;
     glfwGetCursorPos(glfw_win, &init_x, &init_y);
@@ -101,7 +103,27 @@ void GLFWWindow::installCursorCallback() {
                  prevCursorPosCallback_ ? "ImGui" : "null", init_x, init_y);
 }
 
-std::array<bool, 9> GLFWWindow::getKeys() {
+void GLFWWindow::scrollCallback(GLFWwindow* window, double xoffset, double yoffset) {
+    GLFWWindow* self = static_cast<GLFWWindow*>(glfwGetWindowUserPointer(window));
+    if (self) {
+        self->scrollX_ += xoffset;
+        self->scrollY_ += yoffset;
+    }
+    // 链式转发给 ImGui 的滚轮回调
+    if (self && self->prevScrollCallback_) {
+        self->prevScrollCallback_(window, xoffset, yoffset);
+    }
+}
+
+std::array<double, 2> GLFWWindow::getScrollOffset() {
+    // 返回自上次查询以来累积的偏移并清零（每帧调用一次）
+    auto offset = std::array<double, 2>{scrollX_, scrollY_};
+    scrollX_ = 0.0;
+    scrollY_ = 0.0;
+    return offset;
+}
+
+std::array<bool, 11> GLFWWindow::getKeys() {
     return {
         glfwGetKey(static_cast<GLFWwindow *>(window), GLFW_KEY_W) == GLFW_PRESS,
         glfwGetKey(static_cast<GLFWwindow *>(window), GLFW_KEY_A) == GLFW_PRESS,
@@ -111,7 +133,9 @@ std::array<bool, 9> GLFWWindow::getKeys() {
         glfwGetKey(static_cast<GLFWwindow *>(window), GLFW_KEY_LEFT_SHIFT) == GLFW_PRESS,
         glfwGetKey(static_cast<GLFWwindow *>(window), GLFW_KEY_ESCAPE) == GLFW_PRESS,
         glfwGetKey(static_cast<GLFWwindow *>(window), GLFW_KEY_F12) == GLFW_PRESS,
-        glfwGetKey(static_cast<GLFWwindow *>(window), GLFW_KEY_P) == GLFW_PRESS
+        glfwGetKey(static_cast<GLFWwindow *>(window), GLFW_KEY_P) == GLFW_PRESS,
+        glfwGetKey(static_cast<GLFWwindow *>(window), GLFW_KEY_Q) == GLFW_PRESS,
+        glfwGetKey(static_cast<GLFWwindow *>(window), GLFW_KEY_E) == GLFW_PRESS
     };
 }
 

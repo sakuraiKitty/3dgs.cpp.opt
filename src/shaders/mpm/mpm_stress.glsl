@@ -111,6 +111,8 @@ mat3 mat3_inverse(mat3 m) {
  * 极分解 R 精确 → 应力正确对齐能量梯度 → 真实恢复力。
  *
  * 迭代 R <- 0.5*(R + R^{-T})，对接近正交的 F（旋转主导）收敛极快（~3 步）。
+ * 大旋转/显著拉伸叠加时 5 次迭代不足以收敛 → (F-R) 含伪分量 → 恢复力偏离
+ * 能量梯度。提升到 12 次迭代覆盖花头大角度拖拽场景（PD 用 wp.svd3 精确解）。
  * F 近奇异（det≈0）时回退 Gram-Schmidt 避免奇异迭代。
  */
 mat3 extract_rotation_polar(mat3 F) {
@@ -118,7 +120,7 @@ mat3 extract_rotation_polar(mat3 F) {
         return extract_rotation_gram_schmidt(F);
     }
     mat3 R = F;
-    for (int i = 0; i < 5; i++) {
+    for (int i = 0; i < 12; i++) {  // P1: 5 → 12，覆盖大旋转收敛（对标 PD wp.svd3）
         mat3 R_inv = mat3_inverse(R);
         mat3 R_inv_T = mat3_transpose(R_inv);
         R = (R + R_inv_T) * 0.5;
@@ -176,9 +178,10 @@ mat3 compute_fcr_stress(mat3 F, float E, float nu) {
     // ── 对称化（与 PhysDreamer mpm_utils.py:665 完全一致）──
     // 非对称 Kirchhoff 应力配 ∇w 会做非保守功 → 持续注入能量 →
     // 拖拽后 max_vel 不衰减（0.03~1.39 振荡 2 分钟）、速度被放大 10 倍。
-    // 根因：本实现 R 用 Gram-Schmidt 近似（非真 SVD 极分解），大变形时
-    // (F-R)*F^T 产生非对称分量。对称化强制应力为弹性势能的真实梯度，
-    // 消除注入源。SVD R 下 (F-R)*F^T 本就对称，对称化是 no-op 安全网。
+    // R 用极分解 extract_rotation_polar（与 SVD 的 R=U·Vᵀ 等价，见上方函数），
+    // 大变形下 (F-R)*Fᵀ 仍可能含微小非对称分量（数值精度/迭代残差）。
+    // 对称化强制应力为弹性势能的真实梯度，消除注入源；
+    // 精确 R 下 (F-R)*Fᵀ 本就对称，对称化是 no-op 安全网。
     tau = (tau + mat3_transpose(tau)) * 0.5;
     return tau;
 }
