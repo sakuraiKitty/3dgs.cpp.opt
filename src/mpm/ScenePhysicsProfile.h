@@ -25,8 +25,10 @@ namespace MPM {
  *   - gravity：PhysDreamer 这四个场景 simulate_cfg 均未设重力
  *     （花/帽/电话由冻结边界支撑，处于静止平衡，变形只来自交互力），统一 {0,0,0}。
  *   - substeps（实时）：PhysDreamer gui_demo.py:532 默认 256，注释明言 "<128 会指数爆炸→NaN"。
- *     carnation 离线 768，实时取 256（gui_demo 默认值，稳定余量，CFL: sub_dt=(1/30)/256≈1.3e-4）。
- *       carnation : 256  (gui_demo 默认；原 128 低于稳定阈致 F 发散→刚体旋转锁死)
+ *     实时性能与稳定性折中：
+ *       carnation : 128  (Nsight 实测 256 时 memory-latency-bound 54.8%+GPU 94%满；折半子步
+ *                          减半 memory 流量/compute/dispatch。低于 PD 推荐 256，靠 strain gating
+ *                          + PinFrozen F 重置 + G2P NaN reset + 极分解 12 迭代 保稳)
  *       hat       :  64  (E 软 21×, 波速 c_p≈√(E/ρ) 低, 子步可更少)
  *       alocasia  : 128
  *       telephone :  64
@@ -46,7 +48,7 @@ struct ScenePhysicsProfile {
         : scene_name("default"),
           E(2140628.25f), nu(0.3f), density(2000.0f),
           downsample_scale(0.1f), grid_size(64),
-          substeps(256u), gravity(0.0f) {}
+          substeps(128u), gravity(0.0f) {}
 };
 
 /**
@@ -76,7 +78,7 @@ inline ScenePhysicsProfile GetScenePhysicsProfile(const std::string& scene_path)
         p.scene_name = "carnations";
         p.E = 2140628.25f; p.nu = 0.3f; p.density = 2000.0f;
         p.downsample_scale = 0.1f;  p.grid_size = 64;
-        p.substeps = 256u;          p.gravity = {0.0f, 0.0f, 0.0f};  // carnation: PD gui_demo 默认 256（<128 爆炸）
+        p.substeps = 128u;          p.gravity = {0.0f, 0.0f, 0.0f};  // carnation: 256→128 性能（靠 strain gating 保稳）
     } else if (key.find("hat") != std::string::npos) {
         p.scene_name = "hat";
         p.E = 1.0e5f;      p.nu = 0.3f; p.density = 2000.0f;

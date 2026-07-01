@@ -12,6 +12,11 @@ layout(std430, set = 0, binding = 0) buffer GridBuffer {
     GridNode nodes[];
 };
 
+// 冻结节点掩码（GridFreeze 融合进 GridUpdate：P2G 标记，GridUpdate 读，ZeroGrid 清）
+layout(std430, set = 0, binding = 1) buffer FreezeMask {
+    uint freeze_mask[];
+};
+
 layout(push_constant) uniform ZeroGridParams {
     uint grid_size;     // 每个维度的网格数 (如64)
     uint padding[3];
@@ -33,4 +38,7 @@ void main() {
     nodes[linear_idx].mass = 0.0;
     nodes[linear_idx].force = vec3(0.0);
     nodes[linear_idx].active_count = 0;
+
+    // 清空冻结掩码（供本子步 P2G 重新标记）
+    freeze_mask[linear_idx] = 0u;
 }

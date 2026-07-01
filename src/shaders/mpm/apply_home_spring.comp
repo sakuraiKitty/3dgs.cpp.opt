@@ -21,7 +21,7 @@
  *     无橡皮筋回拽；松手后才恢复。
  *   - 弱刚度 k≈15（T≈1.6s），F 松弛 α≈5e-4/substep（substeps=128 时 ~1s 退完）。
  */
-layout(local_size_x = 256) in;
+layout(local_size_x = 64) in;
 
 layout(std430, set = 0, binding = 0) buffer ParticleBuffer {
     ParticleData particles[];

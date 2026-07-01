@@ -235,6 +235,7 @@ private:
     void CreateInitialPosBuffer();
     void CreateGridBuffer();
     void CreateDisplacementBuffer();
+    void CreateFreezeMaskBuffer();   // 冻结节点掩码（GridFreeze 融合进 GridUpdate）
 
     /**
      * 创建Compute Pipeline和Descriptor Sets
@@ -304,6 +305,7 @@ private:
     std::shared_ptr<Buffer> initial_pos_buffer_;        // 粒子初始位置（用于GPU位移计算）
     std::shared_ptr<Buffer> particle_displacement_buffer_; // 粒子位移
     std::shared_ptr<Buffer> grid_buffer_;                // 网格节点
+    std::shared_ptr<Buffer> freeze_mask_buffer_;         // 冻结节点掩码（GridFreeze 融合进 GridUpdate）
     std::shared_ptr<Buffer> staging_buffer_;             // 用于下载结果
 
     // Compute pipelines

@@ -126,16 +126,16 @@ MPM 在归一化空间 [0,1] 仿真，渲染在世界空间。`CoordinateTransfo
 
 | 场景 | E [Pa] | ν | ρ | downsample | grid_size | substeps | gravity |
 |------|--------|-----|------|------------|-----------|----------|---------|
-| carnation | 2.14e6 | 0.3 | 2000 | 0.10 | 64 | **256** | 0 |
+| carnation | 2.14e6 | 0.3 | 2000 | 0.10 | 64 | **128** | 0 |
 | hat | 1.0e5 | 0.3 | 2000 | 0.04 | 64 | 64 | 0 |
 | alocasia | 1.0e6 | 0.3 | 2000 | 0.10 | 64 | 128 | 0 |
 | telephone | 1.0e5 | 0.3 | 2000 | 0.10 | 64 | 64 | 0 |
-| default(未知) | 2.14e6 | 0.3 | 2000 | 0.10 | 64 | 256 | 0 |
+| default(未知) | 2.14e6 | 0.3 | 2000 | 0.10 | 64 | 128 | 0 |
 
 ```cpp
 grid_size   = 64;            // 64³ 网格
 dt          = 1.0f / 30.0f;  // 帧时间步长
-substeps    = profile.substeps;   // carnation=256 → sub_dt = dt/256 ≈ 1.3e-4 s
+substeps    = profile.substeps;   // carnation=128 → sub_dt = dt/128 ≈ 2.6e-4 s
 gravity     = {0, 0, 0};     // 四场景均无重力（PD simulate_cfg 无 gravity 字段）
 damping     = 1.0（拖拽中）/ 0.95^(1/substeps)（释放后，对标 PD release_damping）
 E/nu/rho    = profile.*;     // 按场景
@@ -144,22 +144,26 @@ f_relax     = 0;             // 关闭 F 松弛，保留 FCR 弹性耦合
 CFL(cfl)    = 0.02;          // 拖拽速度兜底限幅（见 §6.4）
 ```
 
-> **substeps 256 的由来**：PhysDreamer `gui_demo.py:532` 默认 256，注释明言「<128 指数爆炸→NaN」。carnation 早期用 128 时 F 发散→刚体旋转锁死；提到 256 后局部拖拽产生 F≠R，FCR 即可恢复（PD 作者自述）。代价：MPM 单帧 dispatch 数翻倍，是当前 ~16 FPS 的主因（见 §9）。
+> **substeps 128 的由来**：PhysDreamer `gui_demo.py:532` 默认 256（注释明言「<128 指数爆炸→NaN」）。Nsight 实测 256 子步时 GPU memory-latency-bound（54.8% warp 卡 L2 延迟，SM 吞吐仅 7.7%），帧时间 ~62ms（16 FPS）。折半到 128：memory 流量/compute/dispatch/barrier 全减半 → ~28 FPS。低于 PD 推荐 256，靠 strain gating（deform>1.5 停驱）+ PinFrozen F 重置 + G2P NaN reset + 极分解 12 迭代 保稳（已验证拖拽稳定）。grid CFL 随 sub_dt 翻倍自动收紧（max_v 减半）反而更防 F 过冲。
 
 ### 4.2 子步循环（每 substep 执行一次）
 
 ```
-1.  ZeroGrid       — 清零网格节点 mass/velocity/force/active
+1.  ZeroGrid       — 清零网格节点 mass/velocity/force/active + freeze_mask
 1a. HomeSpring     — 【已关闭】enable=0，dispatch 整体跳过（见 §4.8）
 1b. DragBC         — 拖拽中：SET 半径内非冻结粒子速度 + 应变门控衰减   【仅 isDragging】
-2.  P2G            — 粒子→网格（质量/动量/力 + APIC C + inline FCR 应力）
-3.  GridUpdate     — 网格速度更新（重力 + 阻尼 + CFL 限幅）
-4.  GridFreeze     — 冻结粒子所在网格节点速度归零
-5.  G2P            — 网格→粒子（APIC 速度 + C 矩阵 + F 更新，仅 NaN/inf reset）
-6.  PinFrozen      — 冻结粒子硬钉回初始位 + v=0 + F=I + C=0
+2.  P2G            — 粒子→网格（质量/动量/力 + APIC C + inline FCR 应力 + 标记 freeze_mask）
+3.  GridUpdate     — 网格速度更新（重力 + 阻尼 + CFL 限幅）+ 内联冻结节点零化（原 GridFreeze 融合）
+4.  G2P            — 网格→粒子（APIC v/C/F 更新，单循环融合 + NaN reset）+ 内联 PinFrozen（F=I/C=0）
 ```
 
-每阶段后插 `VkMemoryBarrier`（SHADER_WRITE→READ）保证可见性。carnation 单帧 = 6 阶段 × 256 子步 = **1536 次 dispatch**（idle，HomeSpring 跳过）；拖拽时 +DragBC = 7×256 = **1792 次**。
+每阶段后插 `VkMemoryBarrier`（SHADER_WRITE→READ）。carnation 单帧 = 4 阶段 × 128 子步 = **512 次 dispatch**（idle，HomeSpring 跳过）；拖拽时 +DragBC = 5×128 = **640 次**。
+
+**已完成的性能融合**（数值位一致，纯调度重组）：
+- **PinFrozen → G2P**：冻结粒子硬钉（init/0/I/0）合并进 G2P 末尾，省 1 dispatch/子步
+- **GridFreeze → GridUpdate**：P2G 标记 `freeze_mask`（冻结粒子 floor 节点），GridUpdate 内联零化，省 1 dispatch + 1 barrier/子步
+- **G2P 三循环 → 一循环**：原 `interpolate_velocity`+`compute_velocity_gradient`+C_new 三次 27 节点遍历融合为一次（grid 读 81→27 次/粒子，3× 减访存）
+- **粒子 shader local_size 256→64**：53 wg→213 wg，填满 96 SM（占用率翻倍，SM-idle 40→20%）
 
 ### 4.3 P2G（Particle to Grid）
 
@@ -406,14 +410,28 @@ v *= gate;
 
 ## 9. 性能基准
 
-| 场景 | 高斯数 | 粒子数 | substeps | FPS (RTX 4090) |
+| 场景 | 高斯数 | 粒子数 | substeps | FPS (RTX 4090 Laptop) |
 |------|--------|--------|----------|----------------|
-| carnations | 1,037,279 | 13,356 | 256 | ~16（物理开）/ ~105（物理关）|
-| hat | — | — | 64 | 预期更高（子步少 4×）|
+| carnations | 1,037,279 | 13,356 | 128 | **~28**（物理开）/ ~105（物理关）|
+| hat | — | — | 64 | 预期更高（子步少 2×）|
 
-**开销分布**：MPM 单帧 256 子步 × 6 阶段 = **1536 次 compute dispatch**（idle，HomeSpring 跳过）/ 1792 次（拖拽 +DragBC），是帧时间主开销（~50ms）。每阶段后 `VkMemoryBarrier` 全局可见性栅栏 7 道/子步 × 256 = 1792 道屏障，串行化 compute queue，是次开销。耦合 + 渲染 ~10ms。诊断每 60 帧 2.3MB 回读（~1ms）；拖拽中每帧单粒子 staging 回读（~1ms，`queue.waitIdle` 阻塞）。
+**Nsight GPU Trace 实测**（carnation，优化前后对比）：
 
-> **16 FPS 主因**：substeps 128→256 翻倍（为保证 FCR 收敛/恢复正确性）。优化方向见 §12。
+| 指标 | 256 子步基线 | 128 子步当前 | 解读 |
+|------|-------------|-------------|------|
+| 帧时间(traced) | 132.6ms | ~60ms | -55% |
+| `sm__throughput` | 7.7% | — | SM 算力低（非算力 bound）|
+| `warps_inactive_sm_active` | 35.7%→54.8% | — | **memory-latency 主瓶颈** |
+| `warps_inactive_sm_idle` | 40.2%→20% | — | SM 空闲（优化减半）|
+| `dramc__throughput` | 1.75% | — | 非带宽 bound |
+| `gr__compute_cycles_active` | 94% | — | GPU 满载，非 CPU bound |
+| `l1tex hit rate` | 43.9%→38% | — | L1 miss 多，走 L2 |
+
+**瓶颈定位**：memory-latency-bound（54.8% warp 卡 L2 延迟，L1 hit 38%）+ launch-bound（13568 粒子=424 warps 填不满 96 SM×64 warps）。非算力、非带宽、非 CPU。
+
+**已落地优化**（详见 §4.2/§12）：PinFrozen→G2P 融合、local_size 256→64、GridFreeze→GridUpdate 融合、G2P 三循环→一循环、**substeps 256→128**（算法，16→28 FPS）。
+
+**剩余天花板**：128 子步下 ~28 FPS。冲 60 FPS 需 P2G shared-memory tiling（见 §12.2）。
 
 ---
 
@@ -459,7 +477,7 @@ C:/VulkanSDK/1.4.350.0/Bin/glslangValidator.exe -V -Isrc/shaders/mpm \
 | 位置反馈 dragVel | `gui_demo.py:340` | grab_v=(target−cur)/dt |
 | grab_radius=AABB·0.02 | `gui_demo.py:186` | 2% 局部抓取 |
 | 释放阻尼 0.95/帧 | `gui_demo.py:288` | release_damping |
-| **home-spring / F 松弛** | （无） | 本 demo 曾用，现已**关闭**（§4.8）；改靠 substeps=256 + 2% 抓取对齐 PD |
+| **home-spring / F 松弛** | （无） | 本 demo 曾用，现已**关闭**（§4.8）；改靠 substeps=128 + 2% 抓取对齐 PD |
 | **ScenePhysicsProfile** | `configs/<scene>.py` | 按场景 E/substeps/downsample |
 | **DragBC 应变门控** | （无，PD 靠 CFL） | 本 demo 独有，防累积应变拉断（§6.3）|
 | **PinFrozen 重置 F=I/C=0** | `gui_demo.py:317-318`（PD 只钉 x/v） | 本 demo 补丁：薄冻结壳需显式重置（§4.7）|
@@ -469,9 +487,44 @@ C:/VulkanSDK/1.4.350.0/Bin/glslangValidator.exe -V -Isrc/shaders/mpm \
 
 ---
 
-## 12. 帧率优化方向（不改算法逻辑）
+## 12. 帧率优化记录与方向
 
-当前 carnation ~16 FPS，主因是 256 子步 × 6 阶段 = 1536 dispatch + 1792 道全局屏障。以下方向**不改变 MPM 算法/数值**（子步数、kernel、应力公式、门控阈值均不动），只优化调度与同步：
+> **当前状态**：carnation ~28 FPS（substeps=128）。前 4 次非算法优化累计 ~8.7% traced 增益，第 5 次 substeps 256→128（算法）贡献 16→28（+75%）。详见 §12.1 记录。下一步 P2G shared-mem tiling（§12.2）冲 60 FPS。
+
+### 12.1 已完成优化（Nsight 验证）
+
+| # | 优化 | 类型 | 单独效果 | 累计 FPS |
+|---|------|------|---------|----------|
+| 1 | PinFrozen 融合进 G2P | 调度融合（0 barrier） | 0（PinFrozen trivial）| 16 |
+| 2 | local_size_x 256→64 | 占用率 | SM-idle 40→20%，吞吐未涨 | ~16.8 |
+| 3 | GridFreeze 融合进 GridUpdate（freeze_mask） | 调度融合（-1 真实 barrier） | <1 | ~17 |
+| 4 | G2P 三循环→一循环（81→27 grid 读） | 访存减 | traced 127→121ms（-5%）| ~17.5 |
+| 5 | **substeps 256→128** | **算法** | **全部减半** | **~28** |
+
+**Nsight 数据驱动教训**：前 4 次非算法优化仅 ~8.7%——真实瓶颈是 memory-latency（54.8% warp 卡 L2）+ 低粒子数 launch-bound，**非 dispatch/barrier 数**。寄存器压力假设证伪（regs 31→31.7）。ALU 非瓶颈（sm 7.7%）→ R 缓存方向错。GPU 94% 活跃 → CPU 回读非瓶颈。唯一有效杠杆：减 memory 流量。
+
+### 12.2 下一步：P2G shared-memory tiling（目标 60 FPS）
+
+**动机**：P2G 每粒子 27 节点 × ~8 atomicAdd = 216 atomic/粒子。`atomicAdd(float)` 到 L2 串行化，是 memory-latency 主源。同 workgroup 粒子若空间共址，可共享 grid 节点→局部累加→每节点 1 atomic。
+
+**方案**：
+1. 粒子按网格胞排序（init 时一次性，或每帧 radix sort by cell hash）
+2. P2G workgroup 处理空间连续粒子块：load 本块涉及 grid 节点到 shared memory（一次），各粒子读 shared 累加（无 atomic），末尾每节点 1 atomic 写回
+3. atomic 数 216/粒子 → ~1/节点/wg，大幅减 L2 串行
+
+**预期**：P2G atomic 延迟减 10×+ → memory-stall 54.8% 大降 → 28→40+ FPS。配合 G2P 同方案可达 60。
+
+**风险**：粒子空间排序需新管线；shared mem bank conflict 需 padding；跨块边界节点 double-counting。
+
+### 12.3 已排除方向（数据证伪，勿重试）
+- ❌ 减 dispatch 数（PinFrozen 融合 0 增益）
+- ❌ 减 barrier（GridFreeze 融合 <1 增益）
+- ❌ 占用率 local_size（SM-idle 降但吞吐不涨，warps 总数受限粒子数）
+- ❌ CPU 回读/preprocessFence（GPU 94% 活跃，非 CPU bound）
+- ❌ P2G 极分解 R 缓存（ALU 非瓶颈）
+- ❌ ZeroGrid 稀疏化（ZeroGrid 是少数高占用 dispatch，稀疏反降填充）
+
+### 12.4 历史方向（12.1-12.7 旧版，已被 §12.1-12.3 取代，保留供参考）
 
 ### 12.1 屏障合并（最高收益，零算法风险）
 每个子步插 7 道 `VkMemoryBarrier(SHADER_WRITE→READ)`，全局屏障强制整个 compute queue flush 缓存。可优化：
@@ -522,4 +575,4 @@ ZeroGrid 和 GridUpdate 每子步全量扫 64³=262144 节点，但 carnation �
 
 ---
 
-*文档基于 phys-sim 分支 2026-07-01 状态（home-spring 已关闭，纯 FCR 恢复，substeps=256，ScenePhysicsProfile 按场景配置）。算法细节随开发推进更新。*
+*文档基于 phys-sim 分支 2026-07-01 状态（home-spring 关闭，纯 FCR 恢复，substeps=128，ScenePhysicsProfile 按场景；Nsight 实测 ~28 FPS，下一步 P2G shared-mem tiling 冲 60）。算法细节随开发推进更新。*

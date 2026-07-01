@@ -18,7 +18,7 @@
  *
  * 流程位置：G2P 之后（每子步末尾）。
  */
-layout(local_size_x = 256) in;
+layout(local_size_x = 64) in;
 
 layout(std430, set = 0, binding = 0) buffer ParticleBuffer {
     ParticleData particles[];

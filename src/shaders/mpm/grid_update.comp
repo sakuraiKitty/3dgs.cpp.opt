@@ -12,6 +12,11 @@ layout(std430, set = 0, binding = 0) buffer GridBuffer {
     GridNode nodes[];
 };
 
+// 冻结节点掩码（GridFreeze 融合：P2G 标记的冻结节点，此处零化其速度）
+layout(std430, set = 0, binding = 1) readonly buffer FreezeMask {
+    uint freeze_mask[];
+};
+
 layout(push_constant) uniform GridUpdateParams {
     uint grid_size;     // offset 0  - 网格分辨率
     float gravity_x;    // offset 4  - 重力x分量 [m/s^2]
@@ -55,6 +60,13 @@ void main() {
             if (speed > max_velocity && speed > 1e-12) {
                 velocity *= max_velocity / speed;
             }
+        }
+
+        // ── 冻结节点零化（GridFreeze 融合，原 grid_freeze.comp 语义）──
+        // P2G 已为冻结粒子的 floor(grid_pos) 节点置 mask；此处零化该节点速度，
+        // 与原独立 GridFreeze dispatch 数值一致（enforce_grid_velocity_by_mask）。
+        if (freeze_mask[linear_idx] != 0u) {
+            velocity = vec3(0.0);
         }
 
         nodes[linear_idx].velocity = velocity;

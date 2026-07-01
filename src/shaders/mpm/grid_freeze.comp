@@ -22,7 +22,7 @@
  *
  * 流程: Zero Grid → P2G → Grid Update → Grid Freeze → G2P
  */
-layout(local_size_x = 256) in;
+layout(local_size_x = 64) in;
 
 layout(std430, set = 0, binding = 0) readonly buffer ParticleBuffer {
     ParticleData particles[];

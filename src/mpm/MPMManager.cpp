@@ -485,10 +485,35 @@ void MPMManager::CreateGridBuffer() {
 
     spdlog::debug("[MPMManager] Grid buffer created: {} MB", buffer_size / 1024 / 1024);
 
+    // 冻结掩码缓冲区（GridFreeze 融合：P2G 标记/ZeroGrid 清/GridUpdate 读）
+    CreateFreezeMaskBuffer();
+
     // 如果所有缓冲区都已创建，则绑定到 descriptor sets
     if (particle_buffer_ && grid_buffer_ && initial_pos_buffer_ && !descriptor_sets_built_) {
         BuildDescriptorSets();
     }
+}
+
+void MPMManager::CreateFreezeMaskBuffer() {
+    // 每个网格节点 1 个 uint32（grid_size³）。P2G atomicOr 标记冻结粒子的 floor 节点，
+    // GridUpdate 读后零化其速度，ZeroGrid 每子步清零。替代原独立 GridFreeze dispatch。
+    size_t buffer_size = grid_total_nodes_ * sizeof(uint32_t);
+
+    vk::BufferUsageFlags usageFlags =
+        vk::BufferUsageFlagBits::eStorageBuffer |
+        vk::BufferUsageFlagBits::eTransferDst |
+        vk::BufferUsageFlagBits::eTransferSrc;
+
+    freeze_mask_buffer_ = std::make_shared<Buffer>(
+        context_,
+        static_cast<uint32_t>(buffer_size),
+        usageFlags,
+        VMA_MEMORY_USAGE_GPU_ONLY,
+        static_cast<VmaAllocationCreateFlags>(0)
+    );
+
+    spdlog::debug("[MPMManager] Freeze mask buffer created: {} KB ({} nodes)",
+                 buffer_size / 1024, grid_total_nodes_);
 }
 
 void MPMManager::CreateDisplacementBuffer() {
@@ -557,6 +582,14 @@ void MPMManager::BuildDescriptorSets() {
         grid_buffer_
     );
 
+    // binding 2: FreezeMask（P2G 写——冻结粒子标 floor 节点）
+    particle_grid_descriptor_->bindBufferToDescriptorSet(
+        2,
+        vk::DescriptorType::eStorageBuffer,
+        vk::ShaderStageFlagBits::eCompute,
+        freeze_mask_buffer_
+    );
+
     particle_grid_descriptor_->build();
 
     // Bind grid to grid_only_descriptor_
@@ -565,6 +598,14 @@ void MPMManager::BuildDescriptorSets() {
         vk::DescriptorType::eStorageBuffer,
         vk::ShaderStageFlagBits::eCompute,
         grid_buffer_
+    );
+
+    // binding 1: FreezeMask（ZeroGrid 写清零，GridUpdate 读零化）
+    grid_only_descriptor_->bindBufferToDescriptorSet(
+        1,
+        vk::DescriptorType::eStorageBuffer,
+        vk::ShaderStageFlagBits::eCompute,
+        freeze_mask_buffer_
     );
 
     grid_only_descriptor_->build();
@@ -583,6 +624,13 @@ void MPMManager::BuildDescriptorSets() {
         vk::DescriptorType::eStorageBuffer,
         vk::ShaderStageFlagBits::eCompute,
         particle_buffer_
+    );
+
+    g2p_descriptor_->bindBufferToDescriptorSet(
+        2, // binding 2: InitPos (readonly vec4[]) — PinFrozen 合并进 G2P 末尾
+        vk::DescriptorType::eStorageBuffer,
+        vk::ShaderStageFlagBits::eCompute,
+        initial_pos_buffer_
     );
 
     g2p_descriptor_->build();
@@ -704,6 +752,12 @@ void MPMManager::CreatePipelines() {
                 .setBinding(0)
                 .setDescriptorType(vk::DescriptorType::eStorageBuffer)
                 .setDescriptorCount(1)
+                .setStageFlags(vk::ShaderStageFlagBits::eCompute),
+            // binding 1: FreezeMask（清零）
+            vk::DescriptorSetLayoutBinding()
+                .setBinding(1)
+                .setDescriptorType(vk::DescriptorType::eStorageBuffer)
+                .setDescriptorCount(1)
                 .setStageFlags(vk::ShaderStageFlagBits::eCompute)
         };
 
@@ -738,6 +792,12 @@ void MPMManager::CreatePipelines() {
                 .setBinding(1)
                 .setDescriptorType(vk::DescriptorType::eStorageBuffer)
                 .setDescriptorCount(1)
+                .setStageFlags(vk::ShaderStageFlagBits::eCompute),
+            // binding 2: FreezeMask（冻结粒子标 floor 节点）
+            vk::DescriptorSetLayoutBinding()
+                .setBinding(2)
+                .setDescriptorType(vk::DescriptorType::eStorageBuffer)
+                .setDescriptorCount(1)
                 .setStageFlags(vk::ShaderStageFlagBits::eCompute)
         };
 
@@ -763,6 +823,12 @@ void MPMManager::CreatePipelines() {
             // binding 0: GridBuffer
             vk::DescriptorSetLayoutBinding()
                 .setBinding(0)
+                .setDescriptorType(vk::DescriptorType::eStorageBuffer)
+                .setDescriptorCount(1)
+                .setStageFlags(vk::ShaderStageFlagBits::eCompute),
+            // binding 1: FreezeMask（读——零化冻结节点速度，GridFreeze 融合）
+            vk::DescriptorSetLayoutBinding()
+                .setBinding(1)
                 .setDescriptorType(vk::DescriptorType::eStorageBuffer)
                 .setDescriptorCount(1)
                 .setStageFlags(vk::ShaderStageFlagBits::eCompute)
@@ -819,7 +885,7 @@ void MPMManager::CreatePipelines() {
         grid_freeze_pipeline_->addDescriptorSet(0, particle_grid_descriptor_);
     }
 
-    // 5. G2P Pipeline
+    // 5. G2P Pipeline（PinFrozen 已合并进 G2P 末尾，省 1 dispatch/子步）
     {
         std::vector<vk::DescriptorSetLayoutBinding> bindings = {
             // binding 0: GridBuffer (readonly)
@@ -831,6 +897,12 @@ void MPMManager::CreatePipelines() {
             // binding 1: ParticleBuffer
             vk::DescriptorSetLayoutBinding()
                 .setBinding(1)
+                .setDescriptorType(vk::DescriptorType::eStorageBuffer)
+                .setDescriptorCount(1)
+                .setStageFlags(vk::ShaderStageFlagBits::eCompute),
+            // binding 2: InitPos (readonly vec4[]) — PinFrozen 合并进 G2P 末尾所需
+            vk::DescriptorSetLayoutBinding()
+                .setBinding(2)
                 .setDescriptorType(vk::DescriptorType::eStorageBuffer)
                 .setDescriptorCount(1)
                 .setStageFlags(vk::ShaderStageFlagBits::eCompute)
@@ -980,7 +1052,7 @@ void MPMManager::Substep(VkCommandBuffer cmd, float dt) {
         home_spring_pipeline_->bind(cmd, 0, Pipeline::DescriptorOption(0));
         vkCmdPushConstants(cmd, home_spring_pipeline_->pipelineLayout.get(),
                            VK_SHADER_STAGE_COMPUTE_BIT, 0, sizeof(home_spring_), &home_spring_);
-        uint32_t pgroups = (num_particles_ + 255) / 256;
+        uint32_t pgroups = (num_particles_ + 63) / 64;  // local_size_x=64：53wg→213wg 填满 96 SM（占用率优化）
         vkCmdDispatch(cmd, pgroups, 1, 1);
     }
 
@@ -992,7 +1064,7 @@ void MPMManager::Substep(VkCommandBuffer cmd, float dt) {
         drag_bc_pipeline_->bind(cmd, 0, Pipeline::DescriptorOption(0));
         vkCmdPushConstants(cmd, drag_bc_pipeline_->pipelineLayout.get(),
                            VK_SHADER_STAGE_COMPUTE_BIT, 0, sizeof(drag_bc_), &drag_bc_);
-        uint32_t pgroups = (num_particles_ + 255) / 256;
+        uint32_t pgroups = (num_particles_ + 63) / 64;  // local_size_x=64：53wg→213wg 填满 96 SM（占用率优化）
         vkCmdDispatch(cmd, pgroups, 1, 1);
     }
 
@@ -1023,7 +1095,7 @@ void MPMManager::Substep(VkCommandBuffer cmd, float dt) {
         vkCmdPushConstants(cmd, p2g_pipeline_->pipelineLayout.get(),
                           VK_SHADER_STAGE_COMPUTE_BIT, 0, sizeof(params), &params);
 
-        uint32_t groups = (num_particles_ + 255) / 256;
+        uint32_t groups = (num_particles_ + 63) / 64;  // local_size_x=64：53wg→213wg 填满 96 SM（占用率优化）
         vkCmdDispatch(cmd, groups, 1, 1);
     }
 
@@ -1074,39 +1146,11 @@ void MPMManager::Substep(VkCommandBuffer cmd, float dt) {
         vkCmdDispatch(cmd, groups, groups, groups);
     }
 
-    // Memory barrier: Grid write -> Read, Particle write -> Read
-    {
-        VkMemoryBarrier barrier = {VK_STRUCTURE_TYPE_MEMORY_BARRIER};
-        barrier.srcAccessMask = VK_ACCESS_SHADER_WRITE_BIT;
-        barrier.dstAccessMask = VK_ACCESS_SHADER_READ_BIT;
-        vkCmdPipelineBarrier(cmd,
-                           VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT,
-                           VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT,
-                           0, 1, &barrier, 0, nullptr, 0, nullptr);
-    }
+    // 4. Grid Freeze 已融合进 GridUpdate（P2G 标记 freeze_mask → GridUpdate 内零化冻结节点速度）。
+    //    原独立 dispatch + barrier C(GridUpdate→GridFreeze) 省掉；数值一致（单节点 floor 语义）。
+    //    下方 barrier 同步 GridUpdate 的 grid.velocity/freeze_mask 写 → G2P 读。
 
-    // 4. Grid Freeze（冻结区域速度归零 — 对应 PhysDreamer apply_grid_bc_w_freeze_pts）
-    {
-        struct GridFreezeParams {
-            uint32_t num_particles;    // offset 0
-            float inv_dx;              // offset 4
-            uint32_t grid_size;        // offset 8
-            uint32_t padding;          // offset 12
-        };
-        static_assert(sizeof(GridFreezeParams) == 16,
-            "GridFreezeParams must match GLSL push constant layout of 16 bytes");
-        GridFreezeParams params{num_particles_, config_.inv_dx, config_.grid_size};
-
-        vkCmdBindPipeline(cmd, VK_PIPELINE_BIND_POINT_COMPUTE, grid_freeze_pipeline_->pipeline.get());
-        grid_freeze_pipeline_->bind(cmd, 0, Pipeline::DescriptorOption(0));
-        vkCmdPushConstants(cmd, grid_freeze_pipeline_->pipelineLayout.get(),
-                          VK_SHADER_STAGE_COMPUTE_BIT, 0, sizeof(params), &params);
-
-        uint32_t groups = (num_particles_ + 255) / 256;
-        vkCmdDispatch(cmd, groups, 1, 1);
-    }
-
-    // Memory barrier: Grid write (freeze) -> Read (G2P)
+    // Memory barrier: Grid write (update + freeze-zero) -> Read (G2P)
     {
         VkMemoryBarrier barrier = {VK_STRUCTURE_TYPE_MEMORY_BARRIER};
         barrier.srcAccessMask = VK_ACCESS_SHADER_WRITE_BIT;
@@ -1133,28 +1177,13 @@ void MPMManager::Substep(VkCommandBuffer cmd, float dt) {
         vkCmdPushConstants(cmd, g2p_pipeline_->pipelineLayout.get(),
                           VK_SHADER_STAGE_COMPUTE_BIT, 0, sizeof(params), &params);
 
-        uint32_t groups = (num_particles_ + 255) / 256;
+        uint32_t groups = (num_particles_ + 63) / 64;  // local_size_x=64：53wg→213wg 填满 96 SM（占用率优化）
         vkCmdDispatch(cmd, groups, 1, 1);
     }
 
-    // 6. Pin Frozen（每子步粒子级硬冻结，对标 PhysDreamer gui_demo.py:313-318）
-    // G2P 更新了所有粒子位置（含冻结粒子的漂移）；此处把冻结粒子硬钉回初始位+速度清零，
-    // 形成刚性锚点，使花头弯曲连贯可恢复。写 particle.position/velocity，由下方 barrier 覆盖。
-    {
-        struct PinParams {
-            uint32_t num_particles;
-            uint32_t padding[3];
-        };
-        PinParams params{num_particles_};
-
-        vkCmdBindPipeline(cmd, VK_PIPELINE_BIND_POINT_COMPUTE, pin_frozen_pipeline_->pipeline.get());
-        pin_frozen_pipeline_->bind(cmd, 0, Pipeline::DescriptorOption(0));
-        vkCmdPushConstants(cmd, pin_frozen_pipeline_->pipelineLayout.get(),
-                           VK_SHADER_STAGE_COMPUTE_BIT, 0, sizeof(params), &params);
-
-        uint32_t groups = (num_particles_ + 255) / 256;
-        vkCmdDispatch(cmd, groups, 1, 1);
-    }
+    // 6. PinFrozen 已合并进 G2P shader 末尾（冻结粒子硬钉 init/0/I/0）。
+    //    原独立 dispatch + 跨 dispatch 写后写排序省掉；G2P 单线程内顺序覆写，数值一致。
+    //    下方 barrier 仍需保留：保证本子步 G2P 写 particle 对下一子步 P2G/HomeSpring/DragBC 可见。
 
     // Memory barrier: Particle write -> Read (next substep, after G2P step 5)
     {

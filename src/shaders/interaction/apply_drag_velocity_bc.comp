@@ -16,7 +16,7 @@
  * Push constant (48 bytes, 与 DragPushConstants 布局一致):
  *   vec3 center; float radius; vec3 velocity; float alpha; int isDragging; float maxVelocity; int pad[2]
  */
-layout(local_size_x = 256) in;
+layout(local_size_x = 64) in;
 
 layout(std430, set = 0, binding = 0) buffer ParticleBuffer {
     ParticleData particles[];

@@ -17,7 +17,7 @@
  *
  * 对应: mpm_utils.py p2g_apic_with_stress() 第359行
  */
-layout(local_size_x = 256) in;
+layout(local_size_x = 64) in;
 
 // 输入：粒子数据
 layout(std430, set = 0, binding = 0) readonly buffer ParticleBuffer {
@@ -27,6 +27,11 @@ layout(std430, set = 0, binding = 0) readonly buffer ParticleBuffer {
 // 输出：网格节点
 layout(std430, set = 0, binding = 1) buffer GridBuffer {
     GridNode nodes[];
+};
+
+// 冻结节点掩码（GridFreeze 融合：冻结粒子标 floor 节点，GridUpdate 零化其速度）
+layout(std430, set = 0, binding = 2) buffer FreezeMask {
+    uint freeze_mask[];
 };
 
 // Uniform 参数
@@ -66,6 +71,19 @@ void main() {
     // 计算 3x3x3 B 样条权重和梯度
     BSplineWeights weights;
     compute_bspine_weights_3x3x3(fx, weights);
+
+    // ── 冻结节点掩码标记（GridFreeze 融合，原 grid_freeze.comp 单节点语义）──
+    // 冻结粒子标记其 floor(grid_pos) 单节点（非 27 节点，避免 3³ 刚性墙切断应力），
+    // 供后续 GridUpdate 直接零化该节点速度。用 floor(grid_pos) 与原 GridFreeze 一致
+    // （非 base_node=floor(grid_pos-0.5)，二者语义不同）。
+    if (p.freeze_flag != 0u) {
+        ivec3 fn = ivec3(floor(grid_pos));
+        if (all(greaterThanEqual(fn, ivec3(0))) &&
+            all(lessThan(fn, ivec3(int(grid_size))))) {
+            uint fidx = uint(fn.x) + uint(fn.y) * grid_size + uint(fn.z) * grid_size * grid_size;
+            atomicOr(freeze_mask[fidx], 1u);
+        }
+    }
 
     // 对 3x3x3 邻居节点进行传递
     for (int i = 0; i < 3; i++) {
