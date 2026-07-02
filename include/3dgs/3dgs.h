@@ -21,6 +21,9 @@ public:
         float far = 1000.0f;
         bool enableGui = false;
 
+        // MPM 物理仿真子步数（命令行 --substeps 覆盖，默认 256 = PhysDreamer 最小稳定值）
+        uint32_t substeps = 256;
+
         // Benchmark模式配置
         bool benchmarkMode = false;           // 启用benchmark模式
         int benchmarkFrames = 300;            // benchmark运行帧数

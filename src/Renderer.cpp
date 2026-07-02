@@ -314,8 +314,9 @@ void Renderer::loadSceneToGPU() {
                         mpm_config.grid_spacing = 1.0f / static_cast<float>(profile.grid_size);
                         mpm_config.inv_dx = static_cast<float>(profile.grid_size);
                         mpm_config.dt = 1.0f / 30.0f;
-                        mpm_config.substeps = profile.substeps;   // 按场景：carnation128 / hat64 / alocasia128 / telephone64
-                                                                  // 实时折中=离线/6；CFL: sub_dt=(1/30)/substeps < dx/c_p
+                        mpm_config.substeps = configuration.substeps;   // 命令行 --substeps 覆盖（默认 256 = PhysDreamer 最小稳定值）
+                                                                          // 原按场景 profile.substeps (carnation128/hat64/alocasia128/telephone64)
+                                                                          // 实时折中=离线/6；CFL: sub_dt=(1/30)/substeps < dx/c_p
                         mpm_config.damping = 1.0f;      // 初始值；运行时由 P1 释放阻尼覆盖（见 handlePhysicsInteraction Step 前）
                                                       // 拖拽中=1.0(无阻尼纯跟随)，非拖拽=0.95^(1/substeps)/子步(衰减振荡)。
                                                       // 对标 PhysDreamer gui_demo.py:156,288 release_damping=0.95/帧。

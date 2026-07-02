@@ -25,6 +25,9 @@ int main(int argc, char** argv) {
     args::ValueFlag<uint32_t> widthFlag{parser, "width", "Set window width", {'w', "width"}};
     args::ValueFlag<uint32_t> heightFlag{parser, "height", "Set window height", {'h', "height"}};
     args::Flag noGuiFlag{parser, "no-gui", "Disable GUI", { "no-gui"}};
+    args::ValueFlag<uint32_t> substepsFlag{
+        parser, "substeps", "MPM physics substeps per frame (default 256, PhysDreamer min stable)", {"substeps"}
+    };
     args::ValueFlag<std::string> cameraFlag{parser, "camera", "Path to camera file for initial view", {"camera"}};
     args::Positional<std::string> scenePath{parser, "scene", "Path to scene file", "scene.ply"};
 
@@ -85,6 +88,10 @@ int main(int argc, char** argv) {
         config.enableGui = false;
     } else {
         config.enableGui = true;
+    }
+
+    if (substepsFlag) {
+        config.substeps = args::get(substepsFlag);
     }
 
     auto width = widthFlag ? args::get(widthFlag) : 1280;
