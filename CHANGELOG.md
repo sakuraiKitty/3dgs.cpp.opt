@@ -1,5 +1,94 @@
 # 更新日志 (CHANGELOG)
 
+## 2026年7月2日 - G2P ∇v 转置 bug 修复（释放卡死真根因）+ 对齐 PhysDreamer 全参数 ✅
+
+### 🎯 实施成果
+
+修复花头拖拽释放后**卡死不回弹 + tau U-shape 能量注入**的真根因——G2P 速度梯度 ∇v 累加方向转置。同时完成与 PhysDreamer gui_demo 的**全参数逐项对齐**（scale/substeps/damping/freeze/BC/grab），关闭此前的 home-spring 补丁（PD 用纯 FCR 即可恢复，无需弹簧）。
+
+#### 1. G2P ∇v 转置 bug（核心修复 — 旋转模态反向演化）
+
+**问题**: 花头拖拽释放后 `max_strain` 0.55→0.46（25 秒仅走 0.09，恢复速率仅 PD 的 1/40），`max_vel` 5 秒内被阻尼到 ~0，`max|tau|` **U-shape 回升**（203k→114k→132k，应力重建→卡在预应力静态平衡）。PD 同场景 `max|F-I|` 0.71→0.47（18 帧 0.6 秒完成），tau 单调降。
+
+**根因（关键物理 + GLSL 陷阱）**: [g2p.comp:175-177](src/shaders/mpm/g2p.comp#L175-L177) 旧代码
+```glsl
+dv[0] += v_grid.x * dw;  // 列0 = v.x * dw
+dv[1] += v_grid.y * dw;
+dv[2] += v_grid.z * dw;
+```
+GLSL 列主序下 `dv[col=j][row=i] = v[j]·dw[i]` → `dv_math(i,j) = v_j·dw_i` = **∇vᵀ**（转置）。而 PD `mpm_utils.py:479` 用 `wp.outer(grid_v, dweight)` 给出正确 ∇v。`F_new=(I+dv·dt)·F` 因此用 ∇vᵀ 更新 F。APIC C 矩阵累加（g2p.comp:184-186）同样转置。
+
+**为何所有症状吻合**:
+- **纯拉伸**（对称 ∇v）：∇vᵀ=∇v，无影响 → 茎硬度正常（这就是为什么此前 scale 修复后"明显变硬"，拉伸路径一直正确）
+- **旋转**（反对称 ∇v）：∇vᵀ=−∇v → F **反向演化** → 旋转应力方向错 → 能量注入 → tau U-shape 回升
+- 释放后旋转分量无法正确回退 → 卡在预应力静态平衡
+- PD 用正确 ∇v → 旋转应力对齐弹性能量梯度 → 真实恢复力 → 能回弹
+
+**修复**: dv 改 `dv[j] += v·dw[j]`（正确 ∇v），C 改 `C[j] += v·dpos[j]`（正确 outer(v,dpos)），对标 PD。
+```glsl
+dv[0] += v_grid * dw.x;  dv[1] += v_grid * dw.y;  dv[2] += v_grid * dw.z;
+C_new[0] += v_grid * dpos.x * coeff;  C_new[1] += v_grid * dpos.y * coeff;  C_new[2] += v_grid * dpos.z * coeff;
+```
+
+**验证**: 修后小拖拽松手 `max_strain` 1.82→0.20（17 秒），`max_disp` 0.183→0.019，**tau 单调降** 194k→44k（**不再 U-shape**），花头视觉回弹。恢复速率 10×+。
+
+**排查教训**: 此 bug 被掩盖很久，因为拉伸模式（茎硬度）不受影响——只有旋转模式受影响。诊断靠对比 PD 的 tau 轨迹（PD 单调降 vs VK U-shape）锁定"能量注入"，再逐行审计 p2g/grid_update/g2p/stress 对比 PD kernel 才挖到。GLSL 列主序 mat3 累加外积时极易把 `outer(a,b)` 写成它的转置：`dv[i]+=a[i]*b` 给 `(b⊗a)`，`dv[j]+=a*b[j]` 才给 `(a⊗b)`。F 更新用 ∇v 必须验证方向。
+
+#### 2. CoordinateTransform scale 公式对齐 PhysDreamer（茎软根因之一）
+
+**问题**: VK `scale = length(range)·1.8`（3D 包围盒对角线）= 1.22，PD `scale = (全局 max−min)·1.8` = 2.83。应力恢复 `dv=τ·∇w·dt/ρ` 与 scale 无关，但拖拽速度 `dv_drag = world_v/scale` 与 scale 反比 → VK scale 小 2.3× → 拖拽速度被放大 2.3× → 压过应力 → 茎软像皮筋。
+
+**修复**: [MPMStructs.h:275](src/mpm/MPMStructs.h#L275) 改全局标量 `scale = (gmax−gmin)·1.8`，shift 改标量 `-gmin + (gmax−gmin)·0.25`（存 vec3 保持接口）。Joe 确认"明显变硬"。
+
+#### 3. 拾取阈值对齐 PD grab_hit_thres
+
+**问题**: RayCaster `max_distance=0.5` 太松（sim 区 ~0.56 跨度，点背景也命中）→ 在可变形区域外点击仍能拖拽花朵。
+
+**修复**: [Renderer.cpp](src/Renderer.cpp) CFL 注入处 `ray_caster_->SetMaxDistance(grab_radius_world / scale)`（=0.0048 norm，对标 PD `grab_hit_thres = aabb_diag·0.02`）。RayCaster.h 加 `SetMaxDistance`。Joe 确认背景点击现在 miss。
+
+#### 4. 冻结壳几何诊断
+
+[MPMInitializer.cpp:130](src/mpm/MPMInitializer.cpp#L130) 加 frozen/active bbox + Y 重叠度日志，验证冻结壳位于花头顶端（高 Y，连续 ~3 格厚，Y-overlap/frozen_span=0.46<0.5 分层清晰），排除"散布薄壳"假设。
+
+#### 5. 关闭 home-spring（回归纯 FCR）
+
+此前 June 30 的 home-spring 补丁是为绕过"FCR 对刚体旋转零应力"的数学性质。但 PD 用纯 FCR（无 home-spring、无 F 松弛）就能恢复——证明 VK 的恢复问题是 ∇v 转置 bug，不是 FCR 缺陷。`Renderer.cpp` 改 `SetHomeSpring(0, false)`，与 PD 一致。
+
+### 📊 全参数对齐 PhysDreamer gui_demo（carnation）
+
+| 参数 | PD | VK | |
+|------|----|----|-|
+| E | 2140628.25 | 2140628.2 | ✓ |
+| grid_size | 64 | 64 | ✓ |
+| substeps (gui_substeps) | 256 | 256 | ✓ |
+| frame_dt | 1/30 | 1/30 | ✓ |
+| 释放阻尼 | 0.95/帧 | 0.95/帧 | ✓ |
+| scale | 全局max−min·1.8 | (已修) | ✓ |
+| freeze threshold | 0.5/grid | 0.5/grid | ✓ |
+| BC 机制 | 粒子速度 SET | 粒子速度 SET | ✓ |
+| 抓取半径 | 2% AABB | 2% AABB | ✓ |
+| 粒子数 | 13356 | 13356 | ✓ |
+| FCR τ 公式 | 2μ(F−R)Fᵀ+λJ(J−1)I 对称化 | 同 | ✓ |
+| R 提取 | SVD U·Vᵀ | Newton 12 迭代 | ✓（等价） |
+
+### 🔍 残留次要项
+
+1. **初始 strain 偏高**（1.82≈130° 旋转）：小拖拽产生大旋转（PD 仅 0.71）。transposed ∇v 之前"限制"了旋转，修后正确 ∇v 让旋转充分发展，可能需更柔和抓取。
+2. **残余平台** strain~0.25 未归零：疑 VK 释放后永久 0.95/帧阻尼（PD `_settled()` 后切 idle 1.1 关阻尼，让最后一点恢复完成）。
+
+### 📝 修改文件
+
+- `src/shaders/mpm/g2p.comp` — ∇v + C 累加方向修复（核心）
+- `src/mpm/MPMStructs.h` — scale 公式对齐 PD
+- `src/Renderer.cpp` — CFL 注入、pick 阈值、home-spring 关闭
+- `src/interaction/RayCaster.h` — SetMaxDistance
+- `src/mpm/MPMInitializer.cpp` — 冻结壳几何诊断
+- `src/mpm/MPMManager.cpp` — CPU 诊断 R 改极分解
+- `src/mpm/ScenePhysicsProfile.h` — carnation substeps 256/grid 64
+- `shaders/*.spv` + `shaders/shaders.h` — 重编嵌入
+
+---
+
 ## 2026年6月30日 - 位置 Home-Spring + 拖拽机制重构 + 死代码清理 + 文档 ✅
 
 ### 🎯 实施成果

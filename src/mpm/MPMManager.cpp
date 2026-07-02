@@ -226,12 +226,27 @@ void MPMManager::Diagnose() {
         if (strain > 0.1f) strain_high++;
         else if (strain > 0.01f) strain_mid++;
 
-        // Gram-Schmidt 极分解 R（与 shader extract_rotation_gram_schmidt 一致）
-        glm::vec3 c0 = F[0], c1 = F[1], c2 = F[2];
-        glm::vec3 r0 = safe_norm(c0);
-        glm::vec3 r1 = safe_norm(c1 - glm::dot(c1, r0) * r0);
-        glm::vec3 r2 = safe_norm(c2 - glm::dot(c2, r0) * r0 - glm::dot(c2, r1) * r1);
-        glm::mat3 R(r0, r1, r2);
+        // 极分解 R（与 shader extract_rotation_polar 一致，Newton 迭代 R=(R+R^{-T})/2）
+        // 旧用 Gram-Schmidt 与 shader 不一致 → 大旋转下 GS 产生自平衡伪应力 →
+        // diag 的 max|tau| 偏高误导（真着色器 τ 用极分解，可能小得多）。
+        glm::mat3 R = F;
+        float detF_diag = F[0][0]*(F[1][1]*F[2][2]-F[1][2]*F[2][1])
+                        - F[0][1]*(F[1][0]*F[2][2]-F[1][2]*F[2][0])
+                        + F[0][2]*(F[1][0]*F[2][1]-F[1][1]*F[2][0]);
+        if (std::fabs(detF_diag) < 1e-6f) {
+            // F 近奇异 → 回退 Gram-Schmidt（与 shader fallback 一致）
+            glm::vec3 gc0 = F[0], gc1 = F[1], gc2 = F[2];
+            glm::vec3 gr0 = safe_norm(gc0);
+            glm::vec3 gr1 = safe_norm(gc1 - glm::dot(gc1, gr0) * gr0);
+            glm::vec3 gr2 = safe_norm(gc2 - glm::dot(gc2, gr0) * gr0 - glm::dot(gc2, gr1) * gr1);
+            R = glm::mat3(gr0, gr1, gr2);
+        } else {
+            for (int it = 0; it < 12; ++it) {
+                glm::mat3 R_inv = glm::inverse(R);
+                glm::mat3 R_inv_T = glm::transpose(R_inv);
+                R = (R + R_inv_T) * 0.5f;
+            }
+        }
         glm::mat3 FmR = F - R;
         float stretch = frob(FmR);
         if (stretch > max_stretch) max_stretch = stretch;

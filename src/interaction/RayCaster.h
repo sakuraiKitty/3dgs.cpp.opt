@@ -94,6 +94,13 @@ public:
         const std::vector<glm::vec3>& particle_positions
     );
 
+    /**
+     * 设置最大拾取距离（射线-粒子垂直距离阈值，超过判未命中）
+     * 对标 PhysDreamer gui_demo.py:447 `if dist < grab_hit_thres` else grab miss。
+     * 默认 0.5 太松（sim 区 ~0.56 跨度，点背景也命中）→ 改为 aabb*0.02（=grab_radius）。
+     */
+    void SetMaxDistance(float d) { config_.max_distance = d; }
+
 /**
      * 屏幕坐标转NDC
      */

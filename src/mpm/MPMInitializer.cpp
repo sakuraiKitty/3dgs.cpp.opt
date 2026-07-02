@@ -134,6 +134,33 @@ MPMInitializer::InitializationResult MPMInitializer::Initialize(
                      result.stats.frozen_count,
                      result.stats.active_count,
                      100.0 * result.stats.active_count / downsampled.size());
+
+        // ── 冻结壳几何诊断：恢复力来自冻结壳与可动区界面的应力梯度。
+        // 若冻结粒子散布（非连续壳）或位置不在花头顶端 → 界面梯度弱 → 释放后无恢复力矩。
+        // 对标 PD：冻结壳应在花头顶端（高 Y），连续且足够厚（3x3x3 支撑节点全冻结）。
+        glm::vec3 fmin(FLT_MAX), fmax(-FLT_MAX), amin(FLT_MAX), amax(-FLT_MAX);
+        for (size_t i = 0; i < downsampled.size(); ++i) {
+            const auto& p = downsampled[i];
+            if (result.freeze_mask[i]) {
+                fmin = glm::min(fmin, p); fmax = glm::max(fmax, p);
+            } else {
+                amin = glm::min(amin, p); amax = glm::max(amax, p);
+            }
+        }
+        spdlog::info("[MPMInitializer] Frozen bbox: min=({:.4f},{:.4f},{:.4f}) max=({:.4f},{:.4f},{:.4f}) span=({:.4f},{:.4f},{:.4f})",
+                     fmin.x, fmin.y, fmin.z, fmax.x, fmax.y, fmax.z,
+                     fmax.x-fmin.x, fmax.y-fmin.y, fmax.z-fmin.z);
+        spdlog::info("[MPMInitializer] Active bbox: min=({:.4f},{:.4f},{:.4f}) max=({:.4f},{:.4f},{:.4f}) span=({:.4f},{:.4f},{:.4f})",
+                     amin.x, amin.y, amin.z, amax.x, amax.y, amax.z,
+                     amax.x-amin.x, amax.y-amin.y, amax.z-amin.z);
+        // Y 重叠度：冻结区与可动区在 Y 方向是否分层（壳在上、可动在下）还是交错（散布）
+        float y_overlap_min = std::max(fmin.y, amin.y);
+        float y_overlap_max = std::min(fmax.y, amax.y);
+        float y_overlap = (y_overlap_max > y_overlap_min) ? (y_overlap_max - y_overlap_min) : 0.0f;
+        float f_span_y = (fmax.y - fmin.y) > 1e-6f ? (fmax.y - fmin.y) : 1e-6f;
+        spdlog::info("[MPMInitializer] Frozen-active Y-overlap={:.4f} (frozen Y span={:.4f}); "
+                     "若 overlap/frozen_span > 0.5 → 冻结粒子与可动区交错（散布壳，恢复力弱）",
+                     y_overlap, f_span_y);
     } else {
         spdlog::warn("[MPMInitializer] Step 8: Skipping freeze mask (no moving_part_points)");
         result.freeze_mask.assign(downsampled.size(), false); // 全部可动

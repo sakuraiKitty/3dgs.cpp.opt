@@ -272,8 +272,17 @@ struct CoordinateTransform {
 
         // 计算 range, scale, shift（与Python完全一致）
         transform.range = transform.pos_max - transform.pos_min;
-        transform.scale = glm::length(transform.range) * 1.8f;
-        transform.shift = -transform.pos_min + transform.range * 0.25f;
+        // 匹配 PhysDreamer demo.py:216-220：scale 用【全局标量 max-min】·1.8，而非 3D 对角线长度。
+        // 关键：应力恢复 dv=τ·∇w·dt/ρ 与 scale 无关，但拖拽速度 dv_drag=world_v/scale 与 scale 反比。
+        // 旧用 length(range)·1.8 得 scale=1.22（carnation），PD 用全局跨度得 2.83 →
+        // Vulkan 拖拽速度被放大 2.3× → 压过应力 → 茎软。改回标量跨度后拖拽速度降 2.3× → 应力赢。
+        // PD 的 pos_min/pos_max 是 sim_xyzs.max()/min()（标量），shift 也是标量；这里 shift 存 vec3
+        // 但三分量同值（保持 ToNormalized/SetCoordTransform 接口不变）。
+        float gmin = glm::min(transform.pos_min.x, glm::min(transform.pos_min.y, transform.pos_min.z));
+        float gmax = glm::max(transform.pos_max.x, glm::max(transform.pos_max.y, transform.pos_max.z));
+        transform.scale = (gmax - gmin) * 1.8f;
+        float shift_scalar = -gmin + (gmax - gmin) * 0.25f;
+        transform.shift = glm::vec3(shift_scalar);
 
         return transform;
     }

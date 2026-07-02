@@ -1518,6 +1518,9 @@ void Renderer::updatePhysicsSimulation(VkCommandBuffer cmd) {
             constexpr float kGrabPortion = 0.02f;  // 空间局部（对标 PD 2%）；稀疏云 ~3 粒子
             const float grab_radius_world = diag_world * kGrabPortion;
             drag_handler_->SetDragRadius(grab_radius_world);
+            // 射线命中阈值 = grab_radius（对标 PD gui_demo.py:447 grab_hit_thres=aabb*0.02）
+            // 旧 max_distance=0.5 norm 太松（sim 区 ~0.56 跨度，点背景也命中最近粒子→区域外能拖）
+            ray_caster_->SetMaxDistance(grab_radius_world / mpm_coord_transform_.scale);
             spdlog::info("[PhysicsSim] Grab radius = AABB_diag({:.4f}world) * {:.2f} = {:.4f}world "
                          "({:.4f}norm) — 局部抓取对标PhysDreamer",
                          diag_world, kGrabPortion, grab_radius_world,

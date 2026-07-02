@@ -102,12 +102,11 @@ mat3 compute_velocity_gradient(
                 // 计算梯度权重
                 vec3 dw = compute_dweight(weights, i, j, k, inv_dx);
 
-                // 累加速度梯度：v_node ⊗ dw
-                // dv[a][b] += v_node[a] * dw[b]
+                // 累加速度梯度 ∇v：dv[col=j] += v * dw[j] → ∇v（非转置）
                 vec3 v_node = nodes[linear_idx].velocity;
-                dv[0] += v_node.x * dw; // 第一行
-                dv[1] += v_node.y * dw; // 第二行
-                dv[2] += v_node.z * dw; // 第三行
+                dv[0] += v_node * dw.x;
+                dv[1] += v_node * dw.y;
+                dv[2] += v_node * dw.z;
             }
         }
     }
@@ -170,20 +169,27 @@ void main() {
                 // (1) 速度插值：v += w * v_grid
                 v_particle += v_grid * w;
 
-                // (2) 速度梯度 ∇v：dv[a] += v_grid[a] * dw
+                // (2) 速度梯度 ∇v：dv[col=j] += v * dw[j]  → dv_math(i,j)=v_i·dw_j = ∇v
+                // 对标 PD mpm_utils.py:479 wp.outer(grid_v, dweight)。
+                // 【根因修复 2026-07-02】旧代码 dv[i] += v[i]*dw 给出 ∇vᵀ（转置）：
+                //   纯拉伸(对称∇v)无影响→茎硬度正常；但旋转(反对称∇v)∇vᵀ=−∇v→
+                //   F 反向演化→旋转应力方向错→能量注入(tau U-shape)→释放后卡死不回弹。
+                //   PD 用正确 ∇v，旋转应力对齐能量梯度→真实恢复力→能回弹。
                 vec3 dw = compute_dweight(weights, i, j, k, inv_dx);
-                dv[0] += v_grid.x * dw;
-                dv[1] += v_grid.y * dw;
-                dv[2] += v_grid.z * dw;
+                dv[0] += v_grid * dw.x;  // 列0 = v * ∂w/∂x
+                dv[1] += v_grid * dw.y;  // 列1 = v * ∂w/∂y
+                dv[2] += v_grid * dw.z;  // 列2 = v * ∂w/∂z
 
                 // (3) APIC C：C += outer(v_grid, dpos) * w * inv_dx * 4
-                //     GLSL mat3 列主序：C[col][row] = v[col]*dpos[row]（与原 mat3 构造器一致）
+                //     GLSL mat3 列主序：C[col=j] = v * dpos[j] → C_math(i,j)=v_i·dpos_j
                 //     一阶矩 Σ w·dpos = 0（stencil base+i + dp=i-fx，与 CUDA 一致）
+                //     【同根因修复】旧代码 C[i]=v[i]*dpos 给 outer(dpos,v)=Cᵀ，APIC 仿射
+                //     动量传错方向，角动量不守恒→旋转能量注入。
                 vec3 dpos = vec3(float(i), float(j), float(k)) - fx;
                 float coeff = w * inv_dx * 4.0;
-                C_new[0] += vec3(v_grid.x * dpos.x, v_grid.x * dpos.y, v_grid.x * dpos.z) * coeff;
-                C_new[1] += vec3(v_grid.y * dpos.x, v_grid.y * dpos.y, v_grid.y * dpos.z) * coeff;
-                C_new[2] += vec3(v_grid.z * dpos.x, v_grid.z * dpos.y, v_grid.z * dpos.z) * coeff;
+                C_new[0] += v_grid * dpos.x * coeff;  // 列0 = v * dpos.x
+                C_new[1] += v_grid * dpos.y * coeff;  // 列1 = v * dpos.y
+                C_new[2] += v_grid * dpos.z * coeff;  // 列2 = v * dpos.z
             }
         }
     }
@@ -240,6 +246,9 @@ void main() {
     // 单节点 grid_freeze 不足以保持 F≈I）。与原独立 dispatch 数值完全一致：G2P 写完
     // 所有粒子后，冻结粒子的 pos/vel/F/C 被同一线程顺序覆写（无跨 dispatch 写后写）。
     // 合并省掉一次 dispatch + 等价的跨 dispatch 排序（每子步 -1 dispatch，256 子步 -256/帧）。
+    //
+    // C=0 必须保留（实验验证 2026-07-02）：移除后冻结粒子 C 非零 → v+C·dpos 注入动量
+    // → avg_strain 0.20→0.25 单调上升（能量注入），比卡死更糟。C=0 切断此注入。
     if (p.freeze_flag != 0u) {
         particles[p_id].position = init_pos[p_id].xyz;
         particles[p_id].velocity = vec3(0.0);

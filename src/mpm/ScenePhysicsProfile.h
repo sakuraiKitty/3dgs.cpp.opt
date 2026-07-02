@@ -76,8 +76,8 @@ inline ScenePhysicsProfile GetScenePhysicsProfile(const std::string& scene_path)
     if (key.find("carnation") != std::string::npos) {
         p.scene_name = "carnations";
         p.E = 2140628.25f; p.nu = 0.3f; p.density = 2000.0f;
-        p.downsample_scale = 0.1f;  p.grid_size = 48;   // 64→48：grid 节点 262144→110592（ZeroGrid/GridUpdate -58%）
-        p.substeps = 96u;           p.gravity = {0.0f, 0.0f, 0.0f};  // CFL=c_p·sub_dt/dx=38·3.47e-4/0.0208≈0.635（拖拽稳定阈值≤0.63；80@0.76 拖拽坍缩 J≤0）
+        p.downsample_scale = 0.1f;  p.grid_size = 64;   // 验证②：48→64 对标 PD carnation.py:47 + gui_demo 256 子步 → CFL=38·(1/30)/256/0.0156≈0.317（=PD gui）
+        p.substeps = 256u;          p.gravity = {0.0f, 0.0f, 0.0f};  // 全对标 PD：grid64+sub256 看刚体旋转锁死是否消失
     } else if (key.find("hat") != std::string::npos) {
         p.scene_name = "hat";
         p.E = 1.0e5f;      p.nu = 0.3f; p.density = 2000.0f;
