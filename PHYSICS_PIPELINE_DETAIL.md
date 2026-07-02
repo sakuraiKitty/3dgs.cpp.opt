@@ -126,16 +126,16 @@ MPM 在归一化空间 [0,1] 仿真，渲染在世界空间。`CoordinateTransfo
 
 | 场景 | E [Pa] | ν | ρ | downsample | grid_size | substeps | gravity |
 |------|--------|-----|------|------------|-----------|----------|---------|
-| carnation | 2.14e6 | 0.3 | 2000 | 0.10 | 64 | **128** | 0 |
+| carnation | 2.14e6 | 0.3 | 2000 | 0.10 | **48** | **96** | 0 |
 | hat | 1.0e5 | 0.3 | 2000 | 0.04 | 64 | 64 | 0 |
 | alocasia | 1.0e6 | 0.3 | 2000 | 0.10 | 64 | 128 | 0 |
 | telephone | 1.0e5 | 0.3 | 2000 | 0.10 | 64 | 64 | 0 |
 | default(未知) | 2.14e6 | 0.3 | 2000 | 0.10 | 64 | 128 | 0 |
 
 ```cpp
-grid_size   = 64;            // 64³ 网格
+grid_size   = profile.grid_size;  // carnation=48（64→48：grid 节点 -58%，ZeroGrid/GridUpdate 减）
 dt          = 1.0f / 30.0f;  // 帧时间步长
-substeps    = profile.substeps;   // carnation=128 → sub_dt = dt/128 ≈ 2.6e-4 s
+substeps    = profile.substeps;   // carnation=96 → sub_dt = dt/96 ≈ 3.47e-4 s
 gravity     = {0, 0, 0};     // 四场景均无重力（PD simulate_cfg 无 gravity 字段）
 damping     = 1.0（拖拽中）/ 0.95^(1/substeps)（释放后，对标 PD release_damping）
 E/nu/rho    = profile.*;     // 按场景
@@ -144,7 +144,7 @@ f_relax     = 0;             // 关闭 F 松弛，保留 FCR 弹性耦合
 CFL(cfl)    = 0.02;          // 拖拽速度兜底限幅（见 §6.4）
 ```
 
-> **substeps 128 的由来**：PhysDreamer `gui_demo.py:532` 默认 256（注释明言「<128 指数爆炸→NaN」）。Nsight 实测 256 子步时 GPU memory-latency-bound（54.8% warp 卡 L2 延迟，SM 吞吐仅 7.7%），帧时间 ~62ms（16 FPS）。折半到 128：memory 流量/compute/dispatch/barrier 全减半 → ~28 FPS。低于 PD 推荐 256，靠 strain gating（deform>1.5 停驱）+ PinFrozen F 重置 + G2P NaN reset + 极分解 12 迭代 保稳（已验证拖拽稳定）。grid CFL 随 sub_dt 翻倍自动收紧（max_v 减半）反而更防 F 过冲。
+> **substeps 96 / grid 48 的由来（CFL 限制）**：carnation E=2.14e6→c_p≈38（P-wave 归一化）。CFL=c_p·sub_dt/dx≤1。grid 48→dx=1/48=0.0208；substeps 96→sub_dt=3.47e-4 → **CFL=0.635**（拖拽稳定阈值≤0.63，已验证：min_det>0.95，strain 不累积）。substeps 80（CFL 0.76）/ 64（0.95）拖拽下 F 在边界 ∇v 处过冲→J≤0→体积反转→永久坍缩。**CFL 卡死 carnation 真实 E 的 substeps 下限 96**。grid 64→48 放宽 dx 同时减 grid 扫描开销。详见 §12.2 Phase B 失败教训。
 
 ### 4.2 子步循环（每 substep 执行一次）
 
@@ -410,28 +410,27 @@ v *= gate;
 
 ## 9. 性能基准
 
-| 场景 | 高斯数 | 粒子数 | substeps | FPS (RTX 4090 Laptop) |
-|------|--------|--------|----------|----------------|
-| carnations | 1,037,279 | 13,356 | 128 | **~28**（物理开）/ ~105（物理关）|
-| hat | — | — | 64 | 预期更高（子步少 2×）|
+| 场景 | 高斯数 | 粒子数 | substeps | grid | FPS (RTX 4090 Laptop) |
+|------|--------|--------|----------|------|----------------|
+| carnations | 1,037,279 | 13,356 | 96 | 48 | **~30**（物理开，拖拽稳定）/ ~105（物理关）|
+| hat | — | — | 64 | 64 | 预期更高（子步少 1.5×）|
 
-**Nsight GPU Trace 实测**（carnation，优化前后对比）：
+**Nsight GPU Trace 实测**（carnation，优化历程）：
 
-| 指标 | 256 子步基线 | 128 子步当前 | 解读 |
+| 指标 | 256子步/64grid 基线 | 96子步/48grid 当前 | 解读 |
 |------|-------------|-------------|------|
-| 帧时间(traced) | 132.6ms | ~60ms | -55% |
+| 帧时间(traced) | 132.6ms | ~50ms | -62% |
 | `sm__throughput` | 7.7% | — | SM 算力低（非算力 bound）|
-| `warps_inactive_sm_active` | 35.7%→54.8% | — | **memory-latency 主瓶颈** |
+| `warps_inactive_sm_active` | 35.7%→54.8% | — | memory-latency 主瓶颈 |
 | `warps_inactive_sm_idle` | 40.2%→20% | — | SM 空闲（优化减半）|
 | `dramc__throughput` | 1.75% | — | 非带宽 bound |
 | `gr__compute_cycles_active` | 94% | — | GPU 满载，非 CPU bound |
-| `l1tex hit rate` | 43.9%→38% | — | L1 miss 多，走 L2 |
 
-**瓶颈定位**：memory-latency-bound（54.8% warp 卡 L2 延迟，L1 hit 38%）+ launch-bound（13568 粒子=424 warps 填不满 96 SM×64 warps）。非算力、非带宽、非 CPU。
+**瓶颈定位**：memory-latency-bound（54.8% warp 卡 L2 延迟）+ launch-bound（13568 粒子=424 warps 填不满 96 SM×64 warps）。非算力、非带宽、非 CPU。
 
-**已落地优化**（详见 §4.2/§12）：PinFrozen→G2P 融合、local_size 256→64、GridFreeze→GridUpdate 融合、G2P 三循环→一循环、**substeps 256→128**（算法，16→28 FPS）。
+**优化历程**（详见 §12）：调度融合 4 项（PinFrozen/GridFreeze 合并、local_size 256→64、G2P 三循环→一）累计 ~8.7% traced 增益；**substeps 256→128**（算法，16→28 FPS，+75%）；grid 64→48 + substeps 128→96（CFL 0.635 稳定，~30 FPS）。
 
-**剩余天花板**：128 子步下 ~28 FPS。冲 60 FPS 需 P2G shared-memory tiling（见 §12.2）。
+**剩余天花板**：carnation 真实 E=2.14e6 的 CFL 卡死 substeps≥96（CFL≤0.63 才拖拽稳定）。**~30 FPS 是保真度优先的稳定天花板**。冲 60 FPS 需降 E（软化花→c_p↓→CFL↓→允许更少 substeps），见 §12.2。
 
 ---
 
@@ -477,7 +476,7 @@ C:/VulkanSDK/1.4.350.0/Bin/glslangValidator.exe -V -Isrc/shaders/mpm \
 | 位置反馈 dragVel | `gui_demo.py:340` | grab_v=(target−cur)/dt |
 | grab_radius=AABB·0.02 | `gui_demo.py:186` | 2% 局部抓取 |
 | 释放阻尼 0.95/帧 | `gui_demo.py:288` | release_damping |
-| **home-spring / F 松弛** | （无） | 本 demo 曾用，现已**关闭**（§4.8）；改靠 substeps=128 + 2% 抓取对齐 PD |
+| **home-spring / F 松弛** | （无） | 本 demo 曾用，现已**关闭**（§4.8）；改靠 substeps=96 + 2% 抓取对齐 PD |
 | **ScenePhysicsProfile** | `configs/<scene>.py` | 按场景 E/substeps/downsample |
 | **DragBC 应变门控** | （无，PD 靠 CFL） | 本 demo 独有，防累积应变拉断（§6.3）|
 | **PinFrozen 重置 F=I/C=0** | `gui_demo.py:317-318`（PD 只钉 x/v） | 本 demo 补丁：薄冻结壳需显式重置（§4.7）|
@@ -489,7 +488,7 @@ C:/VulkanSDK/1.4.350.0/Bin/glslangValidator.exe -V -Isrc/shaders/mpm \
 
 ## 12. 帧率优化记录与方向
 
-> **当前状态**：carnation ~28 FPS（substeps=128）。前 4 次非算法优化累计 ~8.7% traced 增益，第 5 次 substeps 256→128（算法）贡献 16→28（+75%）。详见 §12.1 记录。下一步 P2G shared-mem tiling（§12.2）冲 60 FPS。
+> **当前状态**：carnation ~30 FPS（substeps=96, grid=48, CFL 0.635 拖拽稳定）。前 4 次非算法优化累计 ~8.7% traced 增益；substeps 256→128（算法，16→28）+ grid 64→48/substeps 128→96（CFL 稳定，28→30）。**P2G shared-mem tiling 已验证失败**（§12.2），~30 FPS 是 carnation 真实 E 的保真度天花板。
 
 ### 12.1 已完成优化（Nsight 验证）
 
@@ -500,29 +499,41 @@ C:/VulkanSDK/1.4.350.0/Bin/glslangValidator.exe -V -Isrc/shaders/mpm \
 | 3 | GridFreeze 融合进 GridUpdate（freeze_mask） | 调度融合（-1 真实 barrier） | <1 | ~17 |
 | 4 | G2P 三循环→一循环（81→27 grid 读） | 访存减 | traced 127→121ms（-5%）| ~17.5 |
 | 5 | **substeps 256→128** | **算法** | **全部减半** | **~28** |
+| 6 | grid 64→48 + substeps 128→96 | 算法+CFL | grid 扫描 -58%，CFL 0.635 稳定 | **~30** |
 
-**Nsight 数据驱动教训**：前 4 次非算法优化仅 ~8.7%——真实瓶颈是 memory-latency（54.8% warp 卡 L2）+ 低粒子数 launch-bound，**非 dispatch/barrier 数**。寄存器压力假设证伪（regs 31→31.7）。ALU 非瓶颈（sm 7.7%）→ R 缓存方向错。GPU 94% 活跃 → CPU 回读非瓶颈。唯一有效杠杆：减 memory 流量。
+**Nsight 数据驱动教训**：前 4 次非算法优化仅 ~8.7%——真实瓶颈是 memory-latency（54.8% warp 卡 L2）+ 低粒子数 launch-bound，**非 dispatch/barrier 数**。寄存器压力假设证伪（regs 31→31.7）。ALU 非瓶颈（sm 7.7%）→ R 缓存方向错。GPU 94% 活跃 → CPU 回读非瓶颈。唯一有效杠杆：减 memory 流量（substeps）。
 
-### 12.2 下一步：P2G shared-memory tiling（目标 60 FPS）
+### 12.2 P2G shared-memory tiling — 已验证失败（勿重试）
 
-**动机**：P2G 每粒子 27 节点 × ~8 atomicAdd = 216 atomic/粒子。`atomicAdd(float)` 到 L2 串行化，是 memory-latency 主源。同 workgroup 粒子若空间共址，可共享 grid 节点→局部累加→每节点 1 atomic。
+**动机**：P2G 27 节点 × ~8 atomicAdd = 216 atomic/粒子，L2 串行。同 wg 粒子空间共址→shared 局部累加→每节点 1 global atomic。
 
-**方案**：
-1. 粒子按网格胞排序（init 时一次性，或每帧 radix sort by cell hash）
-2. P2G workgroup 处理空间连续粒子块：load 本块涉及 grid 节点到 shared memory（一次），各粒子读 shared 累加（无 atomic），末尾每节点 1 atomic 写回
-3. atomic 数 216/粒子 → ~1/节点/wg，大幅减 L2 串行
+**实测结果**：**regression**（29→17 FPS）。根因有二：
+1. **8-way bank conflict**（AoS GridNode 32B=8bank，32 线程落 4 bank）→ SoA 修复后仅 17→18（非主因）
+2. **tiling 固定开销主导**：bbox 单线程 reduce 64 粒子 + 4 barrier + 512 节点 zero-init + 216 节点 flush，在 64 粒子/wg 的 tiny workload 下超过 atomic 节省。tiling 需 256-1024 粒子/wg 摊薄开销，但 13568 粒子→211 wg×64，wg 太小无法摊薄。
 
-**预期**：P2G atomic 延迟减 10×+ → memory-stall 54.8% 大降 → 28→40+ FPS。配合 G2P 同方案可达 60。
+**结论**：shared-mem tiling 对小粒子数（13568）MPM 是净损失。G2P 只读 tiling 同理（zero-init+barrier 开销）。**Phase C/D tiling 勿再试**。
 
-**风险**：粒子空间排序需新管线；shared mem bank conflict 需 padding；跨块边界节点 double-counting。
+### 12.3 冲 60 FPS 的唯一路径（需降 E，质量折中）
 
-### 12.3 已排除方向（数据证伪，勿重试）
+carnation 真实 E=2.14e6→c_p=38，CFL 卡死 substeps≥96（~30 FPS）。冲 60 需降 E（c_p↓→CFL↓→允许更少 substeps）：
+
+| E | c_p | substeps | CFL | FPS | 代价 |
+|---|-----|----------|-----|-----|------|
+| 2.14e6（真实）| 38 | 96 | 0.635 | ~30 | 当前，保真 |
+| 1.0e6 | 26 | 64 | 0.65 | ~45 | 2× 软 |
+| 0.7e6 | 21.7 | 48 | 0.72 | ~60 | 3× 软（jelly 感）|
+
+Joe 选保真度优先（~30 FPS）。降 E 是可选的后续质量折中。
+
+### 12.4 已排除方向（数据证伪，勿重试）
 - ❌ 减 dispatch 数（PinFrozen 融合 0 增益）
 - ❌ 减 barrier（GridFreeze 融合 <1 增益）
 - ❌ 占用率 local_size（SM-idle 降但吞吐不涨，warps 总数受限粒子数）
 - ❌ CPU 回读/preprocessFence（GPU 94% 活跃，非 CPU bound）
 - ❌ P2G 极分解 R 缓存（ALU 非瓶颈）
 - ❌ ZeroGrid 稀疏化（ZeroGrid 是少数高占用 dispatch，稀疏反降填充）
+- ❌ **P2G/G2P shared-mem tiling**（64 粒子/wg 开销>收益，§12.2）
+- ❌ substeps 64/80（CFL 0.76/0.95 拖拽坍缩 J≤0）
 
 ### 12.4 历史方向（12.1-12.7 旧版，已被 §12.1-12.3 取代，保留供参考）
 
@@ -575,4 +586,4 @@ ZeroGrid 和 GridUpdate 每子步全量扫 64³=262144 节点，但 carnation �
 
 ---
 
-*文档基于 phys-sim 分支 2026-07-01 状态（home-spring 关闭，纯 FCR 恢复，substeps=128，ScenePhysicsProfile 按场景；Nsight 实测 ~28 FPS，下一步 P2G shared-mem tiling 冲 60）。算法细节随开发推进更新。*
+*文档基于 phys-sim 分支 2026-07-02 状态（home-spring 关闭，纯 FCR，carnation substeps=96/grid=48 CFL 0.635 拖拽稳定，~30 FPS 保真度天花板；P2G shared-mem tiling 已验证失败）。算法细节随开发推进更新。*
