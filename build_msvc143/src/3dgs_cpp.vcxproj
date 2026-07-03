@@ -314,6 +314,7 @@ if %errorlevel% neq 0 goto :VCEnd</Command>
     <ClCompile Include="D:\liuyue\physDreamerVulkanDemo\3dgs.cpp.opt\src\GaussianModel.cpp" />
     <ClCompile Include="D:\liuyue\physDreamerVulkanDemo\3dgs.cpp.opt\src\Renderer.cpp" />
     <ClCompile Include="D:\liuyue\physDreamerVulkanDemo\3dgs.cpp.opt\src\SceneLoader.cpp" />
+    <ClCompile Include="D:\liuyue\physDreamerVulkanDemo\3dgs.cpp.opt\src\coupling\CouplingManager.cpp" />
     <ClCompile Include="D:\liuyue\physDreamerVulkanDemo\3dgs.cpp.opt\src\coupling\DisplacementMapper.cpp" />
     <ClCompile Include="D:\liuyue\physDreamerVulkanDemo\3dgs.cpp.opt\src\coupling\GaussianParticleMapper.cpp" />
     <ClCompile Include="D:\liuyue\physDreamerVulkanDemo\3dgs.cpp.opt\src\interaction\DragHandler.cpp" />

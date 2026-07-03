@@ -4,6 +4,7 @@ D:\liuyue\physDreamerVulkanDemo\3dgs.cpp.opt\src\GUIManager.cpp;D:\liuyue\physDr
 D:\liuyue\physDreamerVulkanDemo\3dgs.cpp.opt\src\GaussianModel.cpp;D:\liuyue\physDreamerVulkanDemo\3dgs.cpp.opt\build_msvc143\src\3dgs_cpp.dir\Release\GaussianModel.obj
 D:\liuyue\physDreamerVulkanDemo\3dgs.cpp.opt\src\Renderer.cpp;D:\liuyue\physDreamerVulkanDemo\3dgs.cpp.opt\build_msvc143\src\3dgs_cpp.dir\Release\Renderer.obj
 D:\liuyue\physDreamerVulkanDemo\3dgs.cpp.opt\src\SceneLoader.cpp;D:\liuyue\physDreamerVulkanDemo\3dgs.cpp.opt\build_msvc143\src\3dgs_cpp.dir\Release\SceneLoader.obj
+D:\liuyue\physDreamerVulkanDemo\3dgs.cpp.opt\src\coupling\CouplingManager.cpp;D:\liuyue\physDreamerVulkanDemo\3dgs.cpp.opt\build_msvc143\src\3dgs_cpp.dir\Release\CouplingManager.obj
 D:\liuyue\physDreamerVulkanDemo\3dgs.cpp.opt\src\coupling\DisplacementMapper.cpp;D:\liuyue\physDreamerVulkanDemo\3dgs.cpp.opt\build_msvc143\src\3dgs_cpp.dir\Release\DisplacementMapper.obj
 D:\liuyue\physDreamerVulkanDemo\3dgs.cpp.opt\src\coupling\GaussianParticleMapper.cpp;D:\liuyue\physDreamerVulkanDemo\3dgs.cpp.opt\build_msvc143\src\3dgs_cpp.dir\Release\GaussianParticleMapper.obj
 D:\liuyue\physDreamerVulkanDemo\3dgs.cpp.opt\src\interaction\DragHandler.cpp;D:\liuyue\physDreamerVulkanDemo\3dgs.cpp.opt\build_msvc143\src\3dgs_cpp.dir\Release\DragHandler.obj

@@ -167,6 +167,15 @@ std::shared_ptr<Buffer> Buffer::staging(std::shared_ptr<VulkanContext> context, 
                                     false);
 }
 
+std::shared_ptr<Buffer> Buffer::indirect(std::shared_ptr<VulkanContext> context, uint64_t size, std::string debugName) {
+    // eStorageBuffer: args_builder shader 写入；eIndirectBuffer: vkCmdDispatchIndirect 读取
+    return std::make_shared<Buffer>(context, size,
+                                    vk::BufferUsageFlagBits::eStorageBuffer | vk::BufferUsageFlagBits::eIndirectBuffer |
+                                    vk::BufferUsageFlagBits::eTransferDst,
+                                    VMA_MEMORY_USAGE_GPU_ONLY, VMA_ALLOCATION_CREATE_DEDICATED_MEMORY_BIT,
+                                    false, 0, std::move(debugName));
+}
+
 std::shared_ptr<Buffer> Buffer::storage(std::shared_ptr<VulkanContext> context, uint64_t size, bool concurrentSharing,
                                         vk::DeviceSize alignment, std::string debugName) {
     return std::make_shared<Buffer>(context, size,

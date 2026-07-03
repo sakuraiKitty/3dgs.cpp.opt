@@ -48,10 +48,11 @@
 
 layout (local_size_x = WORKGROUP_SIZE) in;
 
+// 提交 B：g_num_elements / g_num_workgroups 从 push_constant 挪到 SSBO（args_builder 写），
+// 使 sort 可由 dispatchIndirect 驱动，消除 host 回读 numInstances。
+// push_constant 只剩 CPU 已知的 per-iteration 量（g_shift）+ 常量（g_num_blocks_per_workgroup）。
 layout (push_constant, std430) uniform PushConstants {
-    uint g_num_elements;
     uint g_shift;
-    uint g_num_workgroups;
     uint g_num_blocks_per_workgroup;
 };
 
@@ -62,6 +63,11 @@ layout (std430, set = 0, binding = 0) buffer elements_in {
 layout (std430, set = 0, binding = 1) buffer histograms {
 // [histogram_of_workgroup_0 | histogram_of_workgroup_1 | ... ]
     uint g_histograms[]; // |g_histograms| = RADIX_SORT_BINS * #WORKGROUPS
+};
+
+layout (std430, set = 0, binding = 2) readonly buffer SortParams {
+    uint num_instances;   // 原 g_num_elements
+    uint num_workgroups;  // 原 g_num_workgroups（hist 未用，保留以与 sort 共用 SSBO）
 };
 
 shared uint[RADIX_SORT_BINS] histogram;
@@ -79,7 +85,7 @@ void main() {
 
     for (uint index = 0; index < g_num_blocks_per_workgroup; index++) {
         uint elementId = wID * g_num_blocks_per_workgroup * WORKGROUP_SIZE + index * WORKGROUP_SIZE + lID;
-        if (elementId < g_num_elements) {
+        if (elementId < num_instances) {
             // determine the bin
             const uint bin = uint(g_elements_in[elementId] >> g_shift) & (RADIX_SORT_BINS - 1);
             // increment the histogram

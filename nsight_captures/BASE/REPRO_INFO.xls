@@ -1,0 +1,39 @@
+Computer Name	DESKTOP-RDFVU63
+Operating System	Windows 11 (25H2)
+Operating System Build	10.0.26200
+Processor	13th Gen Intel(R) Core(TM) i9-13900H
+RAM Usage	18955 MiB / 32387 MiB (58.5%)
+Device Name	NVIDIA GeForce RTX 4090 Laptop GPU
+Chip Name	AD103
+Driver Version	596.36
+Hardware Scheduling	Enabled
+VRAM Requested	709 MiB / 15280 MiB (4.6%)
+VRAM Committed	720 MiB / 15280 MiB (4.7%)
+VRAM Bytes Demoted	0 MiB
+Product Version	2026.2.0.0 (build 37991608) (public-release)
+Process File Name	D:\liuyue\physDreamerVulkanDemo\3dgs.cpp.opt\build_msvc143\apps\viewer\Release\3dgs_viewer.exe
+Command Line	"D:\liuyue\physDreamerVulkanDemo\3dgs.cpp.opt\build_msvc143\apps\viewer\Release\3dgs_viewer.exe" --camera camera.txt D:/liuyue/physDreamerVulkanDemo/PhysDreamer/data/physics_dreamer/carnations/point_cloud.ply
+APIs	Direct3D 12, Vulkan
+Troubleshooting Collection Controls	API Timestamps, metrics, sampling oldest, instrumented, CB timestamps, FECS, warp state sampling control=31
+Start After	30 Frames
+Max Duration 	1000 ms
+Limited To	Max Duration
+Allocated Event Buffer Memory (kB)	20000
+Allocated Timestamps	100000
+V-Sync Mode	Enforced Off
+GPU Clocks	Locked to Base
+Force Repaint	No
+Force D3D12 Background Optimizations	No
+Max Vulkan SC Internal CBs per Queue	24
+Max Vulkan SC Internal CB Memory (kB)	16
+Collect Screenshot	Yes
+Time Every Action	No
+Trace Shader Bindings	Yes
+Collect Shader Pipelines	Yes
+Collect External Shader Debug Info	Yes
+Warp State Sampling Interval	N/A (Warp State Sampling Disabled)
+Enable NVTX Ranges	Yes
+Recompile Cached Vulkan Shader Modules	Yes
+Metric Set	Async Compute Triage
+Real-Time Shader Profiler	Disabled
+Multi-Pass Metrics	Disabled

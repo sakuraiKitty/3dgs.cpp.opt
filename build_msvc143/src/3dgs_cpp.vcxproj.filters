@@ -19,6 +19,9 @@
     <ClCompile Include="D:\liuyue\physDreamerVulkanDemo\3dgs.cpp.opt\src\SceneLoader.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
+    <ClCompile Include="D:\liuyue\physDreamerVulkanDemo\3dgs.cpp.opt\src\coupling\CouplingManager.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
     <ClCompile Include="D:\liuyue\physDreamerVulkanDemo\3dgs.cpp.opt\src\coupling\DisplacementMapper.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>

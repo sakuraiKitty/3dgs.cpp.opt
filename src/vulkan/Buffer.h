@@ -33,6 +33,10 @@ public:
 
     static std::shared_ptr<Buffer> staging(std::shared_ptr<VulkanContext> context, unsigned long size);
 
+    // indirect: GPU-only buffer，shader 可写（storage）+ vkCmdDispatchIndirect 可读（indirect）。
+    // 用于 args_builder 写 DispatchIndirectCommand，dispatchIndirect 读。
+    static std::shared_ptr<Buffer> indirect(std::shared_ptr<VulkanContext> context, uint64_t size, std::string debugName = "Indirect Buffer");
+
     static std::shared_ptr<Buffer> storage(std::shared_ptr<VulkanContext> context, uint64_t size, bool concurrentSharing = false, vk::DeviceSize alignment = 0, std
                                            ::string debugName = "Unnamed Storage Buffer");
 

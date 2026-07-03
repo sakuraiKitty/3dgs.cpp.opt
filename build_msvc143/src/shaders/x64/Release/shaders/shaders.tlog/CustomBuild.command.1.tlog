@@ -1,8 +1,32 @@
-^D:\LIUYUE\PHYSDREAMERVULKANDEMO\3DGS.CPP.OPT\BUILD_MSVC143\CMAKEFILES\00BCC53426D4F746C66AB8AD83B9A340\APPLY_MOUSE_FORCE.SPV.RULE
+^D:\LIUYUE\PHYSDREAMERVULKANDEMO\3DGS.CPP.OPT\BUILD_MSVC143\CMAKEFILES\00BCC53426D4F746C66AB8AD83B9A340\APPLY_DRAG_VELOCITY_BC.SPV.RULE
 setlocal
 C:\Python314\Lib\site-packages\cmake\data\bin\cmake.exe -E make_directory D:/liuyue/physDreamerVulkanDemo/3dgs.cpp.opt/build_msvc143/shaders/
 if %errorlevel% neq 0 goto :cmEnd
-C:\VulkanSDK\1.4.350.0\Bin\glslangValidator.exe --target-env vulkan1.2 -V D:/liuyue/physDreamerVulkanDemo/3dgs.cpp.opt/src/shaders/interaction/apply_mouse_force.comp -o D:/liuyue/physDreamerVulkanDemo/3dgs.cpp.opt/build_msvc143/shaders/apply_mouse_force.spv -DNDEBUG
+C:\VulkanSDK\1.4.350.0\Bin\glslangValidator.exe --target-env vulkan1.2 -V D:/liuyue/physDreamerVulkanDemo/3dgs.cpp.opt/src/shaders/interaction/apply_drag_velocity_bc.comp -o D:/liuyue/physDreamerVulkanDemo/3dgs.cpp.opt/build_msvc143/shaders/apply_drag_velocity_bc.spv -DNDEBUG
+if %errorlevel% neq 0 goto :cmEnd
+:cmEnd
+endlocal & call :cmErrorLevel %errorlevel% & goto :cmDone
+:cmErrorLevel
+exit /b %1
+:cmDone
+if %errorlevel% neq 0 goto :VCEnd
+^D:\LIUYUE\PHYSDREAMERVULKANDEMO\3DGS.CPP.OPT\BUILD_MSVC143\CMAKEFILES\00BCC53426D4F746C66AB8AD83B9A340\APPLY_MOUSE_DISPLACEMENT.SPV.RULE
+setlocal
+C:\Python314\Lib\site-packages\cmake\data\bin\cmake.exe -E make_directory D:/liuyue/physDreamerVulkanDemo/3dgs.cpp.opt/build_msvc143/shaders/
+if %errorlevel% neq 0 goto :cmEnd
+C:\VulkanSDK\1.4.350.0\Bin\glslangValidator.exe --target-env vulkan1.2 -V D:/liuyue/physDreamerVulkanDemo/3dgs.cpp.opt/src/shaders/interaction/apply_mouse_displacement.comp -o D:/liuyue/physDreamerVulkanDemo/3dgs.cpp.opt/build_msvc143/shaders/apply_mouse_displacement.spv -DNDEBUG
+if %errorlevel% neq 0 goto :cmEnd
+:cmEnd
+endlocal & call :cmErrorLevel %errorlevel% & goto :cmDone
+:cmErrorLevel
+exit /b %1
+:cmDone
+if %errorlevel% neq 0 goto :VCEnd
+^D:\LIUYUE\PHYSDREAMERVULKANDEMO\3DGS.CPP.OPT\BUILD_MSVC143\CMAKEFILES\00BCC53426D4F746C66AB8AD83B9A340\ARGS_BUILDER.SPV.RULE
+setlocal
+C:\Python314\Lib\site-packages\cmake\data\bin\cmake.exe -E make_directory D:/liuyue/physDreamerVulkanDemo/3dgs.cpp.opt/build_msvc143/shaders/
+if %errorlevel% neq 0 goto :cmEnd
+C:\VulkanSDK\1.4.350.0\Bin\glslangValidator.exe --target-env vulkan1.2 -V D:/liuyue/physDreamerVulkanDemo/3dgs.cpp.opt/src/shaders/args_builder.comp -o D:/liuyue/physDreamerVulkanDemo/3dgs.cpp.opt/build_msvc143/shaders/args_builder.spv -DNDEBUG
 if %errorlevel% neq 0 goto :cmEnd
 :cmEnd
 endlocal & call :cmErrorLevel %errorlevel% & goto :cmDone
@@ -22,6 +46,18 @@ endlocal & call :cmErrorLevel %errorlevel% & goto :cmDone
 exit /b %1
 :cmDone
 if %errorlevel% neq 0 goto :VCEnd
+^D:\LIUYUE\PHYSDREAMERVULKANDEMO\3DGS.CPP.OPT\BUILD_MSVC143\CMAKEFILES\00BCC53426D4F746C66AB8AD83B9A340\COMPUTE_PARTICLE_DISPLACEMENTS.SPV.RULE
+setlocal
+C:\Python314\Lib\site-packages\cmake\data\bin\cmake.exe -E make_directory D:/liuyue/physDreamerVulkanDemo/3dgs.cpp.opt/build_msvc143/shaders/
+if %errorlevel% neq 0 goto :cmEnd
+C:\VulkanSDK\1.4.350.0\Bin\glslangValidator.exe --target-env vulkan1.2 -V D:/liuyue/physDreamerVulkanDemo/3dgs.cpp.opt/src/shaders/coupling/compute_particle_displacements.comp -o D:/liuyue/physDreamerVulkanDemo/3dgs.cpp.opt/build_msvc143/shaders/compute_particle_displacements.spv -DNDEBUG
+if %errorlevel% neq 0 goto :cmEnd
+:cmEnd
+endlocal & call :cmErrorLevel %errorlevel% & goto :cmDone
+:cmErrorLevel
+exit /b %1
+:cmDone
+if %errorlevel% neq 0 goto :VCEnd
 ^D:\LIUYUE\PHYSDREAMERVULKANDEMO\3DGS.CPP.OPT\BUILD_MSVC143\CMAKEFILES\00BCC53426D4F746C66AB8AD83B9A340\COMPUTE_STRESS.SPV.RULE
 setlocal
 C:\Python314\Lib\site-packages\cmake\data\bin\cmake.exe -E make_directory D:/liuyue/physDreamerVulkanDemo/3dgs.cpp.opt/build_msvc143/shaders/
@@ -34,11 +70,47 @@ endlocal & call :cmErrorLevel %errorlevel% & goto :cmDone
 exit /b %1
 :cmDone
 if %errorlevel% neq 0 goto :VCEnd
+^D:\LIUYUE\PHYSDREAMERVULKANDEMO\3DGS.CPP.OPT\BUILD_MSVC143\CMAKEFILES\00BCC53426D4F746C66AB8AD83B9A340\DRAG_PARTICLE.SPV.RULE
+setlocal
+C:\Python314\Lib\site-packages\cmake\data\bin\cmake.exe -E make_directory D:/liuyue/physDreamerVulkanDemo/3dgs.cpp.opt/build_msvc143/shaders/
+if %errorlevel% neq 0 goto :cmEnd
+C:\VulkanSDK\1.4.350.0\Bin\glslangValidator.exe --target-env vulkan1.2 -V D:/liuyue/physDreamerVulkanDemo/3dgs.cpp.opt/src/shaders/interaction/drag_particle.comp -o D:/liuyue/physDreamerVulkanDemo/3dgs.cpp.opt/build_msvc143/shaders/drag_particle.spv -DNDEBUG
+if %errorlevel% neq 0 goto :cmEnd
+:cmEnd
+endlocal & call :cmErrorLevel %errorlevel% & goto :cmDone
+:cmErrorLevel
+exit /b %1
+:cmDone
+if %errorlevel% neq 0 goto :VCEnd
+^D:\LIUYUE\PHYSDREAMERVULKANDEMO\3DGS.CPP.OPT\BUILD_MSVC143\CMAKEFILES\00BCC53426D4F746C66AB8AD83B9A340\EXTRACT_PARTICLE_FIELDS.SPV.RULE
+setlocal
+C:\Python314\Lib\site-packages\cmake\data\bin\cmake.exe -E make_directory D:/liuyue/physDreamerVulkanDemo/3dgs.cpp.opt/build_msvc143/shaders/
+if %errorlevel% neq 0 goto :cmEnd
+C:\VulkanSDK\1.4.350.0\Bin\glslangValidator.exe --target-env vulkan1.2 -V D:/liuyue/physDreamerVulkanDemo/3dgs.cpp.opt/src/shaders/interaction/extract_particle_fields.comp -o D:/liuyue/physDreamerVulkanDemo/3dgs.cpp.opt/build_msvc143/shaders/extract_particle_fields.spv -DNDEBUG
+if %errorlevel% neq 0 goto :cmEnd
+:cmEnd
+endlocal & call :cmErrorLevel %errorlevel% & goto :cmDone
+:cmErrorLevel
+exit /b %1
+:cmDone
+if %errorlevel% neq 0 goto :VCEnd
 ^D:\LIUYUE\PHYSDREAMERVULKANDEMO\3DGS.CPP.OPT\BUILD_MSVC143\CMAKEFILES\00BCC53426D4F746C66AB8AD83B9A340\G2P.SPV.RULE
 setlocal
 C:\Python314\Lib\site-packages\cmake\data\bin\cmake.exe -E make_directory D:/liuyue/physDreamerVulkanDemo/3dgs.cpp.opt/build_msvc143/shaders/
 if %errorlevel% neq 0 goto :cmEnd
 C:\VulkanSDK\1.4.350.0\Bin\glslangValidator.exe --target-env vulkan1.2 -V D:/liuyue/physDreamerVulkanDemo/3dgs.cpp.opt/src/shaders/mpm/g2p.comp -o D:/liuyue/physDreamerVulkanDemo/3dgs.cpp.opt/build_msvc143/shaders/g2p.spv -DNDEBUG
+if %errorlevel% neq 0 goto :cmEnd
+:cmEnd
+endlocal & call :cmErrorLevel %errorlevel% & goto :cmDone
+:cmErrorLevel
+exit /b %1
+:cmDone
+if %errorlevel% neq 0 goto :VCEnd
+^D:\LIUYUE\PHYSDREAMERVULKANDEMO\3DGS.CPP.OPT\BUILD_MSVC143\CMAKEFILES\00BCC53426D4F746C66AB8AD83B9A340\GRID_FREEZE.SPV.RULE
+setlocal
+C:\Python314\Lib\site-packages\cmake\data\bin\cmake.exe -E make_directory D:/liuyue/physDreamerVulkanDemo/3dgs.cpp.opt/build_msvc143/shaders/
+if %errorlevel% neq 0 goto :cmEnd
+C:\VulkanSDK\1.4.350.0\Bin\glslangValidator.exe --target-env vulkan1.2 -V D:/liuyue/physDreamerVulkanDemo/3dgs.cpp.opt/src/shaders/mpm/grid_freeze.comp -o D:/liuyue/physDreamerVulkanDemo/3dgs.cpp.opt/build_msvc143/shaders/grid_freeze.spv -DNDEBUG
 if %errorlevel% neq 0 goto :cmEnd
 :cmEnd
 endlocal & call :cmErrorLevel %errorlevel% & goto :cmDone
@@ -82,11 +154,35 @@ endlocal & call :cmErrorLevel %errorlevel% & goto :cmDone
 exit /b %1
 :cmDone
 if %errorlevel% neq 0 goto :VCEnd
+^D:\LIUYUE\PHYSDREAMERVULKANDEMO\3DGS.CPP.OPT\BUILD_MSVC143\CMAKEFILES\00BCC53426D4F746C66AB8AD83B9A340\MAP_DISPLACEMENT_WITH_ROTATION.SPV.RULE
+setlocal
+C:\Python314\Lib\site-packages\cmake\data\bin\cmake.exe -E make_directory D:/liuyue/physDreamerVulkanDemo/3dgs.cpp.opt/build_msvc143/shaders/
+if %errorlevel% neq 0 goto :cmEnd
+C:\VulkanSDK\1.4.350.0\Bin\glslangValidator.exe --target-env vulkan1.2 -V D:/liuyue/physDreamerVulkanDemo/3dgs.cpp.opt/src/shaders/coupling/map_displacement_with_rotation.comp -o D:/liuyue/physDreamerVulkanDemo/3dgs.cpp.opt/build_msvc143/shaders/map_displacement_with_rotation.spv -DNDEBUG
+if %errorlevel% neq 0 goto :cmEnd
+:cmEnd
+endlocal & call :cmErrorLevel %errorlevel% & goto :cmDone
+:cmErrorLevel
+exit /b %1
+:cmDone
+if %errorlevel% neq 0 goto :VCEnd
 ^D:\LIUYUE\PHYSDREAMERVULKANDEMO\3DGS.CPP.OPT\BUILD_MSVC143\CMAKEFILES\00BCC53426D4F746C66AB8AD83B9A340\P2G.SPV.RULE
 setlocal
 C:\Python314\Lib\site-packages\cmake\data\bin\cmake.exe -E make_directory D:/liuyue/physDreamerVulkanDemo/3dgs.cpp.opt/build_msvc143/shaders/
 if %errorlevel% neq 0 goto :cmEnd
 C:\VulkanSDK\1.4.350.0\Bin\glslangValidator.exe --target-env vulkan1.2 -V D:/liuyue/physDreamerVulkanDemo/3dgs.cpp.opt/src/shaders/mpm/p2g.comp -o D:/liuyue/physDreamerVulkanDemo/3dgs.cpp.opt/build_msvc143/shaders/p2g.spv -DNDEBUG
+if %errorlevel% neq 0 goto :cmEnd
+:cmEnd
+endlocal & call :cmErrorLevel %errorlevel% & goto :cmDone
+:cmErrorLevel
+exit /b %1
+:cmDone
+if %errorlevel% neq 0 goto :VCEnd
+^D:\LIUYUE\PHYSDREAMERVULKANDEMO\3DGS.CPP.OPT\BUILD_MSVC143\CMAKEFILES\00BCC53426D4F746C66AB8AD83B9A340\PIN_FROZEN_PARTICLES.SPV.RULE
+setlocal
+C:\Python314\Lib\site-packages\cmake\data\bin\cmake.exe -E make_directory D:/liuyue/physDreamerVulkanDemo/3dgs.cpp.opt/build_msvc143/shaders/
+if %errorlevel% neq 0 goto :cmEnd
+C:\VulkanSDK\1.4.350.0\Bin\glslangValidator.exe --target-env vulkan1.2 -V D:/liuyue/physDreamerVulkanDemo/3dgs.cpp.opt/src/shaders/mpm/pin_frozen_particles.comp -o D:/liuyue/physDreamerVulkanDemo/3dgs.cpp.opt/build_msvc143/shaders/pin_frozen_particles.spv -DNDEBUG
 if %errorlevel% neq 0 goto :cmEnd
 :cmEnd
 endlocal & call :cmErrorLevel %errorlevel% & goto :cmDone
@@ -190,6 +286,18 @@ endlocal & call :cmErrorLevel %errorlevel% & goto :cmDone
 exit /b %1
 :cmDone
 if %errorlevel% neq 0 goto :VCEnd
+^D:\LIUYUE\PHYSDREAMERVULKANDEMO\3DGS.CPP.OPT\BUILD_MSVC143\CMAKEFILES\00BCC53426D4F746C66AB8AD83B9A340\WRITEBACK_VELOCITY.SPV.RULE
+setlocal
+C:\Python314\Lib\site-packages\cmake\data\bin\cmake.exe -E make_directory D:/liuyue/physDreamerVulkanDemo/3dgs.cpp.opt/build_msvc143/shaders/
+if %errorlevel% neq 0 goto :cmEnd
+C:\VulkanSDK\1.4.350.0\Bin\glslangValidator.exe --target-env vulkan1.2 -V D:/liuyue/physDreamerVulkanDemo/3dgs.cpp.opt/src/shaders/interaction/writeback_velocity.comp -o D:/liuyue/physDreamerVulkanDemo/3dgs.cpp.opt/build_msvc143/shaders/writeback_velocity.spv -DNDEBUG
+if %errorlevel% neq 0 goto :cmEnd
+:cmEnd
+endlocal & call :cmErrorLevel %errorlevel% & goto :cmDone
+:cmErrorLevel
+exit /b %1
+:cmDone
+if %errorlevel% neq 0 goto :VCEnd
 ^D:\LIUYUE\PHYSDREAMERVULKANDEMO\3DGS.CPP.OPT\BUILD_MSVC143\CMAKEFILES\00BCC53426D4F746C66AB8AD83B9A340\ZERO_GRID.SPV.RULE
 setlocal
 C:\Python314\Lib\site-packages\cmake\data\bin\cmake.exe -E make_directory D:/liuyue/physDreamerVulkanDemo/3dgs.cpp.opt/build_msvc143/shaders/
@@ -206,21 +314,39 @@ if %errorlevel% neq 0 goto :VCEnd
 setlocal
 C:\Python314\Lib\site-packages\cmake\data\bin\cmake.exe -E remove D:/liuyue/physDreamerVulkanDemo/3dgs.cpp.opt/build_msvc143/shaders/shaders.h
 if %errorlevel% neq 0 goto :cmEnd
+Release\embedfile.exe SPV_ARGS_BUILDER D:/liuyue/physDreamerVulkanDemo/3dgs.cpp.opt/build_msvc143/shaders/args_builder.spv D:/liuyue/physDreamerVulkanDemo/3dgs.cpp.opt/build_msvc143/shaders/shaders.h
+if %errorlevel% neq 0 goto :cmEnd
 Release\embedfile.exe SPV_CALIBRATE D:/liuyue/physDreamerVulkanDemo/3dgs.cpp.opt/build_msvc143/shaders/calibrate.spv D:/liuyue/physDreamerVulkanDemo/3dgs.cpp.opt/build_msvc143/shaders/shaders.h
+if %errorlevel% neq 0 goto :cmEnd
+Release\embedfile.exe SPV_COMPUTE_PARTICLE_DISPLACEMENTS D:/liuyue/physDreamerVulkanDemo/3dgs.cpp.opt/build_msvc143/shaders/compute_particle_displacements.spv D:/liuyue/physDreamerVulkanDemo/3dgs.cpp.opt/build_msvc143/shaders/shaders.h
 if %errorlevel% neq 0 goto :cmEnd
 Release\embedfile.exe SPV_MAP_DISPLACEMENT D:/liuyue/physDreamerVulkanDemo/3dgs.cpp.opt/build_msvc143/shaders/map_displacement.spv D:/liuyue/physDreamerVulkanDemo/3dgs.cpp.opt/build_msvc143/shaders/shaders.h
 if %errorlevel% neq 0 goto :cmEnd
-Release\embedfile.exe SPV_APPLY_MOUSE_FORCE D:/liuyue/physDreamerVulkanDemo/3dgs.cpp.opt/build_msvc143/shaders/apply_mouse_force.spv D:/liuyue/physDreamerVulkanDemo/3dgs.cpp.opt/build_msvc143/shaders/shaders.h
+Release\embedfile.exe SPV_MAP_DISPLACEMENT_WITH_ROTATION D:/liuyue/physDreamerVulkanDemo/3dgs.cpp.opt/build_msvc143/shaders/map_displacement_with_rotation.spv D:/liuyue/physDreamerVulkanDemo/3dgs.cpp.opt/build_msvc143/shaders/shaders.h
+if %errorlevel% neq 0 goto :cmEnd
+Release\embedfile.exe SPV_APPLY_DRAG_VELOCITY_BC D:/liuyue/physDreamerVulkanDemo/3dgs.cpp.opt/build_msvc143/shaders/apply_drag_velocity_bc.spv D:/liuyue/physDreamerVulkanDemo/3dgs.cpp.opt/build_msvc143/shaders/shaders.h
+if %errorlevel% neq 0 goto :cmEnd
+Release\embedfile.exe SPV_APPLY_MOUSE_DISPLACEMENT D:/liuyue/physDreamerVulkanDemo/3dgs.cpp.opt/build_msvc143/shaders/apply_mouse_displacement.spv D:/liuyue/physDreamerVulkanDemo/3dgs.cpp.opt/build_msvc143/shaders/shaders.h
+if %errorlevel% neq 0 goto :cmEnd
+Release\embedfile.exe SPV_DRAG_PARTICLE D:/liuyue/physDreamerVulkanDemo/3dgs.cpp.opt/build_msvc143/shaders/drag_particle.spv D:/liuyue/physDreamerVulkanDemo/3dgs.cpp.opt/build_msvc143/shaders/shaders.h
+if %errorlevel% neq 0 goto :cmEnd
+Release\embedfile.exe SPV_EXTRACT_PARTICLE_FIELDS D:/liuyue/physDreamerVulkanDemo/3dgs.cpp.opt/build_msvc143/shaders/extract_particle_fields.spv D:/liuyue/physDreamerVulkanDemo/3dgs.cpp.opt/build_msvc143/shaders/shaders.h
 if %errorlevel% neq 0 goto :cmEnd
 Release\embedfile.exe SPV_RAY_CAST_PARTICLES D:/liuyue/physDreamerVulkanDemo/3dgs.cpp.opt/build_msvc143/shaders/ray_cast_particles.spv D:/liuyue/physDreamerVulkanDemo/3dgs.cpp.opt/build_msvc143/shaders/shaders.h
+if %errorlevel% neq 0 goto :cmEnd
+Release\embedfile.exe SPV_WRITEBACK_VELOCITY D:/liuyue/physDreamerVulkanDemo/3dgs.cpp.opt/build_msvc143/shaders/writeback_velocity.spv D:/liuyue/physDreamerVulkanDemo/3dgs.cpp.opt/build_msvc143/shaders/shaders.h
 if %errorlevel% neq 0 goto :cmEnd
 Release\embedfile.exe SPV_COMPUTE_STRESS D:/liuyue/physDreamerVulkanDemo/3dgs.cpp.opt/build_msvc143/shaders/compute_stress.spv D:/liuyue/physDreamerVulkanDemo/3dgs.cpp.opt/build_msvc143/shaders/shaders.h
 if %errorlevel% neq 0 goto :cmEnd
 Release\embedfile.exe SPV_G2P D:/liuyue/physDreamerVulkanDemo/3dgs.cpp.opt/build_msvc143/shaders/g2p.spv D:/liuyue/physDreamerVulkanDemo/3dgs.cpp.opt/build_msvc143/shaders/shaders.h
 if %errorlevel% neq 0 goto :cmEnd
+Release\embedfile.exe SPV_GRID_FREEZE D:/liuyue/physDreamerVulkanDemo/3dgs.cpp.opt/build_msvc143/shaders/grid_freeze.spv D:/liuyue/physDreamerVulkanDemo/3dgs.cpp.opt/build_msvc143/shaders/shaders.h
+if %errorlevel% neq 0 goto :cmEnd
 Release\embedfile.exe SPV_GRID_UPDATE D:/liuyue/physDreamerVulkanDemo/3dgs.cpp.opt/build_msvc143/shaders/grid_update.spv D:/liuyue/physDreamerVulkanDemo/3dgs.cpp.opt/build_msvc143/shaders/shaders.h
 if %errorlevel% neq 0 goto :cmEnd
 Release\embedfile.exe SPV_P2G D:/liuyue/physDreamerVulkanDemo/3dgs.cpp.opt/build_msvc143/shaders/p2g.spv D:/liuyue/physDreamerVulkanDemo/3dgs.cpp.opt/build_msvc143/shaders/shaders.h
+if %errorlevel% neq 0 goto :cmEnd
+Release\embedfile.exe SPV_PIN_FROZEN_PARTICLES D:/liuyue/physDreamerVulkanDemo/3dgs.cpp.opt/build_msvc143/shaders/pin_frozen_particles.spv D:/liuyue/physDreamerVulkanDemo/3dgs.cpp.opt/build_msvc143/shaders/shaders.h
 if %errorlevel% neq 0 goto :cmEnd
 Release\embedfile.exe SPV_ZERO_GRID D:/liuyue/physDreamerVulkanDemo/3dgs.cpp.opt/build_msvc143/shaders/zero_grid.spv D:/liuyue/physDreamerVulkanDemo/3dgs.cpp.opt/build_msvc143/shaders/shaders.h
 if %errorlevel% neq 0 goto :cmEnd

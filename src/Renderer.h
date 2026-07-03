@@ -62,9 +62,9 @@ public:
     };
 
     struct RadixSortPushConstants {
-        uint32_t g_num_elements; // == NUM_ELEMENTS
+        // 提交 B：g_num_elements/g_num_workgroups 移到 sortParamsBuffer SSBO（args_builder 写）。
+        // push_constant 只剩 CPU 已知的 per-iteration（g_shift）+ 常量（g_num_blocks_per_workgroup）。
         uint32_t g_shift; // (*)
-        uint32_t g_num_workgroups; // == NUMBER_OF_WORKGROUPS as defined in the section above
         uint32_t g_num_blocks_per_workgroup; // == NUM_BLOCKS_PER_WORKGROUP
     };
 
@@ -138,6 +138,7 @@ private:
     std::shared_ptr<ComputePipeline> sortHistPipeline;
     std::shared_ptr<ComputePipeline> sortPipeline;
     std::shared_ptr<ComputePipeline> tileBoundaryPipeline;
+    std::shared_ptr<ComputePipeline> argsBuilderPipeline;  // 写 indirectArgs + sortParams（GPU 驱动 dispatch）
 
     std::shared_ptr<Buffer> uniformBuffer;
     std::shared_ptr<Buffer> vertexAttributeBuffer;
@@ -148,6 +149,9 @@ private:
     std::shared_ptr<Buffer> sortKBufferOdd;
     std::shared_ptr<Buffer> sortHistBuffer;
     std::shared_ptr<Buffer> totalSumBufferHost;
+    std::shared_ptr<Buffer> totalSumGPUBuffer;   // prefix sum 末位 → GPU storage（args_builder 读，消除 host 回读 parity 问题）
+    std::shared_ptr<Buffer> indirectArgsBuffer;  // DispatchIndirectCommand[]：[0]=tile_boundary（提交 B 加 sort）
+    std::shared_ptr<Buffer> sortParamsBuffer;    // num_instances 等（SSBO，shader 写、shader 读）
     std::shared_ptr<Buffer> tileBoundaryBuffer;
     std::shared_ptr<Buffer> sortVBufferEven;
     std::shared_ptr<Buffer> sortVBufferOdd;
@@ -296,6 +300,8 @@ private:
     void createPreprocessPipeline();
 
     void createPrefixSumPipeline();
+
+    void createArgsBuilderPipeline();
 
     void createRadixSortPipeline();
 

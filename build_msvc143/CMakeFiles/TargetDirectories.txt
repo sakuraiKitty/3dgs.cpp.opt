@@ -15,6 +15,7 @@ D:/liuyue/physDreamerVulkanDemo/3dgs.cpp.opt/build_msvc143/src/CMakeFiles/3dgs_c
 D:/liuyue/physDreamerVulkanDemo/3dgs.cpp.opt/build_msvc143/src/CMakeFiles/ALL_BUILD.dir
 D:/liuyue/physDreamerVulkanDemo/3dgs.cpp.opt/build_msvc143/src/shaders/CMakeFiles/embedfile.dir
 D:/liuyue/physDreamerVulkanDemo/3dgs.cpp.opt/build_msvc143/src/shaders/CMakeFiles/shaders.dir
+D:/liuyue/physDreamerVulkanDemo/3dgs.cpp.opt/build_msvc143/src/shaders/CMakeFiles/copy_spv_to_source.dir
 D:/liuyue/physDreamerVulkanDemo/3dgs.cpp.opt/build_msvc143/src/shaders/CMakeFiles/xcode_shaders.dir
 D:/liuyue/physDreamerVulkanDemo/3dgs.cpp.opt/build_msvc143/src/shaders/CMakeFiles/ALL_BUILD.dir
 D:/liuyue/physDreamerVulkanDemo/3dgs.cpp.opt/build_msvc143/apps/viewer/CMakeFiles/3dgs_viewer.dir

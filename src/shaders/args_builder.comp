@@ -1,0 +1,48 @@
+#version 450
+#extension GL_GOOGLE_include_directive : enable
+
+// args_builder: 读 prefix sum 的 totalSum，写 indirect dispatch 参数 + sort 参数。
+// 替代原来的 host 回读 totalSumBufferHost + CPU 算 dispatch 数（消除 preprocessFence 同步）。
+//
+// 提交 B：驱动 tile_boundary + radix sort 的 dispatchIndirect，并写 sort 用的 num_elements/num_workgroups。
+
+layout (std430, set = 0, binding = 0) readonly buffer TotalSum {
+    uint total_sum; // 可见高斯数（prefix sum 末位）
+};
+
+// VkDispatchIndirectCommand { uint x; uint y; uint z; } —— 12B，std430 无 padding
+struct DispatchIndirectCommand {
+    uint x;
+    uint y;
+    uint z;
+};
+
+layout (std430, set = 0, binding = 1) writeonly buffer IndirectArgs {
+    DispatchIndirectCommand tile_boundary; // offset 0：dispatch((n+255)/256, 1, 1)
+    DispatchIndirectCommand sort;          // offset 12：dispatch(sort_groups, 1, 1)，8 次复用
+};
+
+layout (std430, set = 0, binding = 2) writeonly buffer SortParams {
+    uint num_instances;   // = totalSum（tile_boundary numInstances + sort g_num_elements）
+    uint num_workgroups;  // sort dispatch groups（sort g_num_workgroups）
+};
+
+layout( push_constant ) uniform Constants {
+    uint num_radix_blocks_per_wg; // = numRadixSortBlocksPerWorkgroup（CPU 侧常量，APPLE 分支不同）
+};
+
+layout (local_size_x = 1, local_size_y = 1, local_size_z = 1) in;
+
+void main() {
+    uint n = total_sum;
+    uint tile_groups = (n + 255) / 256;
+    // sort dispatch 数：与 CPU 原算法一致
+    // invocationSize = (n + num_radix_blocks_per_wg - 1) / num_radix_blocks_per_wg; 再 (invocationSize+255)/256
+    uint invocation_size = (n + num_radix_blocks_per_wg - 1) / num_radix_blocks_per_wg;
+    invocation_size = (invocation_size + 255) / 256;
+
+    tile_boundary = DispatchIndirectCommand(tile_groups, 1u, 1u);
+    sort = DispatchIndirectCommand(invocation_size, 1u, 1u);
+    num_instances = n;
+    num_workgroups = invocation_size;
+}

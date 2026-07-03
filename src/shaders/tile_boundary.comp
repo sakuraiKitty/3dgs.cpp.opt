@@ -12,8 +12,9 @@ layout (std430, set = 0, binding = 1) writeonly buffer Out {
     uint boundaries[];
 };
 
-layout( push_constant ) uniform Constants
-{
+// numInstances 改从 SSBO 读（由 args_builder shader 写入），不再走 host 回读 + push constant。
+// 提交 A：消除 tile_boundary 对 totalSumBufferHost 的依赖。
+layout (std430, set = 0, binding = 2) readonly buffer SortParams {
     uint numInstances;
 };
 

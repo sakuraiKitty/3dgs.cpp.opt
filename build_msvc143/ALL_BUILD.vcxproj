@@ -182,6 +182,12 @@ if %errorlevel% neq 0 goto :VCEnd</Command>
       <Project>{AE987D3A-B4F0-38CF-89F2-10CF0D0ED7E8}</Project>
       <Name>3dgs_viewer</Name>
     </ProjectReference>
+    <ProjectReference Include="D:\liuyue\physDreamerVulkanDemo\3dgs.cpp.opt\build_msvc143\src\shaders\copy_spv_to_source.vcxproj">
+      <Project>{4FC3426E-D28C-3A03-B07C-60AE6EB15D2B}</Project>
+      <Name>copy_spv_to_source</Name>
+      <ReferenceOutputAssembly>false</ReferenceOutputAssembly>
+      <CopyToOutputDirectory>Never</CopyToOutputDirectory>
+    </ProjectReference>
     <ProjectReference Include="D:\liuyue\physDreamerVulkanDemo\3dgs.cpp.opt\build_msvc143\src\shaders\embedfile.vcxproj">
       <Project>{F5F7F894-DF99-3BE6-ACB5-94E5667854FA}</Project>
       <Name>embedfile</Name>
