@@ -138,23 +138,6 @@ public:
     void SetDamping(float d) { config_.damping = d; }
 
     /**
-     * 位置 home-spring 开关 + 刚度（为刚体旋转/平移模态提供恢复力，FCR 客观材料无法）
-     * k≈15 → 周期 T=2π/√k≈1.6s；配合释放阻尼 0.95/帧，松手后 1-2 次振荡归位。
-     * enable=0 关闭（纯 FCR，会卡在刚体旋转态）。
-     */
-    void SetHomeSpring(float k, bool enable) {
-        home_spring_.k_spring = k;
-        home_spring_.enable = enable ? 1u : 0u;
-    }
-
-    /**
-     * F 松弛系数（每子步 F ← F + α(I−F)，仅 home_spring enable=1 即释放时生效）。
-     * 直退 FCR 恢复不了的刚体旋转。substeps=128 时 α=5e-4 → 半衰期≈10帧(0.33s)，~1s 退完。
-     * 0=关闭（纯 FCR+位置spring）。调大恢复快但塑性感强，调小慢。
-     */
-    void SetFRelaxAlpha(float a) { home_spring_.f_relax_alpha = a; }
-
-    /**
      * 拖拽速度 Dirichlet BC（每子步 SET 半径内非冻结粒子速度，对标 PhysDreamer enforce_particle_velocity_by_mask）
      * 由 Renderer 每帧（拖拽中）调用，MPMManager 在 Substep 的 zero_grid 后、P2G 前派发。
      * 释放时调 ClearDragVelocityBC() 停止驱动，自由震荡。
@@ -317,21 +300,6 @@ private:
     std::shared_ptr<ComputePipeline> g2p_pipeline_;
     std::shared_ptr<ComputePipeline> drag_bc_pipeline_;       // 拖拽速度 Dirichlet BC（每子步）
     std::shared_ptr<ComputePipeline> pin_frozen_pipeline_;    // 粒子级硬冻结（每子步 G2P 后，对标 PhysDreamer gui_demo.py:313）
-    std::shared_ptr<ComputePipeline> home_spring_pipeline_;   // 位置 home-spring（每子步 ZeroGrid 后，为刚体模态提供恢复力）
-
-    // 位置 home-spring 参数（24 bytes，与 apply_home_spring.comp push constant 布局一致）
-    // FCR 客观材料对纯旋转零应力→花头刚体旋转不回弹；弹簧 F=-k(x-x0) 恢复刚体平移，
-    // F 松弛 F←F+α(I−F) 直接退掉锁定的刚体旋转（bulk F 均匀→τ均匀→净力0，FCR 恢复不了）。
-    struct HomeSpringParams {
-        float    k_spring;       // offset 0  — 弹簧刚度 ω² (1/s²), 周期 T=2π/√k
-        float    dt;             // offset 4  — 子步时间步长（每子步由 Substep 注入）
-        uint32_t num_particles;  // offset 8
-        uint32_t enable;         // offset 12 — 0=禁用 1=启用（Renderer 每帧设为 !dragging）
-        float    f_relax_alpha;  // offset 16 — F 松弛系数（每子步 F += α(I−F)；0=关）
-        uint32_t _pad;           // offset 20
-    };
-    static_assert(sizeof(HomeSpringParams) == 24, "HomeSpringParams must be 24 bytes (GLSL push constant)");
-    HomeSpringParams home_spring_{0.0f, 0.0f, 0u, 0u, 0.0f, 0u};  // 默认禁用
 
     // 拖拽速度 BC 参数（48 bytes，与 apply_drag_velocity_bc.comp push constant 布局一致）
     struct DragBCParams {

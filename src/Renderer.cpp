@@ -31,6 +31,7 @@ void Renderer::initialize() {
     loadSceneToGPU();
     createPreprocessPipeline();
     createPrefixSumPipeline();
+    createArgsBuilderPipeline();
     createRadixSortPipeline();
     createPreprocessSortPipeline();
     createTileBoundaryPipeline();
@@ -546,6 +547,31 @@ void Renderer::createPrefixSumPipeline() {
     prefixSumPipeline->build();
 }
 
+void Renderer::createArgsBuilderPipeline() {
+    spdlog::debug("Creating args builder pipeline");
+    // totalSumGPU: prefix sum 末位拷到此 GPU storage（parity 在 preprocess cmd 内解决），args_builder 读
+    totalSumGPUBuffer = Buffer::storage(context, sizeof(uint32_t), false, 0, "totalSumGPUBuffer");
+    // indirectArgs: 2 个 DispatchIndirectCommand（12B each）。提交 A 只用 [0]=tile_boundary
+    indirectArgsBuffer = Buffer::indirect(context, sizeof(uint32_t) * 3 * 2, "indirectArgsBuffer");
+    // sortParams: SSBO，args_builder 写、tile_boundary(提交 B +hist/sort) 读
+    sortParamsBuffer = Buffer::storage(context, sizeof(uint32_t) * 4, false, 0, "sortParamsBuffer");
+
+    argsBuilderPipeline = std::make_shared<ComputePipeline>(
+        context, std::make_shared<Shader>(context, "args_builder", SPV_ARGS_BUILDER, SPV_ARGS_BUILDER_len));
+    auto descriptorSet = std::make_shared<DescriptorSet>(context, FRAMES_IN_FLIGHT);
+    descriptorSet->bindBufferToDescriptorSet(0, vk::DescriptorType::eStorageBuffer, vk::ShaderStageFlagBits::eCompute,
+                                             totalSumGPUBuffer);
+    descriptorSet->bindBufferToDescriptorSet(1, vk::DescriptorType::eStorageBuffer, vk::ShaderStageFlagBits::eCompute,
+                                             indirectArgsBuffer);
+    descriptorSet->bindBufferToDescriptorSet(2, vk::DescriptorType::eStorageBuffer, vk::ShaderStageFlagBits::eCompute,
+                                             sortParamsBuffer);
+    descriptorSet->build();
+
+    argsBuilderPipeline->addDescriptorSet(0, descriptorSet);
+    argsBuilderPipeline->addPushConstant(vk::ShaderStageFlagBits::eCompute, 0, sizeof(uint32_t));
+    argsBuilderPipeline->build();
+}
+
 void Renderer::createRadixSortPipeline() {
     spdlog::debug("Creating radix sort pipeline");
     sortKBufferEven = Buffer::storage(context, scene->getNumVertices() * sizeof(uint64_t) * sortBufferSizeMultiplier,
@@ -577,6 +603,8 @@ void Renderer::createRadixSortPipeline() {
                                              sortKBufferOdd);
     descriptorSet->bindBufferToDescriptorSet(1, vk::DescriptorType::eStorageBuffer, vk::ShaderStageFlagBits::eCompute,
                                              sortHistBuffer);
+    descriptorSet->bindBufferToDescriptorSet(2, vk::DescriptorType::eStorageBuffer, vk::ShaderStageFlagBits::eCompute,
+                                             sortParamsBuffer);
     descriptorSet->build();
     sortHistPipeline->addDescriptorSet(0, descriptorSet);
     sortHistPipeline->addPushConstant(vk::ShaderStageFlagBits::eCompute, 0, sizeof(RadixSortPushConstants));
@@ -601,6 +629,8 @@ void Renderer::createRadixSortPipeline() {
                                              sortVBufferEven);
     descriptorSet->bindBufferToDescriptorSet(4, vk::DescriptorType::eStorageBuffer, vk::ShaderStageFlagBits::eCompute,
                                              sortHistBuffer);
+    descriptorSet->bindBufferToDescriptorSet(5, vk::DescriptorType::eStorageBuffer, vk::ShaderStageFlagBits::eCompute,
+                                             sortParamsBuffer);
     descriptorSet->build();
     sortPipeline->addDescriptorSet(0, descriptorSet);
     sortPipeline->addPushConstant(vk::ShaderStageFlagBits::eCompute, 0, sizeof(RadixSortPushConstants));
@@ -645,10 +675,12 @@ void Renderer::createTileBoundaryPipeline() {
     //                                          sortKBufferOdd);
     descriptorSet->bindBufferToDescriptorSet(1, vk::DescriptorType::eStorageBuffer, vk::ShaderStageFlagBits::eCompute,
                                              tileBoundaryBuffer);
+    // numInstances 改从 sortParamsBuffer SSBO 读（args_builder 写），不再用 push constant
+    descriptorSet->bindBufferToDescriptorSet(2, vk::DescriptorType::eStorageBuffer, vk::ShaderStageFlagBits::eCompute,
+                                             sortParamsBuffer);
     descriptorSet->build();
 
     tileBoundaryPipeline->addDescriptorSet(0, descriptorSet);
-    tileBoundaryPipeline->addPushConstant(vk::ShaderStageFlagBits::eCompute, 0, sizeof(uint32_t));
     tileBoundaryPipeline->build();
 }
 
@@ -718,8 +750,8 @@ void Renderer::draw() {
     renderForegroundOnly_ = guiManager.renderBackgroundOnly;
 
     // 3a. Execute physics GPU commands BEFORE preprocess (if MPM simulation is active)
-    // Physics updates: SetDragVelocityBC(if dragging) → MPM Step(含 home-spring) → displacement → coupling → override buffers
-    // MPM持续运行（拖拽时 + 非拖拽时都运行，自然回弹靠弹性力+阻尼+home-spring）
+    // Physics updates: SetDragVelocityBC(if dragging) → MPM Step → displacement → coupling → override buffers
+    // MPM持续运行（拖拽时 + 非拖拽时都运行，自然回弹靠 FCR 弹性力+阻尼）
     if (mpm_initialized_ && mpm_manager_ && mpm_manager_->IsEnabled() &&
         coupling_initialized_ && coupling_manager_) {
         auto& physicsCmd = physicsCommandBuffers[frameIdx];
@@ -741,12 +773,16 @@ void Renderer::draw() {
         physicsSubmittedThisFrame_ = false;
     }
 
-    // 3b. 提交预处理工作（使用专用preprocessFence，而非inflightFences）
+    // 3b. 提交预处理工作（preprocessFence 同步）
+    // 注意：preprocessCommandBuffers[0] 是单共享 cmd buffer，每帧重提。fence wait 不只是为 host 回读——
+    // 它还保证"上一帧 preprocess GPU 完成、render 也已提交"后再重提同一 cmd buffer（否则 pending 非法）。
+    // 共享 buffer（sortKBufferEven/prefixSumPing/indirectArgs...）跨帧复用，靠 fence 串行 GPU 执行避免竞争。
+    // TODO 真正的流水线需要 per-frame preprocess cmd + per-frame buffer 双缓冲，是更大重构，此处先保正确。
     auto preprocessCmd = preprocessCommandBuffers[0].get();
     auto preprocessSubmit = vk::SubmitInfo{}.setCommandBuffers(preprocessCmd);
     context->queues[VulkanContext::Queue::COMPUTE].queue.submit(preprocessSubmit, preprocessFence.get());
 
-    // 等待预处理完成（使用专用fence，确保totalSumBufferHost数据有效）
+    // 等待预处理完成（host 回读 totalSumBufferHost（GUI/防御性 assert）+ cmd buffer 生命周期安全）
     ret = context->device->waitForFences(preprocessFence.get(), VK_TRUE, UINT64_MAX);
     if (ret != vk::Result::eSuccess) {
         throw std::runtime_error("Failed to wait for preprocess fence");
@@ -956,13 +992,31 @@ void Renderer::recordPreprocessCommandBuffer() {
     if (iters % 2 == 0) {
         cmdBuffer->copyBuffer(prefixSumPingBuffer->buffer, totalSumBufferHost->buffer, 1,
                                     &totalSumRegion);
+        cmdBuffer->copyBuffer(prefixSumPingBuffer->buffer, totalSumGPUBuffer->buffer, 1,
+                                    &totalSumRegion);
     } else {
         cmdBuffer->copyBuffer(prefixSumPongBuffer->buffer, totalSumBufferHost->buffer, 1,
                                     &totalSumRegion);
+        cmdBuffer->copyBuffer(prefixSumPongBuffer->buffer, totalSumGPUBuffer->buffer, 1,
+                                    &totalSumRegion);
     }
+
+    // totalSumGPUBuffer: TransferWrite → ShaderRead（args_builder 读）
+    Utils::BarrierBuilder().queueFamilyIndex(context->queues[VulkanContext::Queue::COMPUTE].queueFamily)
+            .addBufferBarrier(totalSumGPUBuffer, vk::AccessFlagBits::eTransferWrite,
+                              vk::AccessFlagBits::eShaderRead)
+            .build(cmdBuffer.get(), vk::PipelineStageFlagBits::eTransfer,
+                   vk::PipelineStageFlagBits::eComputeShader);
 
     cmdBuffer->writeTimestamp(vk::PipelineStageFlagBits::eComputeShader, context->queryPool.get(),
                                 queryManager->registerQuery("prefix_sum_end"));
+
+    // args_builder: 读 totalSumGPUBuffer → 写 indirectArgsBuffer + sortParamsBuffer（GPU 驱动 dispatch）
+    argsBuilderPipeline->bind(cmdBuffer, 0, 0);
+    cmdBuffer->pushConstants(argsBuilderPipeline->pipelineLayout.get(),
+                             vk::ShaderStageFlagBits::eCompute, 0,
+                             sizeof(uint32_t), &numRadixSortBlocksPerWorkgroup);
+    cmdBuffer->dispatch(1, 1, 1);
 
     cmdBuffer->end();
 }
@@ -972,6 +1026,8 @@ bool Renderer::recordRenderCommandBuffer(uint32_t currentFrame) {
     auto& cmdBuffer = renderCommandBuffers[currentFrame];
     cmdBuffer->reset();
 
+    // numInstances 不再驱动 sort/tile_boundary dispatch（已改 dispatchIndirect，GPU 算）。
+    // fence wait 保证 preprocess 已完成，此处 host 读为当帧值，仅用于 GUI 显示 + 防御性 realloc 检查 + assert。
     uint32_t numInstances = totalSumBufferHost->readOne<uint32_t>();
     // spdlog::debug("Num instances: {}", numInstances);
     guiManager.pushTextMetric("instances", numInstances);
@@ -1045,23 +1101,34 @@ bool Renderer::recordRenderCommandBuffer(uint32_t currentFrame) {
     // std::cout << "Num instances: " << numInstances << std::endl;
 
     assert(numInstances <= scene->getNumVertices() * sortBufferSizeMultiplier);
+
+    // 跨 command buffer 内存可见性：args_builder（preprocess cmd）写了 indirectArgsBuffer + sortParamsBuffer。
+    // sort loop 是首个消费者（tile_boundary 在后，复用同一 barrier 可见性）。
+    // indirectArgsBuffer: ShaderWrite@Compute → IndirectCommandRead@DrawIndirect（dispatchIndirect 读取）
+    Utils::BarrierBuilder().queueFamilyIndex(context->queues[VulkanContext::Queue::COMPUTE].queueFamily)
+            .addBufferBarrier(indirectArgsBuffer, vk::AccessFlagBits::eShaderWrite,
+                              vk::AccessFlagBits::eIndirectCommandRead)
+            .build(cmdBuffer.get(), vk::PipelineStageFlagBits::eComputeShader,
+                   vk::PipelineStageFlagBits::eDrawIndirect);
+    // sortParamsBuffer: ShaderWrite@Compute → ShaderRead@Compute（hist/sort 读 num_instances/num_workgroups）
+    sortParamsBuffer->computeWriteReadBarrier(cmdBuffer.get());
+
     cmdBuffer->writeTimestamp(vk::PipelineStageFlagBits::eComputeShader, context->queryPool.get(),
                                                 queryManager->registerQuery("sort_start"));
+    // sort dispatch 数 + num_elements/num_workgroups 由 args_builder 写入 GPU，CPU 不再回读。
+    // 8 次 radix 迭代共用 indirectArgsBuffer[1]（同 invocationSize）。
+    constexpr vk::DeviceSize sortIndirectOffset = sizeof(uint32_t) * 3; // DispatchIndirectCommand=12B，sort 在 [1]
     for (auto i = 0; i < 8; i++) {
         sortHistPipeline->bind(cmdBuffer, 0, i % 2 == 0 ? 0 : 1);
-        auto invocationSize = (numInstances + numRadixSortBlocksPerWorkgroup - 1) / numRadixSortBlocksPerWorkgroup;
-        invocationSize = (invocationSize + 255) / 256;
 
         RadixSortPushConstants pushConstants{};
-        pushConstants.g_num_elements = numInstances;
-        pushConstants.g_num_blocks_per_workgroup = numRadixSortBlocksPerWorkgroup;
         pushConstants.g_shift = i * 8;
-        pushConstants.g_num_workgroups = invocationSize;
+        pushConstants.g_num_blocks_per_workgroup = numRadixSortBlocksPerWorkgroup;
         cmdBuffer->pushConstants(sortHistPipeline->pipelineLayout.get(),
                                            vk::ShaderStageFlagBits::eCompute, 0,
                                            sizeof(RadixSortPushConstants), &pushConstants);
 
-        cmdBuffer->dispatch(invocationSize, 1, 1);
+        cmdBuffer->dispatchIndirect(indirectArgsBuffer->buffer, sortIndirectOffset);
 
         sortHistBuffer->computeWriteReadBarrier(cmdBuffer.get());
 
@@ -1069,7 +1136,7 @@ bool Renderer::recordRenderCommandBuffer(uint32_t currentFrame) {
         cmdBuffer->pushConstants(sortPipeline->pipelineLayout.get(),
                                            vk::ShaderStageFlagBits::eCompute, 0,
                                            sizeof(RadixSortPushConstants), &pushConstants);
-        cmdBuffer->dispatch(invocationSize, 1, 1);
+        cmdBuffer->dispatchIndirect(indirectArgsBuffer->buffer, sortIndirectOffset);
 
         if (i % 2 == 0) {
             sortKBufferOdd->computeWriteReadBarrier(cmdBuffer.get());
@@ -1091,13 +1158,13 @@ bool Renderer::recordRenderCommandBuffer(uint32_t currentFrame) {
                    vk::PipelineStageFlagBits::eComputeShader);
 
     // Since we have 64 bit keys, the sort result is always in the even buffer
+    // indirectArgsBuffer + sortParamsBuffer 的可见性由 sort loop 前的 barrier 兜底（无中间写入）。
+
     tileBoundaryPipeline->bind(cmdBuffer, 0, 0);
     cmdBuffer->writeTimestamp(vk::PipelineStageFlagBits::eComputeShader, context->queryPool.get(),
                                         queryManager->registerQuery("tile_boundary_start"));
-    cmdBuffer->pushConstants(tileBoundaryPipeline->pipelineLayout.get(),
-                                       vk::ShaderStageFlagBits::eCompute, 0,
-                                       sizeof(uint32_t), &numInstances);
-    cmdBuffer->dispatch((numInstances + 255) / 256, 1, 1);
+    // GPU 驱动 dispatch：numInstances 由 args_builder 写入 indirectArgsBuffer[0]，不再 host 回读
+    cmdBuffer->dispatchIndirect(indirectArgsBuffer->buffer, 0);
 
     tileBoundaryBuffer->computeWriteReadBarrier(cmdBuffer.get());
     cmdBuffer->writeTimestamp(vk::PipelineStageFlagBits::eComputeShader, context->queryPool.get(),
@@ -1572,15 +1639,10 @@ void Renderer::updatePhysicsSimulation(VkCommandBuffer cmd) {
         }
 
         // ── 恢复机制：纯 FCR 弹性（对标 PhysDreamer gui_demo.py）──
-        // PhysDreamer 不用 home-spring、不用 F 松弛，靠 FCR 弹性应力（F≠I→τ≠0）自然恢复。
-        // 之前的 home-spring + F 松弛是治"刚体旋转锁死"症状的 workaround，但互相拆台：
-        //   - F 松弛驱 F→I → τ=2μ(F−R)Fᵀ→0 → 杀死 FCR 弹性耦合 → 无恢复力
-        //   - home-spring 速度冲量在 P2G→G2P 回路丢失（实测 v 比理论小 360×）→ 失效
-        // 真根因是 substeps=128(<PD 最小 256)+拖拽成刚体模态；提到 256+局部 2% 抓取后
-        // 拖拽产生局部变形(F≠R)，FCR 即可恢复（PD gui_demo.py:184-186 作者自述）。
-        mpm_manager_->SetHomeSpring(0.0f, /*enable=*/false);  // 关闭：PD 不用位置弹簧
-        mpm_manager_->SetFRelaxAlpha(0.0f);                    // 关闭：保留 FCR 弹性恢复力
-        spdlog::info("[PhysicsSim] Recovery = pure FCR (PhysDreamer-aligned): home-spring OFF, F-relax OFF; "
+        // 靠 FCR 弹性应力（F≠I→τ≠0）自然恢复，无需位置弹簧/F 松弛。
+        // 真根因是 substeps≥256 + 局部 2% 抓取：拖拽产生局部变形(F≠R)，FCR 即可恢复
+        // （PD gui_demo.py:184-186 作者自述）。
+        spdlog::info("[PhysicsSim] Recovery = pure FCR (PhysDreamer-aligned): "
                      "substeps={} (PD min 256). FCR τ=2μ(F−R)Fᵀ provides elastic restore.",
                      mpm_cfg.substeps);
         cfl_injected = true;
@@ -1720,13 +1782,9 @@ void Renderer::updatePhysicsSimulation(VkCommandBuffer cmd) {
             ? 1.0f
             : std::pow(0.95f, 1.0f / static_cast<float>(subs));  // 0.95/帧 → 每子步
         mpm_manager_->SetDamping(damping);
-
-        // home-spring 已在 init 关闭（纯 FCR 恢复，对标 PhysDreamer）。此处保持关闭，
-        // 不再每帧按 !dragging 切换 —— PD 无位置弹簧，FCR τ 提供全部恢复力。
-        mpm_manager_->SetHomeSpring(0.0f, /*enable=*/false);
     }
     // MPM GPU 总时延（多 pass 多 substep）：timestamp 包住整个 Step
-    // （含 home-spring/drag-BC/P2G/grid_update/g2p 全部子步的 GPU 执行时间之和）
+    // （含 drag-BC/P2G/grid_update/g2p 全部子步的 GPU 执行时间之和）
     vkCmdWriteTimestamp(cmd, VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT,
                         static_cast<VkQueryPool>(context->physicsQueryPool.get()), 0);  // mpm_start
     mpm_manager_->Step(cmd, frame_dt);

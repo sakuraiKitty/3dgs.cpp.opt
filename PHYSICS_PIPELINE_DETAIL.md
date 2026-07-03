@@ -38,7 +38,7 @@ src/
 ```
 1. 输入处理（右键拖拽转视角 / 滚轮 dolly / W A S D SPACE SHIFT 平移 / Q E roll）
 2. 物理交互：射线拾取 → 单粒子 GPU 回读 → DragHandler 计算 drag BC（含应变门控）
-3. MPM Step：substeps 个子步（ZeroGrid → [HomeSpring 跳过] → DragBC → P2G → GridUpdate → GridFreeze → G2P → PinFrozen）
+3. MPM Step：substeps 个子步（ZeroGrid → DragBC → P2G → GridUpdate → GridFreeze → G2P → PinFrozen）
 4. 耦合：GPU 计算粒子位移 → 映射到高斯 → override 旋转/cov3D
 5. 渲染：Preprocess(排序/cov3D) → Splat(高斯溅射) → GUI(ImGui)
 6. 诊断：每 60 帧回读粒子缓冲，打印 max_disp/max_strain/min_det/gated
@@ -46,7 +46,7 @@ src/
 
 三缓冲（`FRAMES_IN_FLIGHT=3`）：每帧独立的 command buffer + fence，CPU/GPU 并行。
 
-> **算法状态（2026-07-01）**：home-spring 与 F 松弛均已**关闭**（`SetHomeSpring(0,false)` + `SetFRelaxAlpha(0)`），恢复力完全由 FCR 弹性应力 τ=2μ(F−R)Fᵀ 提供，对标 PhysDreamer `gui_demo.py`。子步数按场景 profile 取值（carnation=256）。详见 §4.1 / §4.8 / §8。
+> **算法状态（2026-07-03）**：恢复力完全由 FCR 弹性应力 τ=2μ(F−R)Fᵀ 提供，对标 PhysDreamer `gui_demo.py`（PD 无 home-spring、无 F 松弛）。home-spring / F 松弛代码与 `apply_home_spring.comp` 已彻底移除。子步数按场景 profile 取值（carnation=96）。详见 §4.1 / §4.8 / §8。
 
 ---
 
@@ -139,8 +139,6 @@ substeps    = profile.substeps;   // carnation=96 → sub_dt = dt/96 ≈ 3.47e-4
 gravity     = {0, 0, 0};     // 四场景均无重力（PD simulate_cfg 无 gravity 字段）
 damping     = 1.0（拖拽中）/ 0.95^(1/substeps)（释放后，对标 PD release_damping）
 E/nu/rho    = profile.*;     // 按场景
-home_spring = OFF;           // 纯 FCR 恢复（见 §4.8）
-f_relax     = 0;             // 关闭 F 松弛，保留 FCR 弹性耦合
 CFL(cfl)    = 0.02;          // 拖拽速度兜底限幅（见 §6.4）
 ```
 
@@ -150,14 +148,13 @@ CFL(cfl)    = 0.02;          // 拖拽速度兜底限幅（见 §6.4）
 
 ```
 1.  ZeroGrid       — 清零网格节点 mass/velocity/force/active + freeze_mask
-1a. HomeSpring     — 【已关闭】enable=0，dispatch 整体跳过（见 §4.8）
-1b. DragBC         — 拖拽中：SET 半径内非冻结粒子速度 + 应变门控衰减   【仅 isDragging】
+1a. DragBC         — 拖拽中：SET 半径内非冻结粒子速度 + 应变门控衰减   【仅 isDragging】
 2.  P2G            — 粒子→网格（质量/动量/力 + APIC C + inline FCR 应力 + 标记 freeze_mask）
 3.  GridUpdate     — 网格速度更新（重力 + 阻尼 + CFL 限幅）+ 内联冻结节点零化（原 GridFreeze 融合）
 4.  G2P            — 网格→粒子（APIC v/C/F 更新，单循环融合 + NaN reset）+ 内联 PinFrozen（F=I/C=0）
 ```
 
-每阶段后插 `VkMemoryBarrier`（SHADER_WRITE→READ）。carnation 单帧 = 4 阶段 × 128 子步 = **512 次 dispatch**（idle，HomeSpring 跳过）；拖拽时 +DragBC = 5×128 = **640 次**。
+每阶段后插 `VkMemoryBarrier`（SHADER_WRITE→READ）。carnation 单帧 = 4 阶段 × 96 子步 = **384 次 dispatch**（idle）；拖拽时 +DragBC = 5×96 = **480 次**。
 
 **已完成的性能融合**（数值位一致，纯调度重组）：
 - **PinFrozen → G2P**：冻结粒子硬钉（init/0/I/0）合并进 G2P 末尾，省 1 dispatch/子步
@@ -247,25 +244,18 @@ if (freeze_flag != 0) {
 ```
 G2P 会更新所有粒子位置（含冻结粒子的漂移），PinFrozen 修正之，形成刚性锚点。**与 PD 的差异**：PD `gui_demo.py:317-318` 只钉 x/v，不动 F/C——因其冻结壳厚（~3 格）、grid_freeze 零化支撑节点使 ∇v≈0→F 自然保持 I。本 demo 冻结壳仅 ~2 格 + grid_freeze 只冻单节点，冻结粒子其余 26 节点常有非零速度→∇v≠0→F 漂移到 1.67→注入 τ=6.2M 虚假应力→全场 F 爆炸（实测移除重置后 max\|F−R\| 0.21→1.67）。故必须显式重置 F=I/C=0。
 
-### 4.8 恢复机制：纯 FCR 弹性（home-spring / F 松弛已关闭）
+### 4.8 恢复机制：纯 FCR 弹性（无 home-spring / F 松弛）
 
-**当前状态**：`Renderer::updatePhysicsSimulation` 初始化时
-```cpp
-mpm_manager_->SetHomeSpring(0.0f, /*enable=*/false);  // 关闭位置弹簧
-mpm_manager_->SetFRelaxAlpha(0.0f);                    // 关闭 F 松弛
-```
-`Substep` 中 `if (home_spring_.enable != 0u)` 不成立 → **home-spring dispatch 整体跳过**（无开销）。恢复力 100% 由 FCR 弹性应力 τ=2μ(F−R)Fᵀ 提供。
+**当前状态**：恢复力 100% 由 FCR 弹性应力 τ=2μ(F−R)Fᵀ 提供。`apply_home_spring.comp` shader、`home_spring_pipeline_`、`HomeSpringParams`、`SetHomeSpring` / `SetFRelaxAlpha` API 已**彻底删除**——不再有"关闭/跳过"语义，子步循环里根本没有这一步。
 
-**为什么关闭**（对标 PhysDreamer `gui_demo.py`）：
-- 之前的 home-spring + F 松弛是治「刚体旋转锁死」症状的 workaround，但互相拆台：
-  - F 松驰驱 F→I → τ→0 → **杀死 FCR 弹性耦合** → 无恢复力
+**为什么不需要（对标 PhysDreamer `gui_demo.py`）**：
+- PD 原生即无 home-spring、无 F 松弛，靠 FCR 弹性自然恢复。本 demo 早期曾加 home-spring + F 松弛作为治「刚体旋转锁死」症状的 workaround，但两者互相拆台：
+  - F 松弛驱 F→I → τ→0 → **杀死 FCR 弹性耦合** → 无恢复力
   - home-spring 速度冲量在 P2G→G2P 回路被稀释（实测 v 比理论小 ~360×）→ 失效
-- 真根因是 **substeps=128（<PD 最小 256）+ 拖拽成刚体模态**。提到 256 + 局部 2% 抓取后，拖拽产生**局部变形**（F≠R），FCR 即可恢复（PD `gui_demo.py:184-186` 作者自述）。
-- 故关闭两路 workaround，靠纯 FCR + 256 子步 + 局部小抓取自然恢复。
+- 真根因是 **substeps 偏小 + 拖拽成刚体模态**。substeps 提到场景 profile（carnation=96，CFL 0.635 稳定）+ 局部 2% 抓取后，拖拽产生**局部变形**（F≠R），FCR 即可恢复（PD `gui_demo.py:184-186` 作者自述）。
+- 故移除两路 workaround，靠纯 FCR + 充分子步 + 局部小抓取自然恢复。
 
-**保留的 home-spring 代码**：`apply_home_spring.comp` 与 `home_spring_pipeline_` 仍在（`enable` 字段运行时控制），便于实验对照，但默认不派发。
-
-> 历史背景：home-spring 曾是核心修复（见 §8 旧版决策）。substeps 提到 256 后该 workaround 不再必要，回退到 PD 原生恢复路径。
+> 历史背景：home-spring 曾是核心修复（见 §8 旧版决策）。substeps 提到稳定阈值后该 workaround 不再必要，回退到 PD 原生恢复路径，并彻底删除代码以简化管线。
 
 ---
 
@@ -374,7 +364,7 @@ v *= gate;
 | 重力+CFL 爆炸散点 | substeps=32+gravity 偏离原版 | gravity=0, substeps=128 |
 | 拖拽炸花茎 | 冻结掩码反向+active/冻结交界应力爆炸+F 退化 | safe_normalize + F 投影 + CFL clamp + NaN 归零 |
 | APIC 一阶矩爆炸 | stencil base+(i-1)→Σw·dpos≠0→C 反号放大 | stencil base+i + dp=i-fx |
-| 拖拽不回弹（刚体旋转） | substeps=128(<PD 256)+大抓取→刚体模态 F≈R→FCR τ≈0 | **substeps 256 + 2% 局部抓取 + home-spring/F-relax 关闭**（本文 §4.8/§8）|
+| 拖拽不回弹（刚体旋转） | substeps 偏小+大抓取→刚体模态 F≈R→FCR τ≈0 | **场景 profile substeps + 2% 局部抓取 + 纯 FCR**（本文 §4.8/§8）|
 | 闪退于 BuildDescriptorSets | CreateGridBuffer 触发 BuildDescriptorSets 时 initial_pos_buffer_ 未建→空缓冲绑定 | 触发条件加 `&& initial_pos_buffer_` + CreateInitialPosBuffer 末尾补触发 |
 | DescriptorPool reset 冻结 | end-of-init reset 废了 MPM persistent set | 删除 reset |
 | F 软界非保守塑样漂移 | det 软界等向缩放 + stretch≤2 等比缩放保大小不保方向 | 移除软界，仅 NaN/inf reset（对标 PD jelly）|
@@ -385,22 +375,22 @@ v *= gate;
 
 ---
 
-## 8. 核心设计决策：纯 FCR 恢复（home-spring 已回退）
+## 8. 核心设计决策：纯 FCR 恢复（home-spring 已彻底移除）
 
-这是本 demo 最深刻的一课，单独说明。**当前结论：home-spring / F 松弛已关闭，靠纯 FCR + 256 子步 + 局部抓取恢复。**
+这是本 demo 最深刻的一课，单独说明。**当前结论：home-spring / F 松弛代码已删除，靠纯 FCR + 场景 profile 子步 + 局部抓取恢复。**
 
 **现象（旧）**：carnation 花头拖拽释放后不回原位，max_disp 从 0.27 降到 0.14 后平台停滞，max_strain 停在 0.92。诊断 `ROTvsSTRETCH: ratio = max|F−R| / max|F−I| ≈ 0.057` → F 94% 是旋转 → 花头刚体旋转（绕花茎锚点）。
 
 **根因（数学性质，非 bug）**：FCR 是客观材料，应力 τ=2μ(F−R)Fᵀ 对纯旋转 F=R 恒等于零——客观材料对刚体运动零应力、零恢复力。**任何客观应力公式都修不了。**
 
-**旧方案（已回退）**：加位置 home-spring（弱弹簧拉回初始位）+ F 松弛（F←F+α(I−F) 退掉锁定旋转）。两者互相拆台：F 松驰驱 F→I 杀死 FCR 弹性耦合；home-spring 速度冲量在 P2G→G2P 回路被稀释 360× 失效。
+**旧方案（已移除）**：曾加位置 home-spring（弱弹簧拉回初始位）+ F 松弛（F←F+α(I−F) 退掉锁定旋转）。两者互相拆台：F 松驰驱 F→I 杀死 FCR 弹性耦合；home-spring 速度冲量在 P2G→G2P 回路被稀释 360× 失效。
 
-**真根因（PD 作者自述 `gui_demo.py:184-186`）**：PhysDreamer 不需要弹簧，靠 FCR 弹性自然恢复。前提是 (1) substeps ≥ 256（<128 指数爆炸→F 发散→刚体旋转锁死）；(2) 2% 局部抓取（空间局部→花头内部 F≠R→FCR 有恢复力），而非大半径刚体模态。本 demo 早期 substeps=128 + 7.5% 抓取→刚体模态→必须靠 spring workaround；提到 256 + 2% 后 workaround 不再必要。
+**真根因（PD 作者自述 `gui_demo.py:184-186`）**：PhysDreamer 不需要弹簧，靠 FCR 弹性自然恢复。前提是 (1) substeps 足够大（CFL 稳定，carnation=96）；(2) 2% 局部抓取（空间局部→花头内部 F≠R→FCR 有恢复力），而非大半径刚体模态。本 demo 早期 substeps 偏小 + 7.5% 抓取→刚体模态→必须靠 spring workaround；提到 CFL 稳定 substeps + 2% 后 workaround 不再必要。
 
 **当前方案**：
-1. ✅ substeps=256（carnation profile）
+1. ✅ substeps=场景 profile（carnation=96，CFL 0.635 稳定）
 2. ✅ grab_radius=AABB·2%（空间局部）
-3. ✅ home-spring OFF / F-relax OFF（纯 FCR）
+3. ✅ 纯 FCR（home-spring / F 松弛代码已删除）
 4. ✅ 极分解迭代 12 次（精确 R→应力对齐能量梯度→真实恢复力）
 5. ✅ DragBC 应变门控（防大力拖拽越过弹性上限→F 奇异）
 
@@ -476,7 +466,6 @@ C:/VulkanSDK/1.4.350.0/Bin/glslangValidator.exe -V -Isrc/shaders/mpm \
 | 位置反馈 dragVel | `gui_demo.py:340` | grab_v=(target−cur)/dt |
 | grab_radius=AABB·0.02 | `gui_demo.py:186` | 2% 局部抓取 |
 | 释放阻尼 0.95/帧 | `gui_demo.py:288` | release_damping |
-| **home-spring / F 松弛** | （无） | 本 demo 曾用，现已**关闭**（§4.8）；改靠 substeps=96 + 2% 抓取对齐 PD |
 | **ScenePhysicsProfile** | `configs/<scene>.py` | 按场景 E/substeps/downsample |
 | **DragBC 应变门控** | （无，PD 靠 CFL） | 本 demo 独有，防累积应变拉断（§6.3）|
 | **PinFrozen 重置 F=I/C=0** | `gui_demo.py:317-318`（PD 只钉 x/v） | 本 demo 补丁：薄冻结壳需显式重置（§4.7）|
@@ -539,7 +528,7 @@ Joe 选保真度优先（~30 FPS）。降 E 是可选的后续质量折中。
 
 ### 12.1 屏障合并（最高收益，零算法风险）
 每个子步插 7 道 `VkMemoryBarrier(SHADER_WRITE→READ)`，全局屏障强制整个 compute queue flush 缓存。可优化：
-- **按需细化**：P2G→GridUpdate 之间确需 grid 可见，但 ZeroGrid→(HomeSpring跳过)→DragBC 之间写的都是 particle.velocity，DragBC→P2G 之间的屏障可改为 `BUFFER_BARRIER` 精确到 `particle_buffer_`（而非全局），减少 cache flush 范围。
+- **按需细化**：P2G→GridUpdate 之间确需 grid 可见，但 ZeroGrid→DragBC 之间写的都是 particle.velocity，DragBC→P2G 之间的屏障可改为 `BUFFER_BARRIER` 精确到 `particle_buffer_`（而非全局），减少 cache flush 范围。
 - **合并相邻同阶段屏障**：G2P 写 particle，PinFrozen 紧接读/写 particle——若把 PinFrozen 的逻辑合并进 G2P shader 末尾（同一 dispatch 内按 freeze_flag 写回），省掉一道屏障 + 一次 dispatch。每子步省 1 dispatch × 256 = 256 次/帧。
 - 评估用 `vkCmdPipelineBarrier` 的 `BY_REGION_BIT` / 设备级 vs 全局的代价差异。
 
@@ -586,4 +575,4 @@ ZeroGrid 和 GridUpdate 每子步全量扫 64³=262144 节点，但 carnation �
 
 ---
 
-*文档基于 phys-sim 分支 2026-07-02 状态（home-spring 关闭，纯 FCR，carnation substeps=96/grid=48 CFL 0.635 拖拽稳定，~30 FPS 保真度天花板；P2G shared-mem tiling 已验证失败）。算法细节随开发推进更新。*
+*文档基于 phys-sim 分支 2026-07-03 状态（纯 FCR 恢复，home-spring 已彻底移除，carnation substeps=96/grid=48 CFL 0.635 拖拽稳定，~30 FPS 保真度天花板；P2G shared-mem tiling 已验证失败）。算法细节随开发推进更新。*

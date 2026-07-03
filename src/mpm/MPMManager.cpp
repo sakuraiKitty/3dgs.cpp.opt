@@ -393,7 +393,7 @@ std::optional<glm::vec3> MPMManager::GetParticlePositionGPU(uint32_t index) {
     // 保证读到上一帧已提交的 Step 结果（一帧滞后），供拖拽 P 控制器 cur_pick 使用。
     // 修复 C3：旧路径 GetParticlePositions() 返回 cpu_particles_（init 后永不更新），
     //         导致 cur_pick 恒为初始位置 → dragVel=(target-init)/dt 饱和在 CFL 上限，
-    //         batch 过冲不归位、home-spring 也因 disp 失真而无恢复力。
+    //         batch 过冲不归位、FCR 也因 disp 失真而无恢复力。
     const VkDeviceSize offset =
         static_cast<VkDeviceSize>(index) * static_cast<VkDeviceSize>(sizeof(ParticleData));
     ParticleData p = particle_buffer_->readOne<ParticleData>(offset);
@@ -681,7 +681,6 @@ void MPMManager::BuildDescriptorSets() {
     g2p_pipeline_->rebuild();
     drag_bc_pipeline_->rebuild();
     pin_frozen_pipeline_->rebuild();
-    home_spring_pipeline_->rebuild();
     spdlog::info("[MPMManager] All pipelines rebuilt successfully");
 
     // ── Diagnostic: Verify pipeline state ──
@@ -996,36 +995,6 @@ void MPMManager::CreatePipelines() {
         pin_frozen_pipeline_->addDescriptorSet(0, particle_init_descriptor_);
     }
 
-    // 8. Home Spring Pipeline（每子步 ZeroGrid 后，为刚体模态提供恢复力）
-    //    binding 0=ParticleBuffer(write velocity), binding 1=InitPos(readonly vec4[])
-    //    复用 particle_init_descriptor_（与 PinFrozen 同布局）
-    {
-        std::vector<vk::DescriptorSetLayoutBinding> bindings = {
-            vk::DescriptorSetLayoutBinding()
-                .setBinding(0)
-                .setDescriptorType(vk::DescriptorType::eStorageBuffer)
-                .setDescriptorCount(1)
-                .setStageFlags(vk::ShaderStageFlagBits::eCompute),
-            vk::DescriptorSetLayoutBinding()
-                .setBinding(1)
-                .setDescriptorType(vk::DescriptorType::eStorageBuffer)
-                .setDescriptorCount(1)
-                .setStageFlags(vk::ShaderStageFlagBits::eCompute),
-        };
-        // HomeSpringParams: {float k; float dt; uint num; uint enable; float f_relax_alpha; uint pad} = 24 bytes
-        vk::PushConstantRange pushConstantRange(
-            vk::ShaderStageFlagBits::eCompute,
-            0,
-            sizeof(HomeSpringParams)
-        );
-        home_spring_pipeline_ = CreateMPMPipeline(
-            "apply_home_spring",
-            bindings,
-            pushConstantRange
-        );
-        home_spring_pipeline_->addDescriptorSet(0, particle_init_descriptor_);
-    }
-
     spdlog::info("[MPMManager] All MPM pipelines created successfully (including Grid Freeze)");
 }
 
@@ -1053,22 +1022,6 @@ void MPMManager::Substep(VkCommandBuffer cmd, float dt) {
 
         uint32_t groups = (config_.grid_size + 7) / 8;
         vkCmdDispatch(cmd, groups, groups, groups);
-    }
-
-    // 1a. 位置 home-spring（每子步，ZeroGrid 后、DragBC 前）
-    // 为刚体模态（整体平移/旋转）提供恢复力——FCR 客观材料对纯旋转零应力，无此弹簧则
-    // 花头拖拽后绕花茎刚体旋转卡死不回弹（ratio=max|F-R|/max|F-I|≈0.057 佐证）。
-    // 速度冲量 v += -k*(x-x0)*dt；DragBC 的 SET 随后覆盖被抓粒子→弹簧不影响拖拽 batch。
-    // 写 particle.velocity，由 DragBC 后的 barrier（SHADER_WRITE→READ）覆盖给 P2G。
-    if (home_spring_.enable != 0u && home_spring_pipeline_) {
-        home_spring_.dt = dt;
-        home_spring_.num_particles = num_particles_;
-        vkCmdBindPipeline(cmd, VK_PIPELINE_BIND_POINT_COMPUTE, home_spring_pipeline_->pipeline.get());
-        home_spring_pipeline_->bind(cmd, 0, Pipeline::DescriptorOption(0));
-        vkCmdPushConstants(cmd, home_spring_pipeline_->pipelineLayout.get(),
-                           VK_SHADER_STAGE_COMPUTE_BIT, 0, sizeof(home_spring_), &home_spring_);
-        uint32_t pgroups = (num_particles_ + 63) / 64;  // local_size_x=64：53wg→213wg 填满 96 SM（占用率优化）
-        vkCmdDispatch(cmd, pgroups, 1, 1);
     }
 
     // 1b. 拖拽速度 Dirichlet BC（每子步，对标 PhysDreamer pre_p2g_operations / enforce_particle_velocity_by_mask）
@@ -1198,7 +1151,7 @@ void MPMManager::Substep(VkCommandBuffer cmd, float dt) {
 
     // 6. PinFrozen 已合并进 G2P shader 末尾（冻结粒子硬钉 init/0/I/0）。
     //    原独立 dispatch + 跨 dispatch 写后写排序省掉；G2P 单线程内顺序覆写，数值一致。
-    //    下方 barrier 仍需保留：保证本子步 G2P 写 particle 对下一子步 P2G/HomeSpring/DragBC 可见。
+    // 下方 barrier 仍需保留：保证本子步 G2P 写 particle 对下一子步 P2G/DragBC 可见。
 
     // Memory barrier: Particle write -> Read (next substep, after G2P step 5)
     {

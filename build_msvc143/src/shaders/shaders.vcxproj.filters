@@ -1,16 +1,34 @@
 ﻿<?xml version="1.0" encoding="utf-8"?>
 <Project ToolsVersion="17.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
   <ItemGroup>
-    <CustomBuild Include="D:\liuyue\physDreamerVulkanDemo\3dgs.cpp.opt\build_msvc143\CMakeFiles\00bcc53426d4f746c66ab8ad83b9a340\apply_mouse_force.spv.rule">
+    <CustomBuild Include="D:\liuyue\physDreamerVulkanDemo\3dgs.cpp.opt\build_msvc143\CMakeFiles\00bcc53426d4f746c66ab8ad83b9a340\apply_drag_velocity_bc.spv.rule">
+      <Filter>CMake Rules</Filter>
+    </CustomBuild>
+    <CustomBuild Include="D:\liuyue\physDreamerVulkanDemo\3dgs.cpp.opt\build_msvc143\CMakeFiles\00bcc53426d4f746c66ab8ad83b9a340\apply_mouse_displacement.spv.rule">
+      <Filter>CMake Rules</Filter>
+    </CustomBuild>
+    <CustomBuild Include="D:\liuyue\physDreamerVulkanDemo\3dgs.cpp.opt\build_msvc143\CMakeFiles\00bcc53426d4f746c66ab8ad83b9a340\args_builder.spv.rule">
       <Filter>CMake Rules</Filter>
     </CustomBuild>
     <CustomBuild Include="D:\liuyue\physDreamerVulkanDemo\3dgs.cpp.opt\build_msvc143\CMakeFiles\00bcc53426d4f746c66ab8ad83b9a340\calibrate.spv.rule">
       <Filter>CMake Rules</Filter>
     </CustomBuild>
+    <CustomBuild Include="D:\liuyue\physDreamerVulkanDemo\3dgs.cpp.opt\build_msvc143\CMakeFiles\00bcc53426d4f746c66ab8ad83b9a340\compute_particle_displacements.spv.rule">
+      <Filter>CMake Rules</Filter>
+    </CustomBuild>
     <CustomBuild Include="D:\liuyue\physDreamerVulkanDemo\3dgs.cpp.opt\build_msvc143\CMakeFiles\00bcc53426d4f746c66ab8ad83b9a340\compute_stress.spv.rule">
       <Filter>CMake Rules</Filter>
     </CustomBuild>
+    <CustomBuild Include="D:\liuyue\physDreamerVulkanDemo\3dgs.cpp.opt\build_msvc143\CMakeFiles\00bcc53426d4f746c66ab8ad83b9a340\drag_particle.spv.rule">
+      <Filter>CMake Rules</Filter>
+    </CustomBuild>
+    <CustomBuild Include="D:\liuyue\physDreamerVulkanDemo\3dgs.cpp.opt\build_msvc143\CMakeFiles\00bcc53426d4f746c66ab8ad83b9a340\extract_particle_fields.spv.rule">
+      <Filter>CMake Rules</Filter>
+    </CustomBuild>
     <CustomBuild Include="D:\liuyue\physDreamerVulkanDemo\3dgs.cpp.opt\build_msvc143\CMakeFiles\00bcc53426d4f746c66ab8ad83b9a340\g2p.spv.rule">
+      <Filter>CMake Rules</Filter>
+    </CustomBuild>
+    <CustomBuild Include="D:\liuyue\physDreamerVulkanDemo\3dgs.cpp.opt\build_msvc143\CMakeFiles\00bcc53426d4f746c66ab8ad83b9a340\grid_freeze.spv.rule">
       <Filter>CMake Rules</Filter>
     </CustomBuild>
     <CustomBuild Include="D:\liuyue\physDreamerVulkanDemo\3dgs.cpp.opt\build_msvc143\CMakeFiles\00bcc53426d4f746c66ab8ad83b9a340\grid_update.spv.rule">
@@ -22,7 +40,13 @@
     <CustomBuild Include="D:\liuyue\physDreamerVulkanDemo\3dgs.cpp.opt\build_msvc143\CMakeFiles\00bcc53426d4f746c66ab8ad83b9a340\map_displacement.spv.rule">
       <Filter>CMake Rules</Filter>
     </CustomBuild>
+    <CustomBuild Include="D:\liuyue\physDreamerVulkanDemo\3dgs.cpp.opt\build_msvc143\CMakeFiles\00bcc53426d4f746c66ab8ad83b9a340\map_displacement_with_rotation.spv.rule">
+      <Filter>CMake Rules</Filter>
+    </CustomBuild>
     <CustomBuild Include="D:\liuyue\physDreamerVulkanDemo\3dgs.cpp.opt\build_msvc143\CMakeFiles\00bcc53426d4f746c66ab8ad83b9a340\p2g.spv.rule">
+      <Filter>CMake Rules</Filter>
+    </CustomBuild>
+    <CustomBuild Include="D:\liuyue\physDreamerVulkanDemo\3dgs.cpp.opt\build_msvc143\CMakeFiles\00bcc53426d4f746c66ab8ad83b9a340\pin_frozen_particles.spv.rule">
       <Filter>CMake Rules</Filter>
     </CustomBuild>
     <CustomBuild Include="D:\liuyue\physDreamerVulkanDemo\3dgs.cpp.opt\build_msvc143\CMakeFiles\00bcc53426d4f746c66ab8ad83b9a340\precomp_cov3d.spv.rule">
@@ -47,6 +71,9 @@
       <Filter>CMake Rules</Filter>
     </CustomBuild>
     <CustomBuild Include="D:\liuyue\physDreamerVulkanDemo\3dgs.cpp.opt\build_msvc143\CMakeFiles\00bcc53426d4f746c66ab8ad83b9a340\tile_boundary.spv.rule">
+      <Filter>CMake Rules</Filter>
+    </CustomBuild>
+    <CustomBuild Include="D:\liuyue\physDreamerVulkanDemo\3dgs.cpp.opt\build_msvc143\CMakeFiles\00bcc53426d4f746c66ab8ad83b9a340\writeback_velocity.spv.rule">
       <Filter>CMake Rules</Filter>
     </CustomBuild>
     <CustomBuild Include="D:\liuyue\physDreamerVulkanDemo\3dgs.cpp.opt\build_msvc143\CMakeFiles\00bcc53426d4f746c66ab8ad83b9a340\zero_grid.spv.rule">
