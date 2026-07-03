@@ -2,11 +2,24 @@
 #include <iostream>
 #include <libenvpp/env.hpp>
 
+#ifdef _WIN32
+#define NOMINMAX
+#include <windows.h>
+// windows.h 把 near/far 定义为空宏，会破坏 3dgs.h 里 `float near/far` 字段名
+#undef near
+#undef far
+#endif
+
 #include "3dgs.h"
 #include "args.hxx"
 #include "spdlog/spdlog.h"
 
 int main(int argc, char** argv) {
+#ifdef _WIN32
+    // 控制台切 UTF-8：源码字符串字面量为 UTF-8，默认控制台 CP(GBK/936) 会把中文日志打成乱码
+    SetConsoleOutputCP(CP_UTF8);
+    SetConsoleCP(CP_UTF8);
+#endif
     spdlog::set_pattern("[%H:%M:%S] [%^%L%$] %v");
 
     args::ArgumentParser parser("Vulkan Splatting");
@@ -53,9 +66,10 @@ int main(int argc, char** argv) {
     auto immediateSwapchain = pre.register_variable<bool>("IMMEDIATE_SWAPCHAIN");
     auto envVars = pre.parse_and_validate();
 
-    if (args::get(verboseFlag)) {
-        spdlog::set_level(spdlog::level::debug);
-    }
+    // 默认 warn 级别：仅 warn/error/critical，关闭全部 info/debug 噪声（含实时渲染与回读诊断）。
+    // --verbose 开启 debug 级别，并触发 Diagnose() 回读与指标计算（max_tau/ratio/stretch 等）。
+    const bool verbose = args::get(verboseFlag);
+    spdlog::set_level(verbose ? spdlog::level::debug : spdlog::level::warn);
 
     VulkanSplatting::RendererConfiguration config{
         envVars.get_or(validationLayers, false),
@@ -93,6 +107,8 @@ int main(int argc, char** argv) {
     if (substepsFlag) {
         config.substeps = args::get(substepsFlag);
     }
+
+    config.verbose = verbose;
 
     auto width = widthFlag ? args::get(widthFlag) : 1280;
     auto height = heightFlag ? args::get(heightFlag) : 720;

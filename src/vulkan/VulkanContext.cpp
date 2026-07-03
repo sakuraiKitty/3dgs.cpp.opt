@@ -211,6 +211,16 @@ void VulkanContext::createQueryPool() {
     auto commandBuffer = beginOneTimeCommandBuffer();
     commandBuffer->resetQueryPool(queryPool.get(), 0, 12);
     endOneTimeCommandBuffer(std::move(commandBuffer), Queue::GRAPHICS);
+
+    // physics 专用 timestamp pool（mpm/coupling GPU 时延）：8 槽（mpm_start/end + coupling_start/end + 余量）
+    vk::QueryPoolCreateInfo physicsPoolInfo = {};
+    physicsPoolInfo.queryType = vk::QueryType::eTimestamp;
+    physicsPoolInfo.queryCount = 8;
+    physicsQueryPool = device->createQueryPoolUnique(physicsPoolInfo);
+    // 创建时 reset 全部（spec: 首次使用前必须 reset；RTX 4090 驱动对未 reset 的 query 永不置 available）
+    auto physicsResetCmd = beginOneTimeCommandBuffer();
+    physicsResetCmd->resetQueryPool(physicsQueryPool.get(), 0, 8);
+    endOneTimeCommandBuffer(std::move(physicsResetCmd), Queue::GRAPHICS);
 }
 
 void VulkanContext::createLogicalDevice(vk::PhysicalDeviceFeatures deviceFeatures,

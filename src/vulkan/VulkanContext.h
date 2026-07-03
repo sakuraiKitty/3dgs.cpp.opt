@@ -145,6 +145,11 @@ public:
 
     vk::UniqueDescriptorPool descriptorPool;
     vk::UniqueQueryPool queryPool;
+    // physics 专用 timestamp query pool（mpm/coupling GPU 时延）。
+    // 与 render queryPool 完全隔离：仅由 physics cmd（COMPUTE 队列）写入，
+    // 由 retrievePhysicsTimestamps 单独读取，不复用既有 retrieveTimestamps 的 eWait 路径，
+    // 避免跨队列/跨 cmd 池混用导致 frame loop 死等。
+    vk::UniqueQueryPool physicsQueryPool;
 
     bool validationLayersEnabled;
 private:

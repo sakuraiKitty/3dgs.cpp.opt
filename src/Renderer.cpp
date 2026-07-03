@@ -145,6 +145,32 @@ void Renderer::retrieveTimestamps() {
     }
 }
 
+void Renderer::retrievePhysicsTimestamps() {
+    // 仅在当帧 physics cmd 实际提交时读取（避免读到不可用 query）。
+    // 用非阻塞轮询（无 eWait）：physics cmd 无 fence 提交，eWait 会触发驱动重量级 device 同步
+    // → 每帧一次掉 ~2 FPS。改为 e64 only，拿不到(eNotReady)就跳过本帧，指标滞后一帧可接受。
+    if (!physicsSubmittedThisFrame_) {
+        return;
+    }
+    std::vector<uint64_t> timestamps(4);
+    auto res = context->device->getQueryPoolResults(context->physicsQueryPool.get(), 0, 4,
+                                                    timestamps.size() * sizeof(uint64_t),
+                                                    timestamps.data(), sizeof(uint64_t),
+                                                    vk::QueryResultFlagBits::e64);
+    if (res != vk::Result::eSuccess) {
+        // eNotReady 或其他：physics cmd 尚未完成写入，跳过本帧，不阻塞
+        return;
+    }
+    // mpm_start=0, mpm_end=1, coupling_start=2, coupling_end=3
+    // ticks → ms（假设 timestampPeriod=1ns，与 render 指标同约定；NVIDIA 驱动典型值）
+    const float mpm_ms = static_cast<float>(timestamps[1] - timestamps[0]) / 1000000.0f;
+    const float coupling_ms = static_cast<float>(timestamps[3] - timestamps[2]) / 1000000.0f;
+    if (configuration.enableGui) {
+        guiManager.pushMetric("mpm", mpm_ms);
+        guiManager.pushMetric("coupling", coupling_ms);
+    }
+}
+
 void Renderer::recreateSwapchain() {
     auto oldExtent = swapchain->swapchainExtent;
     spdlog::debug("Recreating swapchain");
@@ -710,6 +736,9 @@ void Renderer::draw() {
         physicsSubmit.commandBufferCount = 1;
         physicsSubmit.pCommandBuffers = &physicsCmd.get();
         context->queues[VulkanContext::Queue::COMPUTE].queue.submit(physicsSubmit, vk::Fence());
+        physicsSubmittedThisFrame_ = true;
+    } else {
+        physicsSubmittedThisFrame_ = false;
     }
 
     // 3b. 提交预处理工作（使用专用preprocessFence，而非inflightFences）
@@ -815,6 +844,7 @@ void Renderer::run() {
         }
 
         retrieveTimestamps();
+        retrievePhysicsTimestamps();
     }
 
     context->device->waitIdle();
@@ -1481,6 +1511,11 @@ void Renderer::updatePhysicsSimulation(VkCommandBuffer cmd) {
         return;
     }
 
+    // Reset physics 专用 query pool（spec: 写入前必须 reset）。
+    // mpm_start=0, mpm_end=1, coupling_start=2, coupling_end=3。
+    // 用独立 pool，不与 render queryPool 混用，避免跨队列/跨 cmd 池导致 retrieveTimestamps 死等。
+    vkCmdResetQueryPool(cmd, static_cast<VkQueryPool>(context->physicsQueryPool.get()), 0, 4);
+
     // ── 注入 CFL 限幅参数到 DragHandler（一次性）──
     // cfl=0.02: drag 注入速度限幅 max_vel = 0.02·dx/sub_dt ≈ 2.4 norm/s（兜底）
     //   原实测 cfl=0.05 → max_vel=6，dragVel=1.42 不触发 CFL，但 1.42 持续 256 子步
@@ -1604,6 +1639,7 @@ void Renderer::updatePhysicsSimulation(VkCommandBuffer cmd) {
     // ── 1. ApplyDrag（仅拖拽时：速度插值3-pass GPU流程）──
     // 非拖拽时跳过整个 drag pass，避免 extract/writeback 无读写循环引入噪声
     // Extract → Drag → Writeback → memory barrier → MPM
+    auto drag_t0 = std::chrono::high_resolution_clock::now();
     if (drag_handler_ && drag_handler_->IsDragging()) {
         spdlog::debug("[PhysicsSim] IsDragging=true → computing drag params");
 
@@ -1656,6 +1692,12 @@ void Renderer::updatePhysicsSimulation(VkCommandBuffer cmd) {
         // 释放：停止速度 BC 驱动，花头自由震荡（靠 P1 释放阻尼衰减归位）
         mpm_manager_->ClearDragVelocityBC();
     }
+    {
+        // drag 时延（CPU 侧）：含 GetParticlePositionGPU 同步回读 stall + push constants + BC 参数设置
+        auto drag_t1 = std::chrono::high_resolution_clock::now();
+        float drag_ms = std::chrono::duration<float, std::milli>(drag_t1 - drag_t0).count();
+        if (configuration.enableGui) guiManager.pushMetric("drag", drag_ms);
+    }
 
     // ── 2. 执行 MPM 物理模拟 ──
     // MPM持续运行（无pin，自然动力学处理回弹）
@@ -1675,16 +1717,28 @@ void Renderer::updatePhysicsSimulation(VkCommandBuffer cmd) {
         // 不再每帧按 !dragging 切换 —— PD 无位置弹簧，FCR τ 提供全部恢复力。
         mpm_manager_->SetHomeSpring(0.0f, /*enable=*/false);
     }
+    // MPM GPU 总时延（多 pass 多 substep）：timestamp 包住整个 Step
+    // （含 home-spring/drag-BC/P2G/grid_update/g2p 全部子步的 GPU 执行时间之和）
+    vkCmdWriteTimestamp(cmd, VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT,
+                        static_cast<VkQueryPool>(context->physicsQueryPool.get()), 0);  // mpm_start
     mpm_manager_->Step(cmd, frame_dt);
+    vkCmdWriteTimestamp(cmd, VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT,
+                        static_cast<VkQueryPool>(context->physicsQueryPool.get()), 1);  // mpm_end
 
-    // 轻量诊断：每60帧回读粒子缓冲，打印 max|disp|/max|vel|/max|F-I|/moved
-    // 读的是上一帧已提交的状态（当前cmd尚未提交），一帧滞后可接受
-    mpm_manager_->Diagnose();
+    // 诊断回读：仅在 --verbose 时执行（每 60 帧下载 2.3MB + 计算 max_tau/ratio/stretch/TEAR-WATCH）。
+    // 非 verbose 完全跳过：无 GPU 回读、无指标计算、无日志。
+    if (configuration.verbose) {
+        // 读的是上一帧已提交的状态（当前cmd尚未提交），一帧滞后可接受
+        mpm_manager_->Diagnose();
+    }
 
     // ── 3. GPU计算粒子位移 + 耦合映射 ──
     if (coupling_initialized_ && coupling_manager_) {
         // ComputeParticleDisplacementsGPU: displacement = current_pos - initial_pos
         // Couple: MapDisplacements → 高斯位置/旋转更新
+        // coupling GPU 时延：包住 Couple + buffer copies
+        vkCmdWriteTimestamp(cmd, VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT,
+                            static_cast<VkQueryPool>(context->physicsQueryPool.get()), 2);  // coupling_start
         coupling_manager_->Couple(cmd, currentFrameIndex, true);
 
         // ── 4. 复制耦合输出到 override buffers ──
@@ -1717,6 +1771,9 @@ void Renderer::updatePhysicsSimulation(VkCommandBuffer cmd) {
                            VK_PIPELINE_STAGE_TRANSFER_BIT,
                            VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT,
                            0, 1, &copy_write_barrier, 0, nullptr, 0, nullptr);
+
+        vkCmdWriteTimestamp(cmd, VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT,
+                            static_cast<VkQueryPool>(context->physicsQueryPool.get()), 3);  // coupling_end
 
         physics_override_active_ = true;
     }

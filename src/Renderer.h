@@ -77,6 +77,9 @@ public:
     void handleInput();
 
     void retrieveTimestamps();
+    // 读取 physics 专用 query pool（mpm/coupling GPU 时延），与 render pool 隔离。
+    // 仅在当帧 physics cmd 实际提交时调用；physics 在 preprocess fence 前完成，eWait 立即返回。
+    void retrievePhysicsTimestamps();
 
     void recreateSwapchain();
 
@@ -254,6 +257,10 @@ private:
     std::vector<vk::UniqueCommandBuffer> preprocessCommandBuffers;
     std::vector<vk::UniqueCommandBuffer> renderCommandBuffers;
     std::vector<vk::UniqueCommandBuffer> physicsCommandBuffers;  // 物理GPU命令（耦合、位移映射）
+
+    // 当帧 physics cmd 是否已提交（draw 守卫通过时置 true）。
+    // retrievePhysicsTimestamps 据此跳过未提交帧，避免读到永远不可用的 query → eWait 死等。
+    bool physicsSubmittedThisFrame_ = false;
 
     uint32_t currentImageIndex;
 

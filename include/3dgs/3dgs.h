@@ -24,6 +24,10 @@ public:
         // MPM 物理仿真子步数（命令行 --substeps 覆盖，默认 256 = PhysDreamer 最小稳定值）
         uint32_t substeps = 256;
 
+        // Verbose 模式（命令行 --verbose / -v）：开启 GPU 回读+实时渲染诊断日志；
+        // 关闭时仅输出 warn/error/critical，并跳过 Diagnose() 回读与指标计算（max_tau/ratio/stretch 等）
+        bool verbose = false;
+
         // Benchmark模式配置
         bool benchmarkMode = false;           // 启用benchmark模式
         int benchmarkFrames = 300;            // benchmark运行帧数
