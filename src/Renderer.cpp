@@ -239,11 +239,12 @@ void Renderer::initializeVulkan() {
     // 同样初始unsignaled - physics命令用null fence提交，同一队列保序
     physicsFence = context->device->createFenceUnique(vk::FenceCreateInfo());
 
-    // 创建时间线信号量（每帧一个）
-    frameTimelineSemaphores.reserve(FRAMES_IN_FLIGHT);
+    // 创建 per-frame binary 信号量（acquire / render-complete）
+    acquireSemaphores.reserve(FRAMES_IN_FLIGHT);
+    renderSemaphores.reserve(FRAMES_IN_FLIGHT);
     for (int i = 0; i < FRAMES_IN_FLIGHT; i++) {
-        frameTimelineSemaphores.emplace_back(
-            std::make_unique<TimelineSemaphore>(*context->device, 0));
+        acquireSemaphores.emplace_back(context->device->createSemaphoreUnique(vk::SemaphoreCreateInfo{}));
+        renderSemaphores.emplace_back(context->device->createSemaphoreUnique(vk::SemaphoreCreateInfo{}));
     }
 }
 
@@ -695,12 +696,11 @@ void Renderer::draw() {
     context->device->resetFences(inflightFences[frameIdx].get());
 
     // 2. 获取下一个交换链图像
-    // 关键修复：不再使用 inflightFences 作为 acquire 的信号fence
-    // 原来的 bug: acquireNextImageKHR 用 inflightFences 信号化后,
-    // preprocess submit 无法再次信号化同一fence → preprocess 等待无效 → 读取垃圾数据
-    // 修复: 使用 null fence（UINT64_MAX timeout 已经阻塞等待直到图像可用）
+    // 关键修复：用 binary acquireSemaphore 而非 null，acquire 非阻塞（CPU 不再同步等 image）。
+    // 原来的 null semaphore + null fence（VUID-01780）迫使驱动同步阻塞 CPU 直到 image 可用
+    // → 三缓冲流水线退化成 1 帧 → FPS 远低于 GPU 时间戳反推值。
     auto res = context->device->acquireNextImageKHR(swapchain->swapchain.get(), UINT64_MAX,
-                                                    vk::Semaphore(), vk::Fence(),
+                                                    acquireSemaphores[frameIdx].get(), vk::Fence(),
                                                     &currentImageIndex);
     if (res == vk::Result::eErrorOutOfDateKHR) {
         recreateSwapchain();
@@ -777,14 +777,23 @@ void Renderer::draw() {
 
     auto renderCmd = renderCommandBuffers[frameIdx].get();
 
-    // 6. 提交渲染命令（使用inflightFences进行跨帧同步）
-    vk::Semaphore renderSemaphore = frameTimelineSemaphores[frameIdx]->getHandle();
+    // 6. 提交渲染命令
+    // wait: acquireSemaphores[frameIdx]（image 可用）at ComputeShader stage（render compute 写 storage image）
+    // signal: renderSemaphores[frameIdx]（render 完成 → present 等）
+    // 修复：原用 timeline semaphore 当 signal/wait，但 present 要求 binary（VUID-03267），
+    // 且 timeline 未附 VkTimelineSemaphoreSubmitInfo（VUID-03239）+ signal 值从不递增 → 驱动注入全停。
+    vk::Semaphore acquireSem = acquireSemaphores[frameIdx].get();
+    vk::Semaphore renderSem  = renderSemaphores[frameIdx].get();
+    vk::PipelineStageFlags waitStage = vk::PipelineStageFlagBits::eComputeShader;
 
     vk::SubmitInfo renderSubmit{};
     renderSubmit.commandBufferCount = 1;
     renderSubmit.pCommandBuffers = &renderCmd;
+    renderSubmit.waitSemaphoreCount = 1;
+    renderSubmit.pWaitSemaphores = &acquireSem;
+    renderSubmit.pWaitDstStageMask = &waitStage;
     renderSubmit.signalSemaphoreCount = 1;
-    renderSubmit.pSignalSemaphores = &renderSemaphore;
+    renderSubmit.pSignalSemaphores = &renderSem;
 
     context->queues[VulkanContext::Queue::COMPUTE].queue.submit(renderSubmit, inflightFences[frameIdx].get());
 
@@ -798,11 +807,10 @@ void Renderer::draw() {
         saveScreenshot(screenshotPath);
     }
 
-    // 7. 呈现（等待渲染完成）
-    vk::Semaphore timelineHandle = frameTimelineSemaphores[frameIdx]->getHandle();
+    // 7. 呈现（等待 render 完成 binary semaphore）
     vk::PresentInfoKHR presentInfo{};
     presentInfo.waitSemaphoreCount = 1;
-    presentInfo.pWaitSemaphores = &timelineHandle;
+    presentInfo.pWaitSemaphores = &renderSem;
     presentInfo.swapchainCount = 1;
     presentInfo.pSwapchains = &swapchain->swapchain.get();
     presentInfo.pImageIndices = &currentImageIndex;

@@ -242,8 +242,14 @@ private:
     vk::UniqueFence preprocessFence;  // Dedicated fence for preprocess completion (within-frame sync)
     vk::UniqueFence physicsFence;     // Dedicated fence for physics GPU commands
 
-    // 时间线信号量用于帧同步
-    std::vector<std::unique_ptr<TimelineSemaphore>> frameTimelineSemaphores;
+    // 帧同步：per-frame binary 信号量
+    //   acquireSemaphores: acquireNextImageKHR signal → render submit wait（image 可用）
+    //   renderSemaphores:  render submit signal → presentKHR wait（render 完成）
+    // 修复：原用 timeline semaphore 当 present 等待信号量非法（VUID-03267），
+    // 且 TimelineSemaphore::signal() 从不调用 vkSignalSemaphoreKHR → 值不递增 → present 退化忙等/全停。
+    // binary 信号量是 WSI present 的标准同步原语。
+    std::vector<vk::UniqueSemaphore> acquireSemaphores;
+    std::vector<vk::UniqueSemaphore> renderSemaphores;
 
     // 帧管理：三缓冲环形缓冲区
     uint32_t currentFrameIndex = 0;
